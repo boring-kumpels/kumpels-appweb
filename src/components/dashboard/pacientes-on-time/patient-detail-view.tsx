@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { ErrorReportModal } from "./error-report-modal";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 interface PatientDetailViewProps {
   patientId: string;
@@ -146,6 +147,7 @@ const mockManualReturn: ManualReturn = {
 
 export default function PatientDetailView({}: PatientDetailViewProps) {
   const router = useRouter();
+  const { profile } = useCurrentUser();
   const [activeTab, setActiveTab] = useState<ProcessTab>("dispensacion");
   const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
   const [logEntries, setLogEntries] = useState<LogEntry[]>(initialLogEntries);
@@ -799,8 +801,8 @@ export default function PatientDetailView({}: PatientDetailViewProps) {
                   )}
                 </div>
 
-                {/* Error Message Input - Only show in Dispensación tab */}
-                {activeTab === "dispensacion" && (
+                {/* Error Message Input - Show in Dispensación tab for all roles EXCEPT NURSE */}
+                {activeTab === "dispensacion" && profile?.role !== "NURSE" && (
                   <div className="flex items-center space-x-3">
                     <div className="flex-shrink-0">
                       <AlertTriangle className="h-5 w-5 text-orange-500" />
@@ -820,6 +822,39 @@ export default function PatientDetailView({}: PatientDetailViewProps) {
                       patientName={mockPatientData.name}
                       patientId={mockPatientData.identification}
                       errorType="alistamiento"
+                    />
+                    <Button
+                      onClick={handleAddMessage}
+                      className="bg-blue-600 hover:bg-blue-700"
+                      disabled={!newMessage.trim()}
+                    >
+                      <Send className="h-4 w-4 mr-2" />
+                      Agregar
+                    </Button>
+                  </div>
+                )}
+
+                {/* Error Message Input - Show in Devoluciones tab ONLY for NURSE role */}
+                {activeTab === "devoluciones" && profile?.role === "NURSE" && (
+                  <div className="flex items-center space-x-3">
+                    <div className="flex-shrink-0">
+                      <AlertTriangle className="h-5 w-5 text-orange-500" />
+                    </div>
+                    <Input
+                      placeholder="Mensaje de error"
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === "Enter") {
+                          handleAddMessage();
+                        }
+                      }}
+                      className="flex-1"
+                    />
+                    <ErrorReportModal
+                      patientName={mockPatientData.name}
+                      patientId={mockPatientData.identification}
+                      errorType="devoluciones"
                     />
                     <Button
                       onClick={handleAddMessage}
