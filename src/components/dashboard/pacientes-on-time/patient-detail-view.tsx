@@ -79,7 +79,6 @@ export default function PatientDetailView({
   );
   const [userInput, setUserInput] = useState("");
   const [selectedCausa, setSelectedCausa] = useState("");
-  const [selectedSuministro, setSelectedSuministro] = useState("");
   const [suministroInput, setSuministroInput] = useState("");
 
   const processSteps = {
@@ -158,9 +157,6 @@ export default function PatientDetailView({
     "Cambio de frecuencia de administración",
     "Cambio de dosis",
     "Equivocación en entrega de farmacia",
-  ];
-
-  const suministrosOptions = [
     "Suministro suspendido",
     "Suministro rechazado por paciente",
     "Paciente dado de alta",
@@ -190,12 +186,8 @@ export default function PatientDetailView({
     if (selectedFilterType === "causa_devolucion" && selectedCausa) {
       returnData.push(`Causa: ${selectedCausa}`);
     }
-    if (selectedFilterType === "suministro") {
-      if (selectedSuministro === "Otros" && suministroInput) {
-        returnData.push(`Suministro: ${suministroInput}`);
-      } else if (selectedSuministro) {
-        returnData.push(`Suministro: ${selectedSuministro}`);
-      }
+    if (selectedFilterType === "suministro" && suministroInput) {
+      returnData.push(`Suministro: ${suministroInput}`);
     }
 
     if (returnData.length > 0) {
@@ -205,7 +197,6 @@ export default function PatientDetailView({
       setSelectedFilterType("");
       setUserInput("");
       setSelectedCausa("");
-      setSelectedSuministro("");
       setSuministroInput("");
     }
   };
@@ -235,6 +226,11 @@ export default function PatientDetailView({
             "bg-white border-gray-200 hover:bg-gray-50 px-4 py-2 h-12 rounded-full min-w-[80px]",
             getStatusColor(step.status)
           )}
+          onClick={
+            step.name === "Predespacho" || step.name === "Alistamiento"
+              ? () => setIsEmergencyModalOpen(true)
+              : undefined
+          }
         >
           {step.icon}
         </Button>
@@ -281,11 +277,8 @@ export default function PatientDetailView({
             </Button>
             <div>
               <h1 className="text-xl font-semibold text-gray-900">
-                {mockPatientData.name}
+                Detalles del paciente
               </h1>
-              <p className="text-sm text-gray-600">
-                Cama: <span className="font-medium">{mockPatientData.bed}</span>
-              </p>
             </div>
           </div>
 
@@ -302,305 +295,302 @@ export default function PatientDetailView({
         </div>
       </div>
 
-      <div className="flex">
-        {/* Left Sidebar - Patient Details */}
-        <div className="w-80 bg-white border-r border-gray-200 p-6 overflow-y-auto">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Detalles del paciente
-            </h2>
-          </div>
+      {/* Patient Details Card - Horizontal Layout */}
+      <div className="px-6 py-4">
+        <Card>
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Patient Basic Info */}
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    {mockPatientData.name}
+                  </h2>
+                  <p className="text-sm text-gray-600">
+                    Cama:{" "}
+                    <span className="font-medium">{mockPatientData.bed}</span>
+                  </p>
+                </div>
 
-          {/* Patient Information */}
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-sm font-medium text-gray-900 mb-3 border-b pb-2">
-                Información del paciente
-              </h3>
-            </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <h4 className="text-xs font-medium text-gray-900 mb-1">
+                      Identificación
+                    </h4>
+                    <p className="text-xs text-blue-600">
+                      {mockPatientData.identification}
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-medium text-gray-900 mb-1">
+                      Edad
+                    </h4>
+                    <p className="text-xs text-gray-600">
+                      {mockPatientData.age}
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-medium text-gray-900 mb-1">
+                      Sexo
+                    </h4>
+                    <p className="text-xs text-gray-600">
+                      {mockPatientData.sex}
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-            <div>
-              <h4 className="text-sm font-medium text-gray-900 mb-2">
-                Médico responsable
-              </h4>
-              <p className="text-xs text-blue-600 leading-relaxed">
-                {mockPatientData.responsibleDoctor}
-              </p>
-            </div>
+              {/* Medical Info */}
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 mb-2">
+                    Médico responsable
+                  </h4>
+                  <p className="text-xs text-blue-600 leading-relaxed">
+                    {mockPatientData.responsibleDoctor}
+                  </p>
+                </div>
+              </div>
 
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <h4 className="text-sm font-medium text-gray-900 mb-1">
-                  Identificación
-                </h4>
-                <p className="text-xs text-blue-600">
-                  {mockPatientData.identification}
-                </p>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium text-gray-900 mb-1">Edad</h4>
-                <p className="text-xs text-gray-600">{mockPatientData.age}</p>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium text-gray-900 mb-1">Sexo</h4>
-                <p className="text-xs text-gray-600">{mockPatientData.sex}</p>
+              {/* Dates */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="text-xs font-medium text-gray-900 mb-1">
+                      Fecha de ingreso
+                    </h4>
+                    <p className="text-xs text-gray-600">
+                      {mockPatientData.admissionDate}
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-medium text-gray-900 mb-1">
+                      Fecha de salida
+                    </h4>
+                    <p className="text-xs text-gray-600">
+                      {mockPatientData.dischargeDate}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
+      </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <h4 className="text-sm font-medium text-gray-900 mb-1">
-                  Fecha de ingreso
-                </h4>
-                <p className="text-xs text-gray-600">
-                  {mockPatientData.admissionDate}
-                </p>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium text-gray-900 mb-1">
-                  Fecha de salida
-                </h4>
-                <p className="text-xs text-gray-600">
-                  {mockPatientData.dischargeDate}
-                </p>
-              </div>
-            </div>
+      {/* Main Content */}
+      <div className="px-6">
+        {/* Process Tabs */}
+        <div className="mb-6">
+          <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg max-w-2xl">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                className={cn(
+                  "flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors flex-1 justify-center",
+                  activeTab === tab.id
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-600 hover:text-gray-900"
+                )}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                {tab.icon}
+                <span>{tab.name}</span>
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col">
-          {/* Process Tabs */}
-          <div className="bg-white border-b border-gray-200 p-6">
-            <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg max-w-2xl">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  className={cn(
-                    "flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors flex-1 justify-center",
-                    activeTab === tab.id
-                      ? "bg-white text-gray-900 shadow-sm"
-                      : "text-gray-600 hover:text-gray-900"
-                  )}
-                  onClick={() => setActiveTab(tab.id)}
-                >
-                  {tab.icon}
-                  <span>{tab.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+        {/* Content Area */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="capitalize">
+              {activeTab.replace("_", " ")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {activeTab === "devoluciones_manuales" ? (
+              <div className="space-y-6">
+                <div>
+                  <h4 className="text-sm font-medium mb-4">
+                    Selecciona un filtro:
+                  </h4>
+                  <div className="flex items-center space-x-2 mb-4">
+                    <Input
+                      placeholder={
+                        selectedFilterType === "usuario"
+                          ? "Escribe el nombre del usuario"
+                          : selectedFilterType === "suministro"
+                            ? "Escribe el suministro"
+                            : "Selecciona un filtro para comenzar..."
+                      }
+                      value={
+                        selectedFilterType === "usuario"
+                          ? userInput
+                          : selectedFilterType === "suministro"
+                            ? suministroInput
+                            : ""
+                      }
+                      onChange={(e) => {
+                        if (selectedFilterType === "usuario") {
+                          setUserInput(e.target.value);
+                        } else if (selectedFilterType === "suministro") {
+                          setSuministroInput(e.target.value);
+                        }
+                      }}
+                      className="max-w-sm"
+                      readOnly={
+                        !selectedFilterType ||
+                        selectedFilterType === "causa_devolucion"
+                      }
+                    />
+                    <Select
+                      value={selectedFilterType}
+                      onValueChange={(value: FilterType) => {
+                        setSelectedFilterType(value);
+                        // Reset all fields when changing filter type
+                        setUserInput("");
+                        setSelectedCausa("");
+                        setSuministroInput("");
+                      }}
+                    >
+                      <SelectTrigger className="w-48">
+                        <SelectValue placeholder="Selecciona una opción" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="usuario">Usuario</SelectItem>
+                        <SelectItem value="causa_devolucion">
+                          Causa de la devolución
+                        </SelectItem>
+                        <SelectItem value="suministro">Suministro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button variant="outline" size="sm">
+                      😊
+                    </Button>
+                  </div>
 
-          {/* Content Area */}
-          <div className="flex-1 p-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="capitalize">
-                  {activeTab.replace("_", " ")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {activeTab === "devoluciones_manuales" ? (
-                  <div className="space-y-6">
-                    <div>
-                      <h4 className="text-sm font-medium mb-4">
-                        Selecciona un filtro:
-                      </h4>
-                      <div className="flex items-center space-x-2 mb-4">
-                        <Input
-                          placeholder="Selecciona un filtro para comenzar..."
-                          className="max-w-sm"
-                          readOnly
-                        />
-                        <Select
-                          value={selectedFilterType}
-                          onValueChange={(value: FilterType) =>
-                            setSelectedFilterType(value)
-                          }
-                        >
-                          <SelectTrigger className="w-48">
-                            <SelectValue placeholder="Selecciona una opción" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="usuario">Usuario</SelectItem>
-                            <SelectItem value="causa_devolucion">
-                              Causa de la devolución
+                  {/* Causa dropdown when causa_devolucion is selected */}
+                  {selectedFilterType === "causa_devolucion" && (
+                    <div className="mb-4">
+                      <Select
+                        value={selectedCausa}
+                        onValueChange={setSelectedCausa}
+                      >
+                        <SelectTrigger className="max-w-sm">
+                          <SelectValue placeholder="Selecciona una causa" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {causasDevolucion.map((causa) => (
+                            <SelectItem key={causa} value={causa}>
+                              {causa}
                             </SelectItem>
-                            <SelectItem value="suministro">
-                              Suministro
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Button variant="outline" size="sm">
-                          😊
-                        </Button>
-                      </div>
-
-                      {/* Dynamic inputs based on filter type */}
-                      {selectedFilterType === "usuario" && (
-                        <div className="mb-4">
-                          <Input
-                            placeholder="Escribe el nombre del usuario"
-                            value={userInput}
-                            onChange={(e) => setUserInput(e.target.value)}
-                            className="max-w-sm"
-                          />
-                        </div>
-                      )}
-
-                      {selectedFilterType === "causa_devolucion" && (
-                        <div className="mb-4">
-                          <Select
-                            value={selectedCausa}
-                            onValueChange={setSelectedCausa}
-                          >
-                            <SelectTrigger className="max-w-sm">
-                              <SelectValue placeholder="Selecciona una causa" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {causasDevolucion.map((causa) => (
-                                <SelectItem key={causa} value={causa}>
-                                  {causa}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-
-                      {selectedFilterType === "suministro" && (
-                        <div className="space-y-4">
-                          <Select
-                            value={selectedSuministro}
-                            onValueChange={setSelectedSuministro}
-                          >
-                            <SelectTrigger className="max-w-sm">
-                              <SelectValue placeholder="Selecciona una causa" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {suministrosOptions.map((suministro) => (
-                                <SelectItem key={suministro} value={suministro}>
-                                  {suministro}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-
-                          {selectedSuministro === "Otros" && (
-                            <Input
-                              placeholder="Escribe el suministro"
-                              value={suministroInput}
-                              onChange={(e) =>
-                                setSuministroInput(e.target.value)
-                              }
-                              className="max-w-sm"
-                            />
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Messages Display */}
-                    <div className="border border-gray-200 rounded-lg p-4 min-h-[120px]">
-                      {messages.length > 0 ? (
-                        <div className="space-y-2">
-                          {messages.map((message, index) => (
-                            <div
-                              key={index}
-                              className="text-sm text-gray-700 p-2 bg-gray-50 rounded"
-                            >
-                              {message}
-                            </div>
                           ))}
-                        </div>
-                      ) : (
-                        <div className="text-center text-gray-500 py-8">
-                          <p>No hay devoluciones manuales disponibles.</p>
-                        </div>
-                      )}
+                        </SelectContent>
+                      </Select>
                     </div>
+                  )}
+                </div>
 
-                    <div className="flex justify-end">
+                {/* Messages Display */}
+                <div className="border border-gray-200 rounded-lg p-4 min-h-[120px]">
+                  {messages.length > 0 ? (
+                    <div className="space-y-2">
+                      {messages.map((message, index) => (
+                        <div
+                          key={index}
+                          className="text-sm text-gray-700 p-2 bg-gray-50 rounded"
+                        >
+                          {message}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center text-gray-500 py-8">
+                      <p>No hay devoluciones manuales disponibles.</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-end">
+                  <Button
+                    className="bg-blue-600 hover:bg-blue-700"
+                    onClick={handleGenerateManualReturn}
+                  >
+                    Generar Devolución Manual
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="flex justify-center space-x-8">
+                  {processSteps[activeTab]?.map((step) =>
+                    getProcessStepButton(step)
+                  )}
+                </div>
+
+                {/* Messages Display */}
+                <div className="border border-gray-200 rounded-lg p-4 min-h-[120px]">
+                  {messages.length > 0 ? (
+                    <div className="space-y-2">
+                      {messages.map((message, index) => (
+                        <div
+                          key={index}
+                          className="text-sm text-gray-700 p-2 bg-gray-50 rounded"
+                        >
+                          {message}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center text-gray-500 py-8">
+                      <p>No hay mensajes disponibles.</p>
+                    </div>
+                  )}
+                </div>
+
+                {activeTab === "dispensacion" && (
+                  <div className="border border-orange-200 bg-orange-50 rounded-lg p-4">
+                    <div className="flex items-center space-x-2">
+                      <AlertTriangle className="h-5 w-5 text-orange-500" />
+                      <Input
+                        placeholder="Mensaje de error"
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        className="flex-1"
+                      />
                       <Button
                         className="bg-blue-600 hover:bg-blue-700"
-                        onClick={handleGenerateManualReturn}
+                        onClick={handleAddMessage}
                       >
-                        Generar Devolución Manual
+                        Agregar
                       </Button>
                     </div>
                   </div>
-                ) : (
-                  <div className="space-y-6">
-                    <div className="flex justify-center space-x-8">
-                      {processSteps[activeTab]?.map((step) =>
-                        getProcessStepButton(step)
-                      )}
+                )}
+
+                {activeTab === "devoluciones" && (
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center space-x-2">
+                      <Input
+                        placeholder="Mensaje"
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button
+                        className="bg-blue-600 hover:bg-blue-700"
+                        onClick={handleAddMessage}
+                      >
+                        Agregar
+                      </Button>
                     </div>
-
-                    {/* Messages Display */}
-                    <div className="border border-gray-200 rounded-lg p-4 min-h-[120px]">
-                      {messages.length > 0 ? (
-                        <div className="space-y-2">
-                          {messages.map((message, index) => (
-                            <div
-                              key={index}
-                              className="text-sm text-gray-700 p-2 bg-gray-50 rounded"
-                            >
-                              {message}
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-center text-gray-500 py-8">
-                          <p>No hay mensajes disponibles.</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {activeTab === "dispensacion" && (
-                      <div className="border border-orange-200 bg-orange-50 rounded-lg p-4">
-                        <div className="flex items-center space-x-2">
-                          <AlertTriangle className="h-5 w-5 text-orange-500" />
-                          <Input
-                            placeholder="Mensaje de error"
-                            value={newMessage}
-                            onChange={(e) => setNewMessage(e.target.value)}
-                            className="flex-1"
-                          />
-                          <Button
-                            className="bg-blue-600 hover:bg-blue-700"
-                            onClick={handleAddMessage}
-                          >
-                            Agregar
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-
-                    {activeTab === "devoluciones" && (
-                      <div className="border border-gray-200 rounded-lg p-4">
-                        <div className="flex items-center space-x-2">
-                          <Input
-                            placeholder="Mensaje"
-                            value={newMessage}
-                            onChange={(e) => setNewMessage(e.target.value)}
-                            className="flex-1"
-                          />
-                          <Button
-                            className="bg-blue-600 hover:bg-blue-700"
-                            onClick={handleAddMessage}
-                          >
-                            Agregar
-                          </Button>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Emergency Modal */}
