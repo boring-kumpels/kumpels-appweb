@@ -1,16 +1,12 @@
 import {
   AlertCircle,
-  Calendar,
   ClipboardList,
   Command,
   FileText,
   HelpCircle,
   LayoutDashboard,
-  MessageSquare,
   Settings,
   Users,
-  Heart,
-  Phone,
   Activity,
   Package,
   ShieldCheck,
@@ -99,6 +95,26 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
 
     case "PHARMACY_VALIDATOR":
       baseSidebar.navGroups = [
+        {
+          title: "Medical Operations",
+          items: [
+            {
+              title: "On-Time Patients",
+              url: "/pharmacy/pacientes-on-time",
+              icon: Clock,
+            },
+            {
+              title: "General Status",
+              url: "/pharmacy/estado-general",
+              icon: CheckCircle2,
+            },
+            {
+              title: "Statistics",
+              url: "/pharmacy/estadisticas",
+              icon: TrendingUp,
+            },
+          ],
+        },
         {
           title: "Pharmacy Operations",
           items: [

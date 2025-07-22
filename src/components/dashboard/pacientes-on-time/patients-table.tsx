@@ -94,9 +94,14 @@ export function PatientsTable({
   const handlePatientDetailClick = (patient: Patient) => {
     if (onOpenPatientDetail) {
       // Determine the base path based on current route
-      const basePath = pathname.includes("/nurse/")
-        ? "/nurse/pacientes-on-time"
-        : "/dashboard/pacientes-on-time";
+      let basePath = "/dashboard/pacientes-on-time";
+
+      if (pathname.includes("/nurse/")) {
+        basePath = "/nurse/pacientes-on-time";
+      } else if (pathname.includes("/pharmacy/")) {
+        basePath = "/pharmacy/pacientes-on-time";
+      }
+
       window.location.href = `${basePath}/${patient.id}`;
     }
   };
