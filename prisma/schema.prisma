@@ -15,8 +15,10 @@ datasource db {
 }
 
 enum UserRole {
-  USER
   SUPERADMIN
+  NURSE
+  PHARMACY_VALIDATOR
+  PHARMACY_REGENT
 }
 
 model Profile {
@@ -28,7 +30,7 @@ model Profile {
   active        Boolean              @default(true)
   firstName     String?              @map("first_name")
   lastName      String?              @map("last_name")
-  role          UserRole             @default(USER)
+  role          UserRole             @default(SUPERADMIN)
 
   @@index([userId])
   @@map("profiles")
