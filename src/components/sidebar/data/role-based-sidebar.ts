@@ -19,6 +19,9 @@ import {
   BarChart3,
   Shield,
   Pill,
+  Clock,
+  TrendingUp,
+  CheckCircle2,
 } from "lucide-react";
 import type { SidebarData } from "../types";
 
@@ -37,9 +40,9 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
     },
     teams: [
       {
-        name: "Healthcare System",
+        name: "Medical Platform",
         logo: Command,
-        plan: "Medical Platform",
+        plan: "Hospital System",
       },
     ],
     navGroups: [],
@@ -49,67 +52,27 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
     case "SUPERADMIN":
       baseSidebar.navGroups = [
         {
-          title: "Administration",
+          title: "Medical Operations",
           items: [
             {
-              title: "Dashboard",
-              url: "/dashboard",
-              icon: LayoutDashboard,
+              title: "On-Time Patients",
+              url: "/dashboard/pacientes-on-time",
+              icon: Clock,
+            },
+            {
+              title: "General Status",
+              url: "/dashboard/estado-general",
+              icon: CheckCircle2,
+            },
+            {
+              title: "Statistics",
+              url: "/dashboard/estadisticas",
+              icon: TrendingUp,
             },
             {
               title: "User Management",
               url: "/admin/users",
               icon: Users,
-            },
-            {
-              title: "System Settings",
-              url: "/admin/settings",
-              icon: Settings,
-            },
-            {
-              title: "Security & Permissions",
-              url: "/admin/security",
-              icon: Shield,
-            },
-            {
-              title: "Analytics & Reports",
-              url: "/admin/reports",
-              icon: BarChart3,
-            },
-          ],
-        },
-        {
-          title: "Medical Operations",
-          items: [
-            {
-              title: "All Patients",
-              url: "/admin/patients",
-              icon: Heart,
-            },
-            {
-              title: "Staff Management",
-              url: "/admin/staff",
-              icon: UserCheck,
-            },
-            {
-              title: "Pharmacy Oversight",
-              url: "/admin/pharmacy",
-              icon: Package,
-            },
-          ],
-        },
-        {
-          title: "System",
-          items: [
-            {
-              title: "Database Management",
-              url: "/admin/database",
-              icon: Database,
-            },
-            {
-              title: "Audit Logs",
-              url: "/admin/logs",
-              icon: FileText,
             },
           ],
         },

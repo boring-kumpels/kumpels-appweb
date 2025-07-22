@@ -1,7 +1,7 @@
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { RoleDemo } from "@/components/utils/role-demo";
+import prisma from "@/lib/prisma";
 
 export default async function DashboardPage() {
   const supabase = createServerComponentClient({ cookies });
@@ -13,19 +13,25 @@ export default async function DashboardPage() {
     redirect("/sign-in");
   }
 
+  // Get user's role and redirect to appropriate dashboard
+  const currentUserProfile = await prisma.profile.findUnique({
+    where: { userId: session.user.id },
+    select: { role: true },
+  });
+
+  if (currentUserProfile?.role === "SUPERADMIN") {
+    redirect("/dashboard/pacientes-on-time");
+  }
+
+  // For other roles, show a basic dashboard for now
   return (
     <div className="space-y-8">
       <div className="bg-card rounded-lg p-6">
-        <h2 className="text-2xl font-semibold mb-4">Dashboard Overview</h2>
+        <h2 className="text-2xl font-semibold mb-4">Dashboard</h2>
         <p className="text-muted-foreground">
-          This is your protected dashboard page. You can start adding your
-          content here.
+          Welcome to your medical system dashboard.
         </p>
       </div>
-
-      <RoleDemo />
-
-      {/* Add more dashboard sections here */}
     </div>
   );
 }
