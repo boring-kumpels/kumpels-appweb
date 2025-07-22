@@ -137,66 +137,6 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
             },
           ],
         },
-        {
-          title: "Pharmacy Management",
-          items: [
-            {
-              title: "Dashboard",
-              url: "/dashboard",
-              icon: LayoutDashboard,
-            },
-            {
-              title: "Staff Oversight",
-              url: "/regent/staff",
-              icon: Users,
-            },
-            {
-              title: "Validation Reports",
-              url: "/regent/reports",
-              icon: BarChart3,
-            },
-            {
-              title: "Policy Management",
-              url: "/regent/policies",
-              icon: FileText,
-            },
-          ],
-        },
-        {
-          title: "Operations",
-          items: [
-            {
-              title: "Inventory Management",
-              url: "/regent/inventory",
-              icon: Package,
-            },
-            {
-              title: "Quality Metrics",
-              url: "/regent/metrics",
-              icon: Activity,
-            },
-            {
-              title: "Compliance Check",
-              url: "/regent/compliance",
-              icon: ShieldCheck,
-            },
-          ],
-        },
-        {
-          title: "Administration",
-          items: [
-            {
-              title: "System Settings",
-              url: "/regent/settings",
-              icon: Settings,
-            },
-            {
-              title: "Validator Management",
-              url: "/regent/validators",
-              icon: UserCheck,
-            },
-          ],
-        },
       ];
       break;
 
@@ -216,8 +156,12 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
       ];
   }
 
-  // Add common settings section for all roles EXCEPT NURSE and PHARMACY_VALIDATOR
-  if (role !== "NURSE" && role !== "PHARMACY_VALIDATOR") {
+  // Add common settings section for all roles EXCEPT NURSE, PHARMACY_VALIDATOR, and PHARMACY_REGENT
+  if (
+    role !== "NURSE" &&
+    role !== "PHARMACY_VALIDATOR" &&
+    role !== "PHARMACY_REGENT"
+  ) {
     baseSidebar.navGroups.push({
       title: "Account",
       items: [

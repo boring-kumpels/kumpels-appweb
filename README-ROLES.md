@@ -106,36 +106,23 @@ This application implements a comprehensive role-based access control system for
 
 ### 4. PHARMACY_REGENT
 
-**Description**: Senior pharmacy staff with management and oversight responsibilities.
+**Description**: Senior pharmacy staff with simplified access to medical operations.
 
-**Access Level**: Pharmacy management and administrative features
+**Access Level**: Core medical operations and patient management features
 
 **Sidebar Navigation**:
 
-- **Pharmacy Management**
+- **Medical Operations**
 
-  - Dashboard
-  - Staff Oversight
-  - Validation Reports
-  - Policy Management
-
-- **Operations**
-
-  - Inventory Management
-  - Quality Metrics
-  - Compliance Check
-
-- **Administration**
-  - System Settings
-  - Validator Management
+  - On-Time Patients
+  - General Status
+  - Statistics
 
 **Responsibilities**:
 
-- Oversee pharmacy validation staff
-- Manage pharmacy policies and procedures
-- Monitor compliance with regulations
-- Analyze pharmacy performance metrics
-- Coordinate with system administrators
+- Monitor patient medication schedules
+- Review general system status and alerts
+- Analyze medical operation statistics and metrics
 
 ---
 
