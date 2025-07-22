@@ -100,6 +100,8 @@ export function PatientsTable({
         basePath = "/nurse/pacientes-on-time";
       } else if (pathname.includes("/pharmacy/")) {
         basePath = "/pharmacy/pacientes-on-time";
+      } else if (pathname.includes("/regent/")) {
+        basePath = "/regent/pacientes-on-time";
       }
 
       window.location.href = `${basePath}/${patient.id}`;

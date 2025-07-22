@@ -1,6 +1,4 @@
 import {
-  AlertCircle,
-  ClipboardList,
   Command,
   FileText,
   HelpCircle,
@@ -12,7 +10,6 @@ import {
   ShieldCheck,
   UserCheck,
   BarChart3,
-  Pill,
   Clock,
   TrendingUp,
   CheckCircle2,
@@ -120,6 +117,26 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
 
     case "PHARMACY_REGENT":
       baseSidebar.navGroups = [
+        {
+          title: "Medical Operations",
+          items: [
+            {
+              title: "On-Time Patients",
+              url: "/regent/pacientes-on-time",
+              icon: Clock,
+            },
+            {
+              title: "General Status",
+              url: "/regent/estado-general",
+              icon: CheckCircle2,
+            },
+            {
+              title: "Statistics",
+              url: "/regent/estadisticas",
+              icon: TrendingUp,
+            },
+          ],
+        },
         {
           title: "Pharmacy Management",
           items: [
