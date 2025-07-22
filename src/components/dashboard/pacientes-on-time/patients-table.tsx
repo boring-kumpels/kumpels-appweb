@@ -16,6 +16,7 @@ import {
   ShoppingCart,
   RotateCcw,
   FileText,
+  Copy,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import type { Patient } from "./pacientes-on-time-management";
@@ -130,7 +131,7 @@ export function PatientsTable({
                 className="bg-white border-gray-200 hover:bg-gray-100 px-3 py-1 h-7 rounded-full min-w-[40px] text-gray-500"
                 onClick={() => handlePatientDetailClick(patient)}
               >
-                <FileText className="h-4 w-4" />
+                <Copy className="h-4 w-4" />
               </Button>
             </TableCell>
             <TableCell className="text-center">{patient.cama}</TableCell>
@@ -169,15 +170,6 @@ export function PatientsTable({
                 />
                 <StatusButton
                   icon={<ShoppingCart className="h-4 w-4" />}
-                  status={patient.distribución.status}
-                  showErrorReport
-                  patientName={patient.paciente}
-                  patientId={patient.id}
-                  errorType="distribución"
-                  isDistributionColumn
-                />
-                <StatusButton
-                  icon={<RotateCcw className="h-4 w-4" />}
                   status={patient.distribución.status}
                   showErrorReport
                   patientName={patient.paciente}
