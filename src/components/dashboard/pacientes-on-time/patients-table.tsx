@@ -48,31 +48,12 @@ const StatusButton: React.FC<StatusButtonProps> = ({
   errorType,
   isDistributionColumn = false,
 }) => {
-  const getIconColor = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "text-green-500";
-      case "in_progress":
-        return "text-orange-500";
-      case "pending":
-        return "text-orange-500";
-      case "error":
-        return "text-red-500";
-      case "empty":
-      default:
-        return "text-gray-400";
-    }
-  };
-
   return (
     <div className="flex items-center gap-1">
       <Button
         variant="outline"
         size="sm"
-        className={cn(
-          "bg-white border-gray-200 hover:bg-gray-50 px-3 py-1 h-7 rounded-full min-w-[40px]",
-          getIconColor(status)
-        )}
+        className="bg-white border-gray-200 hover:bg-gray-100 px-3 py-1 h-7 rounded-full min-w-[40px] text-gray-500"
         onClick={onClick}
       >
         {icon}
@@ -110,7 +91,6 @@ export function PatientsTable({
 
   const handlePatientDetailClick = (patient: Patient) => {
     if (onOpenPatientDetail) {
-      // Use Next.js router navigation to go to patient detail page
       window.location.href = `/dashboard/pacientes-on-time/${patient.id}`;
     }
   };
@@ -132,85 +112,73 @@ export function PatientsTable({
           <TableRow key={patient.id}>
             <TableCell className="text-center">
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                className="w-8 h-8 p-0 rounded"
+                className="bg-white border-gray-200 hover:bg-gray-100 px-3 py-1 h-7 rounded-full min-w-[40px] text-gray-500"
                 onClick={() => handlePatientDetailClick(patient)}
               >
-                <FileText className="h-4 w-4 text-gray-600" />
+                <FileText className="h-4 w-4" />
               </Button>
             </TableCell>
-            <TableCell className="text-center font-medium">
-              {patient.cama}
-            </TableCell>
-            <TableCell className="text-center font-mono">
+            <TableCell className="text-center">{patient.cama}</TableCell>
+            <TableCell className="text-center">
               {patient.identificacion}
             </TableCell>
-            <TableCell className="font-medium">{patient.paciente}</TableCell>
+            <TableCell>{patient.paciente}</TableCell>
             <TableCell className="text-center">
-              <div className="flex items-center justify-center gap-1">
+              <div className="flex justify-center space-x-2">
                 <StatusButton
                   icon={<Lock className="h-4 w-4" />}
-                  status={
-                    patient.distribución.status === "error"
-                      ? "error"
-                      : "completed"
-                  }
-                  onClick={() =>
-                    console.log("Lock clicked for", patient.paciente)
-                  }
-                  isDistributionColumn={true}
+                  status={patient.distribución.status}
+                  showErrorReport
+                  patientName={patient.paciente}
+                  patientId={patient.id}
+                  errorType="distribución"
+                  isDistributionColumn
                 />
                 <StatusButton
                   icon={<Scale className="h-4 w-4" />}
-                  status={
-                    patient.distribución.status === "completed"
-                      ? "completed"
-                      : "in_progress"
-                  }
-                  onClick={() =>
-                    console.log("Scale clicked for", patient.paciente)
-                  }
-                  isDistributionColumn={true}
+                  status={patient.distribución.status}
+                  showErrorReport
+                  patientName={patient.paciente}
+                  patientId={patient.id}
+                  errorType="distribución"
+                  isDistributionColumn
                 />
                 <StatusButton
                   icon={<Check className="h-4 w-4" />}
-                  status={
-                    patient.distribución.status === "completed"
-                      ? "completed"
-                      : "pending"
-                  }
-                  onClick={() =>
-                    console.log("Check clicked for", patient.paciente)
-                  }
-                  isDistributionColumn={true}
+                  status={patient.distribución.status}
+                  showErrorReport
+                  patientName={patient.paciente}
+                  patientId={patient.id}
+                  errorType="distribución"
+                  isDistributionColumn
                 />
                 <StatusButton
                   icon={<ShoppingCart className="h-4 w-4" />}
-                  status={
-                    patient.distribución.status === "completed"
-                      ? "completed"
-                      : "pending"
-                  }
-                  onClick={() =>
-                    console.log("Cart clicked for", patient.paciente)
-                  }
-                  isDistributionColumn={true}
+                  status={patient.distribución.status}
+                  showErrorReport
+                  patientName={patient.paciente}
+                  patientId={patient.id}
+                  errorType="distribución"
+                  isDistributionColumn
+                />
+                <StatusButton
+                  icon={<RotateCcw className="h-4 w-4" />}
+                  status={patient.distribución.status}
+                  showErrorReport
+                  patientName={patient.paciente}
+                  patientId={patient.id}
+                  errorType="distribución"
+                  isDistributionColumn
                 />
               </div>
             </TableCell>
             <TableCell className="text-center">
               <StatusButton
                 icon={<RotateCcw className="h-4 w-4" />}
-                status={
-                  patient.devoluciones.status === "completed"
-                    ? "completed"
-                    : "pending"
-                }
-                onClick={() =>
-                  console.log("Returns clicked for", patient.paciente)
-                }
-                showErrorReport={patient.devoluciones.status === "error"}
+                status={patient.devoluciones.status}
+                showErrorReport
                 patientName={patient.paciente}
                 patientId={patient.id}
                 errorType="devoluciones"

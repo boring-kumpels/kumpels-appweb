@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { SearchProvider } from "@/context/search-context";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -9,12 +10,17 @@ import { Header } from "@/components/sidebar/header";
 import { Search } from "@/components/sidebar/search";
 import { ThemeSwitch } from "@/components/sidebar/theme-switch";
 import { ProfileDropdown } from "@/components/sidebar/profile-dropdown";
+import { QRScanner } from "@/components/dashboard/qr-scanner";
+import { QrCode } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
 export function DashboardLayoutClient({ children }: DashboardLayoutProps) {
+  const [qrScannerOpen, setQrScannerOpen] = useState(false);
+
   return (
     <SearchProvider>
       <SidebarProvider defaultOpen={true}>
@@ -35,13 +41,23 @@ export function DashboardLayoutClient({ children }: DashboardLayoutProps) {
           <Header>
             <div className="ml-auto flex items-center space-x-4">
               <Search />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setQrScannerOpen(true)}
+                className="h-8 w-8 p-0"
+                title="Escáner QR"
+              >
+                <QrCode className="h-4 w-4" />
+              </Button>
               <ThemeSwitch />
               <ProfileDropdown />
             </div>
           </Header>
           {children}
         </div>
+        <QRScanner open={qrScannerOpen} onOpenChange={setQrScannerOpen} />
       </SidebarProvider>
     </SearchProvider>
   );
-} 
+}
