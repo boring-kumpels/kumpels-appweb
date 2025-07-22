@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { PatientsTable } from "./patients-table";
-import { FiltersDialog } from "./filters-dialog";
+import { FiltersDialog, FilterState } from "./filters-dialog";
 
 export interface Patient {
   id: string;
@@ -29,12 +29,6 @@ export interface Patient {
     status: "pending" | "completed" | "error";
     time?: string;
   };
-}
-
-export interface FilterState {
-  lineas: string[];
-  servicios: string[];
-  camas: string[];
 }
 
 // Mock data based on the screenshots
@@ -54,7 +48,7 @@ const mockPatients: Patient[] = [
     identificacion: "1762732730",
     paciente: "FRANCISCO JOSE DORN SANDOVAL",
     detalle: "PC02",
-    distribución: { status: "completed" },
+    distribución: { status: "in_progress" },
     devoluciones: { status: "pending" },
   },
   {
@@ -64,7 +58,7 @@ const mockPatients: Patient[] = [
     paciente: "HIJO DE YENNY COLORADO CUEVAS",
     detalle: "PC03",
     distribución: { status: "completed" },
-    devoluciones: { status: "pending" },
+    devoluciones: { status: "completed" },
   },
   {
     id: "4",
@@ -84,10 +78,28 @@ const mockPatients: Patient[] = [
     distribución: { status: "completed" },
     devoluciones: { status: "pending" },
   },
+  {
+    id: "6",
+    cama: "PC06",
+    identificacion: "123123317",
+    paciente: "Jose Suarez",
+    detalle: "PC06",
+    distribución: { status: "pending" },
+    devoluciones: { status: "pending" },
+  },
+  {
+    id: "7",
+    cama: "PC07",
+    identificacion: "123123318",
+    paciente: "Mariana Diaz",
+    detalle: "PC07",
+    distribución: { status: "in_progress" },
+    devoluciones: { status: "pending" },
+  },
 ];
 
 const initialFilters: FilterState = {
-  lineas: ["línea 1"],
+  lineas: ["línea 4"],
   servicios: [],
   camas: [],
 };
@@ -115,6 +127,12 @@ export default function PacientesOnTimeManagement() {
     setFilters({ lineas: [], servicios: [], camas: [] });
   };
 
+  const handleOpenPatientDetail = (patient: Patient) => {
+    // TODO: Open patient detail screen/modal
+    console.log("Opening patient detail for:", patient.paciente);
+    // This will be implemented when we create the patient detail screen
+  };
+
   return (
     <div className="space-y-4">
       <Card>
@@ -122,13 +140,13 @@ export default function PacientesOnTimeManagement() {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
-              línea 1
+              línea 4
             </CardTitle>
             <div className="flex items-center gap-2">
               {/* Status indicators */}
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 bg-gray-300 rounded-full"></div>
+                  <div className="w-3 h-3 bg-white border-2 border-gray-300 rounded-full"></div>
                   <span className="text-sm text-muted-foreground">Vacío</span>
                 </div>
                 <div className="flex items-center gap-1">
@@ -138,7 +156,7 @@ export default function PacientesOnTimeManagement() {
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                  <div className="w-3 h-3 bg-white border-2 border-orange-500 rounded-full"></div>
                   <span className="text-sm text-muted-foreground">
                     En curso
                   </span>
@@ -202,7 +220,11 @@ export default function PacientesOnTimeManagement() {
             <div className="bg-muted/50 px-4 py-2 border-b">
               <h3 className="font-medium">Lista de pacientes</h3>
             </div>
-            <PatientsTable patients={patients} isLoading={isLoading} />
+            <PatientsTable
+              patients={patients}
+              isLoading={isLoading}
+              onOpenPatientDetail={handleOpenPatientDetail}
+            />
           </div>
         </CardContent>
       </Card>

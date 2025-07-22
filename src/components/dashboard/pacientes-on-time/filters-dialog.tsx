@@ -6,6 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { FilterState } from "./pacientes-on-time-management";
 
+export interface FilterState {
+  lineas: string[]; // Keep as array for now but will only contain one item
+  servicios: string[];
+  camas: string[];
+}
+
 interface FiltersDialogProps {
   filters: FilterState;
   onApply: (filters: FilterState) => void;
@@ -14,15 +20,37 @@ interface FiltersDialogProps {
 
 // Mock data based on the screenshots
 const filterOptions = {
-  lineas: ["línea 1"],
+  lineas: ["línea 1", "línea 2", "línea 3", "línea 4", "ucis"],
   servicios: {
     "línea 1": [
       "uci pediátrica cardiovascular",
       "uci quirúrgica",
       "uci pediátrica general",
     ],
+    "línea 2": [
+      "segundo adultos",
+      "pebellón benefactores",
+      "unidad de trasplantes",
+    ],
+    "línea 3": ["tercero adultos", "cuarto adultos", "segundo pediatría"],
+    "línea 4": [
+      "tercero pediatría",
+      "suite pediátrica",
+      "neonatos",
+      "tercero renaldo",
+      "quinto renaldo",
+      "sexto renaldo",
+    ],
+    ucis: [
+      "uci medica 1",
+      "uci medica 2",
+      "uci medica 3",
+      "uci cardiovascular",
+      "urgencias",
+    ],
   },
   camas: {
+    // Línea 1
     "uci pediátrica cardiovascular": [
       "PC01",
       "PC02",
@@ -84,6 +112,376 @@ const filterOptions = {
       "UP22",
       "UP23",
     ],
+
+    // Línea 2
+    "segundo adultos": [
+      "213A",
+      "213B",
+      "213C",
+      "213D",
+      "214A",
+      "214B",
+      "214C",
+      "214D",
+      "215A",
+      "215B",
+      "215C",
+      "215D",
+      "216A",
+      "216B",
+      "216C",
+      "216D",
+      "217A",
+      "217B",
+      "217C",
+      "218A",
+      "218B",
+      "218C",
+      "218D",
+      "219A",
+      "219B",
+      "219C",
+      "220",
+      "221",
+      "222A",
+      "222B",
+      "223A",
+      "223B",
+      "224A",
+      "224B",
+      "224C",
+      "224D",
+      "225A",
+      "225B",
+      "226A",
+      "226B",
+      "227A",
+      "227B",
+      "228A",
+      "228B",
+      "228C",
+      "228D",
+    ],
+    "pebellón benefactores": [
+      "ST1A",
+      "ST1B",
+      "ST2",
+      "ST3A",
+      "ST3B",
+      "ST4",
+      "ST5A",
+      "ST5B",
+      "ST6",
+      "ST7A",
+      "ST7B",
+      "ST8A",
+      "ST8B",
+      "ST8C",
+      "ST9",
+      "ST10A",
+      "ST10B",
+      "ST11",
+      "ST12",
+      "ST13",
+      "ST14",
+      "ST15",
+    ],
+    "unidad de trasplantes": ["UT1", "UT2", "UT3", "UT4", "UT5", "UT6", "UT7"],
+
+    // Línea 3
+    "tercero adultos": [
+      "321",
+      "322",
+      "323",
+      "324",
+      "325",
+      "326",
+      "327",
+      "328",
+      "329A",
+      "329B",
+      "329C",
+      "329D",
+      "330",
+      "331A",
+      "331B",
+      "331C",
+      "331D",
+      "332",
+      "333",
+      "334",
+      "335",
+      "336",
+      "337",
+      "338",
+      "339",
+      "340",
+      "341A",
+      "341B",
+      "342A",
+      "342B",
+    ],
+    "cuarto adultos": [
+      "401",
+      "402",
+      "403",
+      "404",
+      "405",
+      "406",
+      "407",
+      "408",
+      "409",
+      "410",
+      "411",
+      "412",
+      "413A",
+      "413B",
+      "413C",
+      "413D",
+      "414A",
+      "414B",
+      "414C",
+      "414D",
+      "415A",
+      "415B",
+      "415C",
+      "415D",
+      "416A",
+      "416B",
+      "416C",
+      "416D",
+      "417",
+      "418",
+    ],
+    "segundo pediatría": [
+      "ST16A",
+      "ST16B",
+      "ST17",
+      "ST18A",
+      "ST18B",
+      "ST19A",
+      "ST19B",
+      "ST20A",
+      "ST20B",
+      "ST21A",
+      "ST21B",
+      "ST22A",
+      "ST22B",
+    ],
+
+    // Línea 4
+    "tercero pediatría": [
+      "308",
+      "309A",
+      "309B",
+      "309C",
+      "309D",
+      "310",
+      "311A",
+      "311B",
+      "311C",
+      "311D",
+      "313A",
+      "313B",
+      "313C",
+      "313D",
+      "314A",
+      "314B",
+      "314C",
+      "315A",
+      "315B",
+      "316",
+    ],
+    "suite pediátrica": [
+      "STP1",
+      "STP2",
+      "STP3",
+      "STP4",
+      "STP5",
+      "STP6",
+      "STP7",
+      "302",
+      "304",
+      "306",
+      "307A",
+      "307B",
+      "307C",
+      "307D",
+    ],
+    neonatos: [
+      "NE01",
+      "NE02",
+      "NE03",
+      "NE04",
+      "NE05",
+      "NE06",
+      "NE07",
+      "NE08",
+      "NE09",
+      "NE10",
+      "NE11",
+      "NE12",
+      "NE13",
+      "NE14",
+      "NE15",
+      "NE16",
+      "NE17",
+      "NE18",
+      "NE19",
+    ],
+    "tercero renaldo": [
+      "351",
+      "352",
+      "353",
+      "354",
+      "355",
+      "356",
+      "357",
+      "358",
+      "359",
+      "360",
+      "361",
+      "362",
+      "363",
+      "364",
+      "365",
+      "366",
+    ],
+    "quinto renaldo": [
+      "501",
+      "502",
+      "503",
+      "504",
+      "505",
+      "506",
+      "507",
+      "508",
+      "509",
+      "510",
+      "511",
+      "512",
+      "513",
+      "514",
+      "515",
+      "516",
+    ],
+    "sexto renaldo": [
+      "601",
+      "602",
+      "603",
+      "604",
+      "605",
+      "606",
+      "607",
+      "608",
+      "609",
+      "610",
+      "611",
+      "612",
+      "613",
+      "614",
+      "615",
+      "616",
+    ],
+
+    // UCIs
+    "uci medica 1": [
+      "UM1-01",
+      "UM1-02",
+      "UM1-03",
+      "UM1-04",
+      "UM1-05",
+      "UM1-06",
+      "UM1-07",
+      "UM1-08",
+      "UM1-09",
+      "UM1-10",
+      "UM1-11",
+      "UM1-12",
+    ],
+    "uci medica 2": [
+      "UM2-01",
+      "UM2-02",
+      "UM2-03",
+      "UM2-04",
+      "UM2-05",
+      "UM2-06",
+      "UM2-07",
+      "UM2-08",
+      "UM2-09",
+      "UM2-10",
+      "UM2-11",
+      "UM2-12",
+      "UM2-13",
+      "UM2-14",
+      "UM2-15",
+      "UM2-16",
+    ],
+    "uci medica 3": [
+      "UM3-01",
+      "UM3-02",
+      "UM3-03",
+      "UM3-04",
+      "UM3-05",
+      "UM3-06",
+      "UM3-07",
+      "UM3-08",
+      "UM3-09",
+      "UM3-10",
+      "UM3-11",
+      "UM3-12",
+      "UM3-13",
+      "UM3-14",
+      "UM3-15",
+    ],
+    "uci cardiovascular": [
+      "UQ11",
+      "UQ12",
+      "UQ13",
+      "UQ14",
+      "UQ15",
+      "UQ16",
+      "UQ17",
+      "UQ18",
+      "UQ19",
+      "UQ20",
+      "UQ21",
+      "UQ22",
+      "UQ23",
+      "UQ24",
+    ],
+    urgencias: [
+      "URG01",
+      "URG02",
+      "URG03",
+      "URG04",
+      "URG05",
+      "URG06",
+      "URG07",
+      "URG08",
+      "URG09",
+      "URG10",
+      "URG11",
+      "URG12",
+      "URG13",
+      "URG14",
+      "URG15",
+      "URG16",
+      "URG17",
+      "URG18",
+      "URG19",
+      "URG20",
+      "URG21",
+      "URG22",
+      "URG23",
+      "URG24",
+      "URG25",
+      "URG26",
+      "URG27",
+      "URG28",
+      "URG29",
+      "URG30",
+    ],
   },
 };
 
@@ -102,9 +500,7 @@ export function FiltersDialog({
   }, [filters]);
 
   const handleLineaToggle = (linea: string) => {
-    const newLineas = tempFilters.lineas.includes(linea)
-      ? tempFilters.lineas.filter((l) => l !== linea)
-      : [...tempFilters.lineas, linea];
+    const newLineas = [linea]; // Only allow one line selection
 
     setTempFilters((prev) => ({
       ...prev,
@@ -113,6 +509,9 @@ export function FiltersDialog({
       servicios: [],
       camas: [],
     }));
+
+    // Auto-advance to services tab
+    setTimeout(() => setSelectedTab("servicios"), 100);
   };
 
   const handleServicioToggle = (servicio: string) => {
@@ -126,6 +525,11 @@ export function FiltersDialog({
       // Clear camas when servicio changes
       camas: [],
     }));
+
+    // Auto-advance to camas tab when a service is selected
+    if (!tempFilters.servicios.includes(servicio)) {
+      setTimeout(() => setSelectedTab("camas"), 100);
+    }
   };
 
   const handleCamaToggle = (cama: string) => {
@@ -139,6 +543,17 @@ export function FiltersDialog({
     }));
   };
 
+  const handleNext = () => {
+    if (selectedTab === "lineas" && tempFilters.lineas.length > 0) {
+      setSelectedTab("servicios");
+    } else if (
+      selectedTab === "servicios" &&
+      tempFilters.servicios.length > 0
+    ) {
+      setSelectedTab("camas");
+    }
+  };
+
   const handleApply = () => {
     onApply(tempFilters);
   };
@@ -146,7 +561,19 @@ export function FiltersDialog({
   const handleClear = () => {
     setTempFilters({ lineas: [], servicios: [], camas: [] });
     onClear();
+    onApply({ lineas: [], servicios: [], camas: [] }); // Apply empty filters to show all data
   };
+
+  const canGoNext = () => {
+    if (selectedTab === "lineas") {
+      return tempFilters.lineas.length > 0;
+    } else if (selectedTab === "servicios") {
+      return tempFilters.servicios.length > 0;
+    }
+    return false;
+  };
+
+  const isLastStep = selectedTab === "camas";
 
   const getAvailableServicios = () => {
     if (tempFilters.lineas.length === 0) return [];
@@ -188,9 +615,14 @@ export function FiltersDialog({
             "flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors",
             selectedTab === "servicios"
               ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
+              : tempFilters.lineas.length === 0
+                ? "text-muted-foreground/50 cursor-not-allowed"
+                : "text-muted-foreground hover:text-foreground"
           )}
-          onClick={() => setSelectedTab("servicios")}
+          onClick={() =>
+            tempFilters.lineas.length > 0 && setSelectedTab("servicios")
+          }
+          disabled={tempFilters.lineas.length === 0}
         >
           Servicios
         </button>
@@ -199,9 +631,14 @@ export function FiltersDialog({
             "flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors",
             selectedTab === "camas"
               ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
+              : tempFilters.servicios.length === 0
+                ? "text-muted-foreground/50 cursor-not-allowed"
+                : "text-muted-foreground hover:text-foreground"
           )}
-          onClick={() => setSelectedTab("camas")}
+          onClick={() =>
+            tempFilters.servicios.length > 0 && setSelectedTab("camas")
+          }
+          disabled={tempFilters.servicios.length === 0}
         >
           Camas
         </button>
@@ -285,7 +722,18 @@ export function FiltersDialog({
           </Button>
           <span className="text-sm text-muted-foreground">Todos</span>
         </div>
-        <Button onClick={handleApply}>Aplicar</Button>
+        {isLastStep ? (
+          <Button
+            onClick={handleApply}
+            disabled={tempFilters.camas.length === 0}
+          >
+            Aplicar
+          </Button>
+        ) : (
+          <Button onClick={handleNext} disabled={!canGoNext()}>
+            Siguiente
+          </Button>
+        )}
       </div>
     </div>
   );

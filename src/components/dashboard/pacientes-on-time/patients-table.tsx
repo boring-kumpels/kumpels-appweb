@@ -8,68 +8,71 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  Lock,
+  Scale,
+  Check,
+  ShoppingCart,
+  RotateCcw,
+  FileText,
+} from "lucide-react";
 import type { Patient } from "./pacientes-on-time-management";
 
 interface PatientsTableProps {
   patients: Patient[];
   isLoading: boolean;
+  onOpenPatientDetail?: (patient: Patient) => void;
 }
 
-interface StatusIndicatorProps {
-  status: "pending" | "in_progress" | "completed" | "error";
+interface StatusButtonProps {
+  icon: React.ReactNode;
+  status: "empty" | "pending" | "in_progress" | "completed" | "error";
+  onClick?: () => void;
 }
 
-const StatusIndicator: React.FC<StatusIndicatorProps> = ({ status }) => {
-  const getStatusColor = (status: string) => {
+const StatusButton: React.FC<StatusButtonProps> = ({
+  icon,
+  status,
+  onClick,
+}) => {
+  const getIconColor = (status: string) => {
     switch (status) {
       case "completed":
-        return "bg-green-500";
+        return "text-green-500";
       case "in_progress":
-        return "bg-yellow-500";
+        return "text-orange-500";
       case "pending":
-        return "bg-orange-500";
+        return "text-orange-500";
       case "error":
-        return "bg-red-500";
+        return "text-red-500";
+      case "empty":
       default:
-        return "bg-gray-300";
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "Completado";
-      case "in_progress":
-        return "En curso";
-      case "pending":
-        return "Pendiente";
-      case "error":
-        return "Error";
-      default:
-        return "Vacío";
+        return "text-gray-400";
     }
   };
 
   return (
-    <div className="flex items-center justify-center">
-      <div
-        className={cn(
-          "w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-medium",
-          getStatusColor(status)
-        )}
-        title={getStatusLabel(status)}
-      >
-        {status === "completed" && "✓"}
-        {status === "error" && "!"}
-        {status === "in_progress" && "..."}
-        {status === "pending" && "•"}
-      </div>
-    </div>
+    <Button
+      variant="outline"
+      size="sm"
+      className={cn(
+        "bg-white border-gray-200 hover:bg-gray-50 px-3 py-1 h-7 rounded-full min-w-[40px]",
+        getIconColor(status)
+      )}
+      onClick={onClick}
+    >
+      {icon}
+    </Button>
   );
 };
 
-export function PatientsTable({ patients, isLoading }: PatientsTableProps) {
+export function PatientsTable({
+  patients,
+  isLoading,
+  onOpenPatientDetail,
+}: PatientsTableProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -79,6 +82,13 @@ export function PatientsTable({ patients, isLoading }: PatientsTableProps) {
       </div>
     );
   }
+
+  const handlePatientDetailClick = (patient: Patient) => {
+    if (onOpenPatientDetail) {
+      // Use Next.js router navigation to go to patient detail page
+      window.location.href = `/dashboard/pacientes-on-time/${patient.id}`;
+    }
+  };
 
   return (
     <Table>
@@ -96,11 +106,14 @@ export function PatientsTable({ patients, isLoading }: PatientsTableProps) {
         {patients.map((patient) => (
           <TableRow key={patient.id}>
             <TableCell className="text-center">
-              <div className="flex items-center justify-center">
-                <div className="w-6 h-6 bg-gray-600 rounded flex items-center justify-center">
-                  <div className="w-3 h-3 bg-white rounded-sm"></div>
-                </div>
-              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-8 h-8 p-0 rounded"
+                onClick={() => handlePatientDetailClick(patient)}
+              >
+                <FileText className="h-4 w-4 text-gray-600" />
+              </Button>
             </TableCell>
             <TableCell className="text-center font-medium">
               {patient.cama}
@@ -110,10 +123,65 @@ export function PatientsTable({ patients, isLoading }: PatientsTableProps) {
             </TableCell>
             <TableCell className="font-medium">{patient.paciente}</TableCell>
             <TableCell className="text-center">
-              <StatusIndicator status={patient.distribución.status} />
+              <div className="flex items-center justify-center gap-1">
+                <StatusButton
+                  icon={<Lock className="h-4 w-4" />}
+                  status={
+                    patient.distribución.status === "error"
+                      ? "error"
+                      : "completed"
+                  }
+                  onClick={() =>
+                    console.log("Lock clicked for", patient.paciente)
+                  }
+                />
+                <StatusButton
+                  icon={<Scale className="h-4 w-4" />}
+                  status={
+                    patient.distribución.status === "completed"
+                      ? "completed"
+                      : "in_progress"
+                  }
+                  onClick={() =>
+                    console.log("Scale clicked for", patient.paciente)
+                  }
+                />
+                <StatusButton
+                  icon={<Check className="h-4 w-4" />}
+                  status={
+                    patient.distribución.status === "completed"
+                      ? "completed"
+                      : "pending"
+                  }
+                  onClick={() =>
+                    console.log("Check clicked for", patient.paciente)
+                  }
+                />
+                <StatusButton
+                  icon={<ShoppingCart className="h-4 w-4" />}
+                  status={
+                    patient.distribución.status === "completed"
+                      ? "completed"
+                      : "pending"
+                  }
+                  onClick={() =>
+                    console.log("Cart clicked for", patient.paciente)
+                  }
+                />
+              </div>
             </TableCell>
             <TableCell className="text-center">
-              <StatusIndicator status={patient.devoluciones.status} />
+              <StatusButton
+                icon={<RotateCcw className="h-4 w-4" />}
+                status={
+                  patient.devoluciones.status === "completed"
+                    ? "completed"
+                    : "pending"
+                }
+                onClick={() =>
+                  console.log("Returns clicked for", patient.paciente)
+                }
+              />
             </TableCell>
           </TableRow>
         ))}
