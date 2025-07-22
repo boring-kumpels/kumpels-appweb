@@ -35,6 +35,7 @@ interface StatusButtonProps {
   patientName?: string;
   patientId?: string;
   errorType?: "distribución" | "devoluciones";
+  isDistributionColumn?: boolean;
 }
 
 const StatusButton: React.FC<StatusButtonProps> = ({
@@ -45,6 +46,7 @@ const StatusButton: React.FC<StatusButtonProps> = ({
   patientName,
   patientId,
   errorType,
+  isDistributionColumn = false,
 }) => {
   const getIconColor = (status: string) => {
     switch (status) {
@@ -75,13 +77,18 @@ const StatusButton: React.FC<StatusButtonProps> = ({
       >
         {icon}
       </Button>
-      {showErrorReport && status === "error" && patientName && patientId && errorType && (
-        <ErrorReportModal
-          patientName={patientName}
-          patientId={patientId}
-          errorType={errorType}
-        />
-      )}
+      {showErrorReport &&
+        status === "error" &&
+        patientName &&
+        patientId &&
+        errorType &&
+        !isDistributionColumn && (
+          <ErrorReportModal
+            patientName={patientName}
+            patientId={patientId}
+            errorType={errorType}
+          />
+        )}
     </div>
   );
 };
@@ -140,7 +147,7 @@ export function PatientsTable({
               {patient.identificacion}
             </TableCell>
             <TableCell className="font-medium">{patient.paciente}</TableCell>
-                        <TableCell className="text-center">
+            <TableCell className="text-center">
               <div className="flex items-center justify-center gap-1">
                 <StatusButton
                   icon={<Lock className="h-4 w-4" />}
@@ -152,10 +159,7 @@ export function PatientsTable({
                   onClick={() =>
                     console.log("Lock clicked for", patient.paciente)
                   }
-                  showErrorReport={patient.distribución.status === "error"}
-                  patientName={patient.paciente}
-                  patientId={patient.id}
-                  errorType="distribución"
+                  isDistributionColumn={true}
                 />
                 <StatusButton
                   icon={<Scale className="h-4 w-4" />}
@@ -167,10 +171,7 @@ export function PatientsTable({
                   onClick={() =>
                     console.log("Scale clicked for", patient.paciente)
                   }
-                  showErrorReport={patient.distribución.status === "error"}
-                  patientName={patient.paciente}
-                  patientId={patient.id}
-                  errorType="distribución"
+                  isDistributionColumn={true}
                 />
                 <StatusButton
                   icon={<Check className="h-4 w-4" />}
@@ -182,10 +183,7 @@ export function PatientsTable({
                   onClick={() =>
                     console.log("Check clicked for", patient.paciente)
                   }
-                  showErrorReport={patient.distribución.status === "error"}
-                  patientName={patient.paciente}
-                  patientId={patient.id}
-                  errorType="distribución"
+                  isDistributionColumn={true}
                 />
                 <StatusButton
                   icon={<ShoppingCart className="h-4 w-4" />}
@@ -197,10 +195,7 @@ export function PatientsTable({
                   onClick={() =>
                     console.log("Cart clicked for", patient.paciente)
                   }
-                  showErrorReport={patient.distribución.status === "error"}
-                  patientName={patient.paciente}
-                  patientId={patient.id}
-                  errorType="distribución"
+                  isDistributionColumn={true}
                 />
               </div>
             </TableCell>
@@ -211,7 +206,7 @@ export function PatientsTable({
                   patient.devoluciones.status === "completed"
                     ? "completed"
                     : "pending"
-                  }
+                }
                 onClick={() =>
                   console.log("Returns clicked for", patient.paciente)
                 }
