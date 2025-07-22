@@ -11,7 +11,127 @@ import {
   Lock,
   Scale,
   Check,
+  AlertTriangle,
+  Send,
 } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faUser,
+  faLock,
+  faCheck,
+  faShoppingCart,
+  faArrowLeft,
+  faClipboardList,
+  faExclamationTriangle,
+  faSearch,
+  faRefresh,
+  faPlus,
+  faEdit,
+  faTrash,
+  faEye,
+  faDownload,
+  faUpload,
+  faFile,
+  faFolder,
+  faHome,
+  faCog,
+  faBell,
+  faEnvelope,
+  faPhone,
+  faMapMarkerAlt,
+  faCalendar,
+  faClock,
+  faStar,
+  faHeart,
+  faThumbsUp,
+  faThumbsDown,
+  faComment,
+  faShare,
+  faBookmark,
+  faPrint,
+  faSave,
+  faUndo,
+  faRedo,
+  faCopy,
+  faPaste,
+  faCut,
+  faBold,
+  faItalic,
+  faUnderline,
+  faList,
+  faListOl,
+  faLink,
+  faUnlink,
+  faImage,
+  faVideo,
+  faMusic,
+  faVolumeUp,
+  faVolumeMute,
+  faPlay,
+  faPause,
+  faStop,
+  faForward,
+  faBackward,
+  faStepForward,
+  faStepBackward,
+  faExpand,
+  faCompress,
+  faMinus,
+  faTimes,
+  faInfoCircle,
+  faQuestionCircle,
+  faCheckCircle,
+  faTimesCircle,
+  faExclamationCircle,
+  faBan,
+  faShieldAlt,
+  faKey,
+  faUnlock,
+  faLockOpen,
+  faUserShield,
+  faUserSecret,
+  faUserTie,
+  faUserGraduate,
+  faUserNurse,
+  faUserDoctor,
+  faHospital,
+  faPills,
+  faSyringe,
+  faThermometer,
+  faStethoscope,
+  faHeartbeat,
+  faLungs,
+  faBrain,
+  faEyeDropper,
+  faFlask,
+  faMicroscope,
+  faDna,
+  faVirus,
+  faBacteria,
+  faVirusSlash,
+  faShieldVirus,
+  faHandHoldingMedical,
+  faHandHoldingHeart,
+  faHandHoldingDroplet,
+  faHandHolding,
+  faHandshake,
+  faHandsHelping,
+  faHandPaper,
+  faHandRock,
+  faHandScissors,
+  faHandSpock,
+  faHandPointUp,
+  faHandPointDown,
+  faHandPointLeft,
+  faHandPointRight,
+  faHandMiddleFinger,
+  faHandPeace,
+  faHandBackFist,
+  faHandLizard,
+  faHandPointer,
+  faHandSparkles,
+  faHandFist,
+} from "@fortawesome/free-solid-svg-icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +150,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { ErrorMessageInput } from "./error-message-input";
 
 interface PatientDetailViewProps {
   patientId: string;
@@ -51,6 +170,32 @@ interface ProcessStep {
   description?: string;
 }
 
+interface LogEntry {
+  id: string;
+  timestamp: string;
+  role: string;
+  message: string;
+  type: "error" | "info" | "warning";
+  patientName: string;
+  patientId: string;
+}
+
+interface ManualReturn {
+  id: string;
+  generatedBy: string;
+  reviewedBy: string;
+  creationDate: string;
+  approvalDate: string;
+  supplies: {
+    code: string;
+    supplyCode: string;
+    supply: string;
+    quantityReturned: number;
+  }[];
+  cause: string;
+  comments: string;
+}
+
 const mockPatientData = {
   id: "1",
   name: "JESUS PEREZ",
@@ -64,14 +209,66 @@ const mockPatientData = {
     "FIDEICOMISO PATRIMONIOS AUTONOMOS FIDUCIARIA LA PREVISORA S",
 };
 
+// Mock log entries based on the image
+const initialLogEntries: LogEntry[] = [
+  {
+    id: "1",
+    timestamp: "2025-07-22 07:11:59",
+    role: "PharmacyRegents",
+    message: "Se ha producido un error en el proceso de predespacho.",
+    type: "error",
+    patientName: "JESUS PEREZ",
+    patientId: "1231231231",
+  },
+  {
+    id: "2",
+    timestamp: "2025-07-22 07:21:32",
+    role: "PharmacyRegents",
+    message: "Se ha producido un error en el proceso de alistamiento.",
+    type: "error",
+    patientName: "JESUS PEREZ",
+    patientId: "1231231231",
+  },
+  {
+    id: "3",
+    timestamp: "2025-07-22 09:39:45",
+    role: "SUPERUSER",
+    message: "que paso",
+    type: "info",
+    patientName: "JESUS PEREZ",
+    patientId: "1231231231",
+  },
+];
+
+// Mock manual return data based on the image
+const mockManualReturn: ManualReturn = {
+  id: "1",
+  generatedBy: "Nurse",
+  reviewedBy: "PharmacyRegents",
+  creationDate: "7/21/2025, 10:13:36 PM",
+  approvalDate: "7/21/2025, 10:14:41 PM",
+  supplies: [
+    {
+      code: "f4f5644f-8732-4477-acd6-99e85fb78866",
+      supplyCode: "1400740",
+      supply:
+        "ABATACEPT 125MG/1ML SOL INYECTABLE SC JER PRELLENA* 1ML BRISTOL CJ *4U (ORENCIA)",
+      quantityReturned: 1,
+    },
+  ],
+  cause: "Cambio de vía de administración",
+  comments: "Comentario no proporcionado",
+};
+
 export default function PatientDetailView({
   patientId,
 }: PatientDetailViewProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<ProcessTab>("dispensacion");
   const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
-  const [messages, setMessages] = useState<string[]>([]);
+  const [logEntries, setLogEntries] = useState<LogEntry[]>(initialLogEntries);
   const [newMessage, setNewMessage] = useState("");
+  const [manualReturn, setManualReturn] = useState<ManualReturn | null>(null);
 
   // Manual Returns state
   const [selectedFilterType, setSelectedFilterType] = useState<FilterType | "">(
@@ -165,14 +362,39 @@ export default function PatientDetailView({
   ];
 
   const handleEmergencyReport = (stage: string) => {
-    const message = `Error reportado en etapa: ${stage}`;
-    setMessages((prev) => [...prev, message]);
+    const now = new Date();
+    const timestamp = now.toISOString().slice(0, 19).replace("T", " ");
+
+    const newEntry: LogEntry = {
+      id: Date.now().toString(),
+      timestamp,
+      role: "PharmacyRegents",
+      message: `Se ha producido un error en el proceso de ${stage.toLowerCase()}.`,
+      type: "error",
+      patientName: mockPatientData.name,
+      patientId: mockPatientData.identification,
+    };
+
+    setLogEntries((prev) => [newEntry, ...prev]);
     setIsEmergencyModalOpen(false);
   };
 
   const handleAddMessage = () => {
     if (newMessage.trim()) {
-      setMessages((prev) => [...prev, newMessage.trim()]);
+      const now = new Date();
+      const timestamp = now.toISOString().slice(0, 19).replace("T", " ");
+
+      const newEntry: LogEntry = {
+        id: Date.now().toString(),
+        timestamp,
+        role: "SUPERUSER",
+        message: newMessage.trim(),
+        type: "info",
+        patientName: mockPatientData.name,
+        patientId: mockPatientData.identification,
+      };
+
+      setLogEntries((prev) => [newEntry, ...prev]);
       setNewMessage("");
     }
   };
@@ -191,8 +413,53 @@ export default function PatientDetailView({
     }
 
     if (returnData.length > 0) {
-      const message = `Devolución Manual - ${returnData.join(", ")}`;
-      setMessages((prev) => [...prev, message]);
+      // Create a new manual return with the form data
+      const now = new Date();
+      const creationDate = now.toLocaleString("en-US", {
+        month: "numeric",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      });
+
+      const approvalDate = new Date(now.getTime() + 65000).toLocaleString(
+        "en-US",
+        {
+          month: "numeric",
+          day: "numeric",
+          year: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: true,
+        }
+      );
+
+      const newManualReturn: ManualReturn = {
+        id: Date.now().toString(),
+        generatedBy: userInput || "Nurse",
+        reviewedBy: "PharmacyRegents",
+        creationDate,
+        approvalDate,
+        supplies: [
+          {
+            code: "f4f5644f-8732-4477-acd6-99e85fb78866",
+            supplyCode: "1400740",
+            supply:
+              suministroInput ||
+              "ABATACEPT 125MG/1ML SOL INYECTABLE SC JER PRELLENA* 1ML BRISTOL CJ *4U (ORENCIA)",
+            quantityReturned: 1,
+          },
+        ],
+        cause: selectedCausa || "Cambio de vía de administración",
+        comments: "Comentario no proporcionado",
+      };
+
+      setManualReturn(newManualReturn);
+
       // Reset form
       setSelectedFilterType("");
       setUserInput("");
@@ -235,6 +502,137 @@ export default function PatientDetailView({
           {step.icon}
         </Button>
         <span className="text-xs text-center font-medium">{step.name}</span>
+      </div>
+    );
+  };
+
+  const LogEntryComponent = ({ entry }: { entry: LogEntry }) => {
+    const getTypeIcon = (type: string) => {
+      switch (type) {
+        case "error":
+          return (
+            <FontAwesomeIcon
+              icon={faExclamationTriangle}
+              className="h-4 w-4 text-red-500"
+            />
+          );
+        case "warning":
+          return (
+            <FontAwesomeIcon
+              icon={faExclamationTriangle}
+              className="h-4 w-4 text-orange-500"
+            />
+          );
+        default:
+          return (
+            <div className="h-4 w-4 bg-green-500 rounded-sm flex items-center justify-center">
+              <FontAwesomeIcon icon={faCheck} className="w-2 h-2 text-white" />
+            </div>
+          );
+      }
+    };
+
+    return (
+      <div className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+        <div className="flex-shrink-0 mt-1">{getTypeIcon(entry.type)}</div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-sm font-medium text-gray-900">
+              {entry.role}
+            </span>
+            <span className="text-xs text-gray-500">{entry.timestamp}</span>
+          </div>
+          <p className="text-sm text-gray-700 mb-1">{entry.message}</p>
+          <p className="text-xs text-gray-500">
+            Nombre: {entry.patientName}, Identificación: {entry.patientId}
+          </p>
+        </div>
+      </div>
+    );
+  };
+
+  const ManualReturnDetails = ({
+    returnData,
+  }: {
+    returnData: ManualReturn;
+  }) => {
+    return (
+      <div className="space-y-6">
+        {/* Return Status/Metadata */}
+        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+            <span className="text-sm text-gray-700">
+              Generado por: {returnData.generatedBy} - Revisado por:{" "}
+              {returnData.reviewedBy}
+            </span>
+          </div>
+          <div className="text-right text-xs text-gray-600 space-y-1">
+            <div>Fecha de creación: {returnData.creationDate}</div>
+            <div>Fecha de aprobación: {returnData.approvalDate}</div>
+          </div>
+        </div>
+
+        {/* Description of Supplies */}
+        <div className="space-y-3">
+          <h4 className="text-sm font-medium text-gray-900">
+            Descripción de los suministros
+          </h4>
+          <div className="border border-gray-200 rounded-lg overflow-hidden">
+            <table className="w-full text-xs">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-3 py-2 text-left font-medium text-gray-700">
+                    Código
+                  </th>
+                  <th className="px-3 py-2 text-left font-medium text-gray-700">
+                    Código suministro
+                  </th>
+                  <th className="px-3 py-2 text-left font-medium text-gray-700">
+                    Suministro
+                  </th>
+                  <th className="px-3 py-2 text-left font-medium text-gray-700">
+                    Cantidad devuelta
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {returnData.supplies.map((supply, index) => (
+                  <tr key={index} className="border-t border-gray-200">
+                    <td className="px-3 py-2 text-gray-700 font-mono text-xs">
+                      {supply.code}
+                    </td>
+                    <td className="px-3 py-2 text-gray-700">
+                      {supply.supplyCode}
+                    </td>
+                    <td className="px-3 py-2 text-gray-700">{supply.supply}</td>
+                    <td className="px-3 py-2 text-gray-700">
+                      {supply.quantityReturned}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Causes of Return */}
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium text-gray-900">
+            Causas de la devolución
+          </h4>
+          <p className="text-sm text-gray-700 p-3 bg-gray-50 rounded-lg">
+            {returnData.cause}
+          </p>
+        </div>
+
+        {/* Comments */}
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium text-gray-900">Comentarios</h4>
+          <p className="text-sm text-gray-700 p-3 bg-gray-50 rounded-lg">
+            {returnData.comments}
+          </p>
+        </div>
       </div>
     );
   };
@@ -404,115 +802,103 @@ export default function PatientDetailView({
           <CardContent>
             {activeTab === "devoluciones_manuales" ? (
               <div className="space-y-6">
-                <div>
-                  <h4 className="text-sm font-medium mb-4">
-                    Selecciona un filtro:
-                  </h4>
-                  <div className="flex items-center space-x-2 mb-4">
-                    <Input
-                      placeholder={
-                        selectedFilterType === "usuario"
-                          ? "Escribe el nombre del usuario"
-                          : selectedFilterType === "suministro"
-                            ? "Escribe el suministro"
-                            : "Selecciona un filtro para comenzar..."
-                      }
-                      value={
-                        selectedFilterType === "usuario"
-                          ? userInput
-                          : selectedFilterType === "suministro"
-                            ? suministroInput
-                            : ""
-                      }
-                      onChange={(e) => {
-                        if (selectedFilterType === "usuario") {
-                          setUserInput(e.target.value);
-                        } else if (selectedFilterType === "suministro") {
-                          setSuministroInput(e.target.value);
-                        }
-                      }}
-                      className="max-w-sm"
-                      readOnly={
-                        !selectedFilterType ||
-                        selectedFilterType === "causa_devolucion"
-                      }
-                    />
-                    <Select
-                      value={selectedFilterType}
-                      onValueChange={(value: FilterType) => {
-                        setSelectedFilterType(value);
-                        // Reset all fields when changing filter type
-                        setUserInput("");
-                        setSelectedCausa("");
-                        setSuministroInput("");
-                      }}
-                    >
-                      <SelectTrigger className="w-48">
-                        <SelectValue placeholder="Selecciona una opción" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="usuario">Usuario</SelectItem>
-                        <SelectItem value="causa_devolucion">
-                          Causa de la devolución
-                        </SelectItem>
-                        <SelectItem value="suministro">Suministro</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button variant="outline" size="sm">
-                      😊
-                    </Button>
-                  </div>
-
-                  {/* Causa dropdown when causa_devolucion is selected */}
-                  {selectedFilterType === "causa_devolucion" && (
-                    <div className="mb-4">
-                      <Select
-                        value={selectedCausa}
-                        onValueChange={setSelectedCausa}
-                      >
-                        <SelectTrigger className="max-w-sm">
-                          <SelectValue placeholder="Selecciona una causa" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {causasDevolucion.map((causa) => (
-                            <SelectItem key={causa} value={causa}>
-                              {causa}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                </div>
-
-                {/* Messages Display */}
-                <div className="border border-gray-200 rounded-lg p-4 min-h-[120px]">
-                  {messages.length > 0 ? (
-                    <div className="space-y-2">
-                      {messages.map((message, index) => (
-                        <div
-                          key={index}
-                          className="text-sm text-gray-700 p-2 bg-gray-50 rounded"
+                {!manualReturn ? (
+                  <>
+                    <div>
+                      <h4 className="text-sm font-medium mb-4">
+                        Selecciona un filtro:
+                      </h4>
+                      <div className="flex items-center space-x-2 mb-4">
+                        <Input
+                          placeholder={
+                            selectedFilterType === "usuario"
+                              ? "Escribe el nombre del usuario"
+                              : selectedFilterType === "suministro"
+                                ? "Escribe el suministro"
+                                : "Selecciona un filtro para comenzar..."
+                          }
+                          value={
+                            selectedFilterType === "usuario"
+                              ? userInput
+                              : selectedFilterType === "suministro"
+                                ? suministroInput
+                                : ""
+                          }
+                          onChange={(e) => {
+                            if (selectedFilterType === "usuario") {
+                              setUserInput(e.target.value);
+                            } else if (selectedFilterType === "suministro") {
+                              setSuministroInput(e.target.value);
+                            }
+                          }}
+                          className="max-w-sm"
+                          readOnly={
+                            !selectedFilterType ||
+                            selectedFilterType === "causa_devolucion"
+                          }
+                        />
+                        <Select
+                          value={selectedFilterType}
+                          onValueChange={(value: FilterType) => {
+                            setSelectedFilterType(value);
+                            // Reset all fields when changing filter type
+                            setUserInput("");
+                            setSelectedCausa("");
+                            setSuministroInput("");
+                          }}
                         >
-                          {message}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center text-gray-500 py-8">
-                      <p>No hay devoluciones manuales disponibles.</p>
-                    </div>
-                  )}
-                </div>
+                          <SelectTrigger className="w-48">
+                            <SelectValue placeholder="Selecciona una opción" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="usuario">Usuario</SelectItem>
+                            <SelectItem value="causa_devolucion">
+                              Causa de la devolución
+                            </SelectItem>
+                            <SelectItem value="suministro">
+                              Suministro
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button variant="outline" size="sm">
+                          😊
+                        </Button>
+                      </div>
 
-                <div className="flex justify-end">
-                  <Button
-                    className="bg-blue-600 hover:bg-blue-700"
-                    onClick={handleGenerateManualReturn}
-                  >
-                    Generar Devolución Manual
-                  </Button>
-                </div>
+                      {/* Causa dropdown when causa_devolucion is selected */}
+                      {selectedFilterType === "causa_devolucion" && (
+                        <div className="mb-4">
+                          <Select
+                            value={selectedCausa}
+                            onValueChange={setSelectedCausa}
+                          >
+                            <SelectTrigger className="max-w-sm">
+                              <SelectValue placeholder="Selecciona una causa" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {causasDevolucion.map((causa) => (
+                                <SelectItem key={causa} value={causa}>
+                                  {causa}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex justify-end">
+                      <Button
+                        className="bg-blue-600 hover:bg-blue-700"
+                        onClick={handleGenerateManualReturn}
+                      >
+                        Generar Devolución Manual
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <ManualReturnDetails returnData={manualReturn} />
+                )}
               </div>
             ) : (
               <div className="space-y-6">
@@ -524,15 +910,10 @@ export default function PatientDetailView({
 
                 {/* Messages Display */}
                 <div className="border border-gray-200 rounded-lg p-4 min-h-[120px]">
-                  {messages.length > 0 ? (
-                    <div className="space-y-2">
-                      {messages.map((message, index) => (
-                        <div
-                          key={index}
-                          className="text-sm text-gray-700 p-2 bg-gray-50 rounded"
-                        >
-                          {message}
-                        </div>
+                  {logEntries.length > 0 ? (
+                    <div className="space-y-3">
+                      {logEntries.map((entry) => (
+                        <LogEntryComponent key={entry.id} entry={entry} />
                       ))}
                     </div>
                   ) : (
@@ -542,29 +923,34 @@ export default function PatientDetailView({
                   )}
                 </div>
 
-                {activeTab === "dispensacion" && (
-                  <ErrorMessageInput
-                    patientName={mockPatientData.name}
-                    patientId={mockPatientData.id}
-                    errorType="alistamiento"
+                {/* Error Message Input */}
+                <div className="flex items-center space-x-3">
+                  <div className="flex-shrink-0">
+                    <FontAwesomeIcon
+                      icon={faExclamationTriangle}
+                      className="h-5 w-5 text-orange-500"
+                    />
+                  </div>
+                  <Input
                     placeholder="Mensaje de error"
                     value={newMessage}
-                    onMessageChange={setNewMessage}
-                    onAddMessage={handleAddMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter") {
+                        handleAddMessage();
+                      }
+                    }}
+                    className="flex-1"
                   />
-                )}
-
-                {activeTab === "devoluciones" && (
-                  <ErrorMessageInput
-                    patientName={mockPatientData.name}
-                    patientId={mockPatientData.id}
-                    errorType="devoluciones"
-                    placeholder="Mensaje"
-                    value={newMessage}
-                    onMessageChange={setNewMessage}
-                    onAddMessage={handleAddMessage}
-                  />
-                )}
+                  <Button
+                    onClick={handleAddMessage}
+                    className="bg-blue-600 hover:bg-blue-700"
+                    disabled={!newMessage.trim()}
+                  >
+                    <FontAwesomeIcon icon={faSave} className="h-4 w-4 mr-2" />
+                    Agregar
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>
