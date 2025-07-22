@@ -115,52 +115,6 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
             },
           ],
         },
-        {
-          title: "Pharmacy Operations",
-          items: [
-            {
-              title: "Dashboard",
-              url: "/dashboard",
-              icon: LayoutDashboard,
-            },
-            {
-              title: "Prescription Validation",
-              url: "/pharmacy/validation",
-              icon: ShieldCheck,
-              badge: "5",
-            },
-            {
-              title: "Drug Database",
-              url: "/pharmacy/drugs",
-              icon: Pill,
-            },
-            {
-              title: "Inventory Check",
-              url: "/pharmacy/inventory",
-              icon: Package,
-            },
-          ],
-        },
-        {
-          title: "Quality Control",
-          items: [
-            {
-              title: "Validation Queue",
-              url: "/pharmacy/queue",
-              icon: ClipboardList,
-            },
-            {
-              title: "Error Reports",
-              url: "/pharmacy/errors",
-              icon: AlertCircle,
-            },
-            {
-              title: "Audit Trail",
-              url: "/pharmacy/audit",
-              icon: FileText,
-            },
-          ],
-        },
       ];
       break;
 
@@ -245,8 +199,8 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
       ];
   }
 
-  // Add common settings section for all roles EXCEPT NURSE
-  if (role !== "NURSE") {
+  // Add common settings section for all roles EXCEPT NURSE and PHARMACY_VALIDATOR
+  if (role !== "NURSE" && role !== "PHARMACY_VALIDATOR") {
     baseSidebar.navGroups.push({
       title: "Account",
       items: [
