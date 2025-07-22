@@ -173,11 +173,11 @@ export function EstadisticasManagement() {
     <Card>
       <CardContent className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-medium text-gray-600">{title}</h3>
+          <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
         </div>
         <div className="flex items-center space-x-4">
           <div className="flex-1">
-            <div className="text-2xl font-bold text-gray-900">
+            <div className="text-2xl font-bold text-foreground">
               {isLoading ? "..." : `${value}%`}
             </div>
             <Progress value={value} className="mt-2" />
@@ -194,7 +194,7 @@ export function EstadisticasManagement() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Línea Filter */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Línea</label>
+            <label className="text-sm font-medium text-foreground">Línea</label>
             <Select value={filters.linea} onValueChange={handleLineaChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecciona línea" />
@@ -211,7 +211,7 @@ export function EstadisticasManagement() {
 
           {/* Servicio Filter */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">
+            <label className="text-sm font-medium text-foreground">
               Servicio
             </label>
             <Select
@@ -234,7 +234,7 @@ export function EstadisticasManagement() {
 
           {/* Personal Filter */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">
+            <label className="text-sm font-medium text-foreground">
               Personal
             </label>
             <Select
@@ -256,7 +256,7 @@ export function EstadisticasManagement() {
 
           {/* Group By Filter */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">
+            <label className="text-sm font-medium text-foreground">
               Agrupar por
             </label>
             <Select
@@ -279,18 +279,18 @@ export function EstadisticasManagement() {
 
         {/* Date Range Filter */}
         <div className="mt-4 space-y-2">
-          <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+          <label className="text-sm font-medium text-foreground flex items-center gap-2">
             <Calendar className="h-4 w-4" />
             Rango de fechas
           </label>
-        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <div className="flex-1 relative">
-              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
                 type="text"
                 value={formatDateRange()}
                 readOnly
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md bg-white text-sm"
+                className="w-full pl-10 pr-4 py-2 border border-input rounded-md bg-background text-sm text-foreground"
                 placeholder="Selecciona rango de fechas"
               />
             </div>
@@ -366,7 +366,7 @@ export function EstadisticasManagement() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Estadísticas</h1>
+        <h1 className="text-2xl font-bold text-foreground">Estadísticas</h1>
       </div>
 
       {/* Conditional Filters based on active tab */}
@@ -376,7 +376,7 @@ export function EstadisticasManagement() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Línea Filter */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
+                <label className="text-sm font-medium text-foreground">
                   Línea
                 </label>
                 <Select value={filters.linea} onValueChange={handleLineaChange}>
@@ -391,22 +391,22 @@ export function EstadisticasManagement() {
                     ))}
                   </SelectContent>
                 </Select>
-      </div>
+              </div>
 
               {/* Date Range Filter */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                <label className="text-sm font-medium text-foreground flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
                   Rango de fechas
                 </label>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 relative">
-                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <input
                       type="text"
                       value={formatDateRange()}
                       readOnly
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md bg-white text-sm"
+                      className="w-full pl-10 pr-4 py-2 border border-input rounded-md bg-background text-sm text-foreground"
                       placeholder="Selecciona rango de fechas"
                     />
                   </div>
@@ -450,13 +450,13 @@ export function EstadisticasManagement() {
       )}
 
       {/* Tabs */}
-      <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg max-w-xs">
+      <div className="flex space-x-1 bg-muted p-1 rounded-lg max-w-xs">
         <button
           className={cn(
             "flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors",
             activeTab === "general"
-              ? "bg-white text-gray-900 shadow-sm"
-              : "text-gray-600 hover:text-gray-900"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
           )}
           onClick={() => setActiveTab("general")}
         >
@@ -466,8 +466,8 @@ export function EstadisticasManagement() {
           className={cn(
             "flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors",
             activeTab === "comparativo"
-              ? "bg-white text-gray-900 shadow-sm"
-              : "text-gray-600 hover:text-gray-900"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
           )}
           onClick={() => setActiveTab("comparativo")}
         >
@@ -479,10 +479,10 @@ export function EstadisticasManagement() {
       <div className="space-y-6">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-muted-foreground">
               Cargando estadísticas...
             </div>
-              </div>
+          </div>
         ) : hasData ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* On-Time Delivery */}
@@ -512,15 +512,15 @@ export function EstadisticasManagement() {
               value={statistics.patientsWithErrors}
               isLoading={isLoading}
             />
-              </div>
+          </div>
         ) : (
           <Card>
             <CardContent className="p-12">
-              <div className="text-center text-gray-500">
+              <div className="text-center text-muted-foreground">
                 No hay datos disponibles para los filtros seleccionados.
-            </div>
-          </CardContent>
-        </Card>
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
 
@@ -537,7 +537,7 @@ export function EstadisticasManagement() {
           <div className="grid grid-cols-2 gap-4 py-4">
             <Button
               onClick={() => handleExport("PDF")}
-              className="flex flex-col items-center justify-center p-6 h-24 border-2 border-dashed border-gray-300 hover:border-gray-400 hover:bg-gray-50 transition-colors"
+              className="flex flex-col items-center justify-center p-6 h-24 border-2 border-dashed border-border hover:border-muted-foreground hover:bg-muted transition-colors"
             >
               <svg
                 className="h-8 w-8 text-red-500 mb-2"
@@ -550,7 +550,7 @@ export function EstadisticasManagement() {
             </Button>
             <Button
               onClick={() => handleExport("CSV")}
-              className="flex flex-col items-center justify-center p-6 h-24 border-2 border-dashed border-gray-300 hover:border-gray-400 hover:bg-gray-50 transition-colors"
+              className="flex flex-col items-center justify-center p-6 h-24 border-2 border-dashed border-border hover:border-muted-foreground hover:bg-muted transition-colors"
             >
               <svg
                 className="h-8 w-8 text-green-500 mb-2"

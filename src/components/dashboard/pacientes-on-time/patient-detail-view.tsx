@@ -480,7 +480,7 @@ export default function PatientDetailView({
         case "error":
           return "text-red-500";
         default:
-          return "text-gray-400";
+          return "text-muted-foreground";
       }
     };
 
@@ -537,13 +537,15 @@ export default function PatientDetailView({
         <div className="flex-shrink-0 mt-1">{getTypeIcon(entry.type)}</div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-sm font-medium text-gray-900">
+            <span className="text-sm font-medium text-foreground">
               {entry.role}
             </span>
-            <span className="text-xs text-gray-500">{entry.timestamp}</span>
+            <span className="text-xs text-muted-foreground">
+              {entry.timestamp}
+            </span>
           </div>
-          <p className="text-sm text-gray-700 mb-1">{entry.message}</p>
-          <p className="text-xs text-gray-500">
+          <p className="text-sm text-foreground mb-1">{entry.message}</p>
+          <p className="text-xs text-muted-foreground">
             Nombre: {entry.patientName}, Identificación: {entry.patientId}
           </p>
         </div>
@@ -559,15 +561,15 @@ export default function PatientDetailView({
     return (
       <div className="space-y-6">
         {/* Return Status/Metadata */}
-        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+        <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
           <div className="flex items-center space-x-2">
             <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            <span className="text-sm text-gray-700">
+            <span className="text-sm text-foreground">
               Generado por: {returnData.generatedBy} - Revisado por:{" "}
               {returnData.reviewedBy}
             </span>
           </div>
-          <div className="text-right text-xs text-gray-600 space-y-1">
+          <div className="text-right text-xs text-muted-foreground space-y-1">
             <div>Fecha de creación: {returnData.creationDate}</div>
             <div>Fecha de aprobación: {returnData.approvalDate}</div>
           </div>
@@ -575,38 +577,40 @@ export default function PatientDetailView({
 
         {/* Description of Supplies */}
         <div className="space-y-3">
-          <h4 className="text-sm font-medium text-gray-900">
+          <h4 className="text-sm font-medium text-foreground">
             Descripción de los suministros
           </h4>
-          <div className="border border-gray-200 rounded-lg overflow-hidden">
+          <div className="border border-border rounded-lg overflow-hidden">
             <table className="w-full text-xs">
-              <thead className="bg-gray-50">
+              <thead className="bg-muted">
                 <tr>
-                  <th className="px-3 py-2 text-left font-medium text-gray-700">
+                  <th className="px-3 py-2 text-left font-medium text-foreground">
                     Código
                   </th>
-                  <th className="px-3 py-2 text-left font-medium text-gray-700">
+                  <th className="px-3 py-2 text-left font-medium text-foreground">
                     Código suministro
                   </th>
-                  <th className="px-3 py-2 text-left font-medium text-gray-700">
+                  <th className="px-3 py-2 text-left font-medium text-foreground">
                     Suministro
                   </th>
-                  <th className="px-3 py-2 text-left font-medium text-gray-700">
+                  <th className="px-3 py-2 text-left font-medium text-foreground">
                     Cantidad devuelta
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {returnData.supplies.map((supply, index) => (
-                  <tr key={index} className="border-t border-gray-200">
-                    <td className="px-3 py-2 text-gray-700 font-mono text-xs">
+                  <tr key={index} className="border-t border-border">
+                    <td className="px-3 py-2 text-foreground font-mono text-xs">
                       {supply.code}
                     </td>
-                    <td className="px-3 py-2 text-gray-700">
+                    <td className="px-3 py-2 text-foreground">
                       {supply.supplyCode}
                     </td>
-                    <td className="px-3 py-2 text-gray-700">{supply.supply}</td>
-                    <td className="px-3 py-2 text-gray-700">
+                    <td className="px-3 py-2 text-foreground">
+                      {supply.supply}
+                    </td>
+                    <td className="px-3 py-2 text-foreground">
                       {supply.quantityReturned}
                     </td>
                   </tr>
@@ -618,18 +622,18 @@ export default function PatientDetailView({
 
         {/* Causes of Return */}
         <div className="space-y-2">
-          <h4 className="text-sm font-medium text-gray-900">
+          <h4 className="text-sm font-medium text-foreground">
             Causas de la devolución
           </h4>
-          <p className="text-sm text-gray-700 p-3 bg-gray-50 rounded-lg">
+          <p className="text-sm text-foreground p-3 bg-muted rounded-lg">
             {returnData.cause}
           </p>
         </div>
 
         {/* Comments */}
         <div className="space-y-2">
-          <h4 className="text-sm font-medium text-gray-900">Comentarios</h4>
-          <p className="text-sm text-gray-700 p-3 bg-gray-50 rounded-lg">
+          <h4 className="text-sm font-medium text-foreground">Comentarios</h4>
+          <p className="text-sm text-foreground p-3 bg-muted rounded-lg">
             {returnData.comments}
           </p>
         </div>
@@ -661,9 +665,9 @@ export default function PatientDetailView({
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Top Header with Patient Basic Info */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
+      <div className="bg-background border-b border-border px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Button
@@ -674,7 +678,7 @@ export default function PatientDetailView({
               <ArrowLeft className="h-4 w-4 mr-2" />
             </Button>
             <div>
-              <h1 className="text-xl font-semibold text-gray-900">
+              <h1 className="text-xl font-semibold text-foreground">
                 Detalles del paciente
               </h1>
             </div>
@@ -694,10 +698,10 @@ export default function PatientDetailView({
               {/* Patient Basic Info */}
               <div className="space-y-4">
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">
+                  <h2 className="text-lg font-semibold text-foreground">
                     {mockPatientData.name}
                   </h2>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-muted-foreground">
                     Cama:{" "}
                     <span className="font-medium">{mockPatientData.bed}</span>
                   </p>
@@ -705,7 +709,7 @@ export default function PatientDetailView({
 
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <h4 className="text-xs font-medium text-gray-900 mb-1">
+                    <h4 className="text-xs font-medium text-foreground mb-1">
                       Identificación
                     </h4>
                     <p className="text-xs text-blue-600">
@@ -713,18 +717,18 @@ export default function PatientDetailView({
                     </p>
                   </div>
                   <div>
-                    <h4 className="text-xs font-medium text-gray-900 mb-1">
+                    <h4 className="text-xs font-medium text-foreground mb-1">
                       Edad
                     </h4>
-                    <p className="text-xs text-gray-600">
+                    <p className="text-xs text-muted-foreground">
                       {mockPatientData.age}
                     </p>
                   </div>
                   <div>
-                    <h4 className="text-xs font-medium text-gray-900 mb-1">
+                    <h4 className="text-xs font-medium text-foreground mb-1">
                       Sexo
                     </h4>
-                    <p className="text-xs text-gray-600">
+                    <p className="text-xs text-muted-foreground">
                       {mockPatientData.sex}
                     </p>
                   </div>
@@ -734,7 +738,7 @@ export default function PatientDetailView({
               {/* Medical Info */}
               <div className="space-y-4">
                 <div>
-                  <h4 className="text-sm font-medium text-gray-900 mb-2">
+                  <h4 className="text-sm font-medium text-foreground mb-2">
                     Médico responsable
                   </h4>
                   <p className="text-xs text-blue-600 leading-relaxed">
@@ -747,18 +751,18 @@ export default function PatientDetailView({
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <h4 className="text-xs font-medium text-gray-900 mb-1">
+                    <h4 className="text-xs font-medium text-foreground mb-1">
                       Fecha de ingreso
                     </h4>
-                    <p className="text-xs text-gray-600">
+                    <p className="text-xs text-muted-foreground">
                       {mockPatientData.admissionDate}
                     </p>
                   </div>
                   <div>
-                    <h4 className="text-xs font-medium text-gray-900 mb-1">
+                    <h4 className="text-xs font-medium text-foreground mb-1">
                       Fecha de salida
                     </h4>
-                    <p className="text-xs text-gray-600">
+                    <p className="text-xs text-muted-foreground">
                       {mockPatientData.dischargeDate}
                     </p>
                   </div>
@@ -773,15 +777,15 @@ export default function PatientDetailView({
       <div className="px-6">
         {/* Process Tabs */}
         <div className="mb-6">
-          <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg max-w-2xl">
+          <div className="flex space-x-1 bg-muted p-1 rounded-lg max-w-2xl">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 className={cn(
                   "flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors flex-1 justify-center",
                   activeTab === tab.id
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-600 hover:text-gray-900"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
                 onClick={() => setActiveTab(tab.id)}
               >
@@ -909,7 +913,7 @@ export default function PatientDetailView({
                 </div>
 
                 {/* Messages Display */}
-                <div className="border border-gray-200 rounded-lg p-4 min-h-[120px]">
+                <div className="border border-border rounded-lg p-4 min-h-[120px]">
                   {logEntries.length > 0 ? (
                     <div className="space-y-3">
                       {logEntries.map((entry) => (
@@ -917,7 +921,7 @@ export default function PatientDetailView({
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center text-gray-500 py-8">
+                    <div className="text-center text-muted-foreground py-8">
                       <p>No hay mensajes disponibles.</p>
                     </div>
                   )}

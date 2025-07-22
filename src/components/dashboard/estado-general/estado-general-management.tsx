@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Lock, Scale, Check, ShoppingCart, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import React from "react"; // Added missing import for React
 
 interface ProcessStep {
   id: string;
@@ -255,15 +256,14 @@ const linesData: LineData[] = [
 
 const ProcessStepButton: React.FC<{
   step: ProcessStep;
-  onClick?: () => void;
+  onClick: () => void;
 }> = ({ step, onClick }) => {
-  // All buttons are gray by default (no colors)
   return (
     <Button
       variant="outline"
       size="sm"
-      className="w-12 h-12 rounded-full border-2 text-gray-400 border-gray-300 bg-gray-50 hover:scale-105 transition-all duration-200 hover:border-gray-400"
       onClick={onClick}
+      className="w-12 h-12 rounded-full border-2 text-muted-foreground border-border bg-background hover:scale-105 transition-all duration-200 hover:border-muted-foreground"
     >
       {step.icon}
     </Button>
@@ -274,44 +274,41 @@ const ConnectionDot: React.FC<{
   connectionInfo: ConnectionInfo;
   lineId: string;
   stepIndex: number;
-}> = ({ connectionInfo, lineId, stepIndex }) => {
+}> = ({ connectionInfo }) => {
   const [showPopup, setShowPopup] = useState(false);
 
   return (
     <div className="relative">
       <div
-        className="w-3 h-3 bg-gray-300 rounded-full cursor-pointer transition-colors duration-200"
+        className="w-3 h-3 bg-muted rounded-full cursor-pointer transition-colors duration-200"
         onMouseEnter={() => setShowPopup(true)}
         onMouseLeave={() => setShowPopup(false)}
       />
-
-      {/* Popup */}
       {showPopup && (
         <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 z-50">
-          <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 min-w-[140px]">
-            <div className="space-y-1 text-xs">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="font-medium">Intermedia</span>
+          <div className="bg-background border border-border rounded-lg shadow-lg p-3 min-w-[140px]">
+            <div className="ml-4 space-y-0.5 text-foreground">
+              <div className="text-xs">
+                Intermedia: {connectionInfo.intermedia}
               </div>
-              <div className="ml-4 space-y-0.5 text-gray-600">
-                <div>Inicio: {connectionInfo.inicio}</div>
-                <div>Fin: {connectionInfo.fin}</div>
-                <div>Horas: {connectionInfo.horas}</div>
-                <div className="flex items-center gap-1">
-                  <span>Cumple criterios</span>
+              <div className="text-xs">Inicio: {connectionInfo.inicio}</div>
+              <div className="text-xs">Fin: {connectionInfo.fin}</div>
+              <div className="text-xs">Horas: {connectionInfo.horas}</div>
+              <div className="flex items-center gap-1 text-xs">
+                <span>Cumple criterios:</span>
+                <div
+                  className={cn(
+                    "w-3 h-3 rounded-full flex items-center justify-center",
+                    connectionInfo.cumpleCriterios
+                      ? "bg-green-500"
+                      : "bg-red-500"
+                  )}
+                >
                   {connectionInfo.cumpleCriterios && (
-                    <div className="w-3 h-3 bg-green-500 rounded-sm flex items-center justify-center">
-                      <Check className="w-2 h-2 text-white" />
-                    </div>
+                    <Check className="h-2 w-2 text-white" />
                   )}
                 </div>
               </div>
-            </div>
-
-            {/* Arrow pointing down */}
-            <div className="absolute top-full left-1/2 transform -translate-x-1/2">
-              <div className="w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-200"></div>
             </div>
           </div>
         </div>
@@ -320,71 +317,60 @@ const ConnectionDot: React.FC<{
   );
 };
 
-const LineRow: React.FC<{
-  line: LineData;
-  onStepClick?: (lineId: string, stepId: string) => void;
-}> = ({ line, onStepClick }) => {
+const LineRow: React.FC<{ line: LineData }> = ({ line }) => {
   return (
-    <div className="flex items-center py-6 border-b border-gray-100 last:border-b-0">
-      {/* Line Name */}
-      <div className="w-24 flex-shrink-0">
-        <span className="text-sm font-medium text-gray-900">{line.name}</span>
+    <div className="mb-8">
+      <div className="flex items-center mb-4">
+        <span className="text-sm font-medium text-foreground">{line.name}</span>
       </div>
-
-      {/* Process Steps with Connection Dots */}
-      <div className="flex-1 flex items-center justify-center">
-        <div className="flex items-center">
-          {line.steps.map((step, index) => (
-            <div key={step.id} className="flex items-center">
+      <div className="flex items-center justify-between">
+        {line.steps.map((step, index) => (
+          <React.Fragment key={step.id}>
+            <div className="flex flex-col items-center">
               <ProcessStepButton
                 step={step}
-                onClick={() => onStepClick?.(line.id, step.id)}
+                onClick={() => console.log(`Clicked ${step.name}`)}
               />
-              {/* Connection dot after each step except the last and except between Entrega and Devoluciones */}
-              {index < line.steps.length - 1 &&
-                index !== line.steps.length - 2 && (
-                  <div className="px-8">
-                    <ConnectionDot
-                      connectionInfo={getConnectionInfo(line.id, index)}
-                      lineId={line.id}
-                      stepIndex={index}
-                    />
-                  </div>
-                )}
-              {/* Add extra padding between all steps except the last */}
-              {index < line.steps.length - 1 &&
-                index === line.steps.length - 2 && <div className="px-8" />}
+              <span className="text-xs text-muted-foreground mt-2">
+                {step.name}
+              </span>
             </div>
-          ))}
-        </div>
+
+            {/* Add connection dots between steps, but not after the last step or between Entrega and Devoluciones */}
+            {index < line.steps.length - 1 &&
+              index !== line.steps.length - 2 && (
+                <div className="px-8">
+                  <ConnectionDot
+                    connectionInfo={getConnectionInfo(line.id, index)}
+                    lineId={line.id}
+                    stepIndex={index}
+                  />
+                </div>
+              )}
+            {/* Add extra padding between all steps except the last */}
+            {index < line.steps.length - 1 &&
+              index === line.steps.length - 2 && <div className="px-8" />}
+          </React.Fragment>
+        ))}
       </div>
     </div>
   );
 };
 
 export default function EstadoGeneralManagement() {
-  const handleStepClick = (lineId: string, stepId: string) => {
-    console.log(`Clicked on ${stepId} for ${lineId}`);
-    // Here you could navigate to detailed view or show modal
-  };
-
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Estado general</h1>
+        <h1 className="text-2xl font-bold text-foreground">Estado general</h1>
       </div>
 
-      {/* Main Content Card */}
+      {/* Process Flow */}
       <Card>
-        <CardContent className="p-6">
-          <div className="space-y-2">
+        <CardContent className="p-8">
+          <div className="space-y-6">
             {linesData.map((line) => (
-              <LineRow
-                key={line.id}
-                line={line}
-                onStepClick={handleStepClick}
-              />
+              <LineRow key={line.id} line={line} />
             ))}
           </div>
         </CardContent>
