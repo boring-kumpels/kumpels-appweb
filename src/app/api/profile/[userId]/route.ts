@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import prisma from "@/lib/prisma";
+import type { UserRole } from "@prisma/client";
 
 export async function GET(
   request: NextRequest,
@@ -175,7 +176,10 @@ export async function PUT(
 
     const updatedProfile = await prisma.profile.update({
       where: { userId },
-      data: updateData,
+      data: {
+        ...updateData,
+        role: updateData.role as UserRole, // Type assertion for role field
+      },
     });
 
     return NextResponse.json(updatedProfile);

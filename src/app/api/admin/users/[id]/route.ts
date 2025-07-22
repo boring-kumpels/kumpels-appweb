@@ -8,12 +8,11 @@ import {
 } from "@/types/user-management";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
-interface RouteParams {
-  params: { id: string };
-}
-
 // GET - Get single user by ID
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(
+  _request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
     const supabase = createServerComponentClient({ cookies });
     const {
@@ -37,6 +36,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    const params = await context.params;
     const userId = params.id;
 
     // Get auth user
@@ -62,8 +62,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         email: authUser.user.email || "",
         profile: {
           id: profile.id,
-          firstName: profile.firstName,
-          lastName: profile.lastName,
+          firstName: profile.firstName ?? undefined,
+          lastName: profile.lastName ?? undefined,
           role: profile.role,
           active: profile.active,
           createdAt: profile.createdAt,
@@ -83,7 +83,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 }
 
 // PUT - Update user
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+export async function PUT(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
     const supabase = createServerComponentClient({ cookies });
     const {
@@ -107,6 +110,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    const params = await context.params;
     const userId = params.id;
     const body = await request.json();
     const validationResult = updateUserFormSchema.safeParse(body);
@@ -144,8 +148,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         email: authUser.user.email || "",
         profile: {
           id: updatedProfile.id,
-          firstName: updatedProfile.firstName,
-          lastName: updatedProfile.lastName,
+          firstName: updatedProfile.firstName ?? undefined,
+          lastName: updatedProfile.lastName ?? undefined,
           role: updatedProfile.role,
           active: updatedProfile.active,
           createdAt: updatedProfile.createdAt,
@@ -165,7 +169,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 }
 
 // DELETE - Delete user
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
     const supabase = createServerComponentClient({ cookies });
     const {
@@ -189,6 +196,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    const params = await context.params;
     const userId = params.id;
 
     // Prevent self-deletion

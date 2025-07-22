@@ -6,12 +6,11 @@ import { updateUserPasswordSchema } from "@/types/user-management";
 import { saltAndHashPassword } from "@/lib/auth/password-crypto-server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
-interface RouteParams {
-  params: { id: string };
-}
-
 // PUT - Reset user password
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+export async function PUT(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
     const supabase = createServerComponentClient({ cookies });
     const {
@@ -35,6 +34,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    const params = await context.params;
     const userId = params.id;
     const body = await request.json();
     const validationResult = updateUserPasswordSchema.safeParse(body);

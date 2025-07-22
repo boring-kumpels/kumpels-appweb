@@ -56,7 +56,7 @@ export default function EditUserForm({
     try {
       setIsLoading(true);
       await onSubmit(data);
-    } catch (error) {
+    } catch {
       // Error handling is done in the parent component
     } finally {
       setIsLoading(false);

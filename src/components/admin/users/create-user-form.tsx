@@ -53,7 +53,7 @@ export default function CreateUserForm({ onSubmit }: CreateUserFormProps) {
       setIsLoading(true);
       await onSubmit(data);
       form.reset();
-    } catch (error) {
+    } catch {
       // Error handling is done in the parent component
     } finally {
       setIsLoading(false);

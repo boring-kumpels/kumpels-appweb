@@ -6,6 +6,7 @@ import {
   createUserFormSchema,
   type UsersListResponse,
   type UserCreationResponse,
+  type UserWithProfile,
 } from "@/types/user-management";
 import { saltAndHashPassword } from "@/lib/auth/password-crypto-server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
@@ -105,8 +106,8 @@ export async function GET(request: NextRequest) {
           email: authUser.email || "",
           profile: {
             id: profile.id,
-            firstName: profile.firstName,
-            lastName: profile.lastName,
+            firstName: profile.firstName ?? undefined,
+            lastName: profile.lastName ?? undefined,
             role: profile.role,
             active: profile.active,
             createdAt: profile.createdAt,
@@ -129,10 +130,11 @@ export async function GET(request: NextRequest) {
       : usersWithProfiles;
 
     // Get total count for pagination
-    const { count: totalCount } = await supabaseAdmin.auth.admin.listUsers();
+    const { data: totalUsersData } = await supabaseAdmin.auth.admin.listUsers();
+    const totalCount = totalUsersData?.users?.length || 0;
 
     const response: UsersListResponse = {
-      users: filteredUsers as any,
+      users: filteredUsers as UserWithProfile[],
       totalCount: totalCount || 0,
       page,
       pageSize,
@@ -234,8 +236,8 @@ export async function POST(request: NextRequest) {
         email: authUser.user.email || "",
         profile: {
           id: profile.id,
-          firstName: profile.firstName,
-          lastName: profile.lastName,
+          firstName: profile.firstName ?? undefined,
+          lastName: profile.lastName ?? undefined,
           role: profile.role,
           active: profile.active,
           createdAt: profile.createdAt,

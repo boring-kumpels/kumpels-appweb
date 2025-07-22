@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,8 @@ import { toast } from "@/components/ui/use-toast";
 import {
   type UserWithProfile,
   type UsersListResponse,
+  type CreateUserFormData,
+  type UpdateUserFormData,
 } from "@/types/user-management";
 import CreateUserForm from "./create-user-form";
 import EditUserForm from "./edit-user-form";
@@ -40,7 +42,7 @@ export default function UsersManagement() {
   );
 
   // Fetch users
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setIsLoading(true);
       const params = new URLSearchParams({
@@ -69,12 +71,11 @@ export default function UsersManagement() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [page, pageSize, searchTerm]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   useEffect(() => {
     fetchUsers();
-  }, [page, searchTerm]);
+  }, [fetchUsers]);
 
   // Handle search with debounce
   useEffect(() => {
@@ -87,9 +88,9 @@ export default function UsersManagement() {
     }, 300);
 
     return () => clearTimeout(delayedSearch);
-  }, [searchTerm]);
+  }, [searchTerm, page, fetchUsers]);
 
-  const handleCreateUser = async (userData: any) => {
+  const handleCreateUser = async (userData: CreateUserFormData) => {
     try {
       const response = await fetch("/api/admin/users", {
         method: "POST",
@@ -111,16 +112,16 @@ export default function UsersManagement() {
 
       setIsCreateDialogOpen(false);
       fetchUsers();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message || "Failed to create user",
+        description: error instanceof Error ? error.message : "Failed to create user",
         variant: "destructive",
       });
     }
   };
 
-  const handleEditUser = async (userData: any) => {
+  const handleEditUser = async (userData: UpdateUserFormData) => {
     if (!selectedUser) return;
 
     try {
@@ -143,10 +144,10 @@ export default function UsersManagement() {
       setIsEditDialogOpen(false);
       setSelectedUser(null);
       fetchUsers();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message || "Failed to update user",
+        description: error instanceof Error ? error.message : "Failed to update user",
         variant: "destructive",
       });
     }
@@ -171,10 +172,10 @@ export default function UsersManagement() {
       });
 
       fetchUsers();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message || "Failed to delete user",
+        description: error instanceof Error ? error.message : "Failed to delete user",
         variant: "destructive",
       });
     }
@@ -207,10 +208,10 @@ export default function UsersManagement() {
 
       setIsResetPasswordDialogOpen(false);
       setSelectedUser(null);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message || "Failed to reset password",
+        description: error instanceof Error ? error.message : "Failed to reset password",
         variant: "destructive",
       });
     }

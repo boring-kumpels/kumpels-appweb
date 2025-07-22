@@ -53,7 +53,7 @@ export default function ResetPasswordDialog({
       await onSubmit(data.password);
       form.reset();
       onClose();
-    } catch (error) {
+    } catch {
       // Error handling is done in the parent component
     } finally {
       setIsLoading(false);

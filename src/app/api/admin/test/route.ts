@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(request: NextRequest) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function GET(_request: NextRequest) {
   try {
     // Check environment variable
     const hasServiceKey = !!process.env.SUPABASE_SERVICE_ROLE_KEY;

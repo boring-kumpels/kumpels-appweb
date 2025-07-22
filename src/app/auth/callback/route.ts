@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
         await prisma.profile.create({
           data: {
             userId,
-            role: UserRole.USER,
+            role: "NURSE" as UserRole,
           },
         });
       }
