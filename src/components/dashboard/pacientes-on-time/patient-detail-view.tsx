@@ -8,7 +8,6 @@ import {
   ShoppingCart,
   RotateCcw,
   User,
-  AlertTriangle,
   Lock,
   Scale,
   Check,
@@ -31,6 +30,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { ErrorMessageInput } from "./error-message-input";
 
 interface PatientDetailViewProps {
   patientId: string;
@@ -283,14 +283,7 @@ export default function PatientDetailView({
           </div>
 
           <div className="flex items-center space-x-4">
-            <Button
-              variant="outline"
-              size="sm"
-              className="bg-yellow-50 border-yellow-200 hover:bg-yellow-100"
-              onClick={() => setIsEmergencyModalOpen(true)}
-            >
-              <AlertTriangle className="h-4 w-4 text-yellow-600" />
-            </Button>
+            {/* Removed warning icon */}
           </div>
         </div>
       </div>
@@ -550,42 +543,27 @@ export default function PatientDetailView({
                 </div>
 
                 {activeTab === "dispensacion" && (
-                  <div className="border border-orange-200 bg-orange-50 rounded-lg p-4">
-                    <div className="flex items-center space-x-2">
-                      <AlertTriangle className="h-5 w-5 text-orange-500" />
-                      <Input
-                        placeholder="Mensaje de error"
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        className="flex-1"
-                      />
-                      <Button
-                        className="bg-blue-600 hover:bg-blue-700"
-                        onClick={handleAddMessage}
-                      >
-                        Agregar
-                      </Button>
-                    </div>
-                  </div>
+                  <ErrorMessageInput
+                    patientName={mockPatientData.name}
+                    patientId={mockPatientData.id}
+                    errorType="alistamiento"
+                    placeholder="Mensaje de error"
+                    value={newMessage}
+                    onMessageChange={setNewMessage}
+                    onAddMessage={handleAddMessage}
+                  />
                 )}
 
                 {activeTab === "devoluciones" && (
-                  <div className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-center space-x-2">
-                      <Input
-                        placeholder="Mensaje"
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        className="flex-1"
-                      />
-                      <Button
-                        className="bg-blue-600 hover:bg-blue-700"
-                        onClick={handleAddMessage}
-                      >
-                        Agregar
-                      </Button>
-                    </div>
-                  </div>
+                  <ErrorMessageInput
+                    patientName={mockPatientData.name}
+                    patientId={mockPatientData.id}
+                    errorType="devoluciones"
+                    placeholder="Mensaje"
+                    value={newMessage}
+                    onMessageChange={setNewMessage}
+                    onAddMessage={handleAddMessage}
+                  />
                 )}
               </div>
             )}
@@ -593,7 +571,7 @@ export default function PatientDetailView({
         </Card>
       </div>
 
-      {/* Emergency Modal */}
+      {/* Emergency Modal - Now using the simplified ErrorReportModal */}
       <Dialog
         open={isEmergencyModalOpen}
         onOpenChange={setIsEmergencyModalOpen}
