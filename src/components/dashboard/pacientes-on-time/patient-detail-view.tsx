@@ -32,6 +32,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { ErrorReportModal } from "./error-report-modal";
 
 interface PatientDetailViewProps {
   patientId: string;
@@ -798,31 +799,38 @@ export default function PatientDetailView({}: PatientDetailViewProps) {
                   )}
                 </div>
 
-                {/* Error Message Input */}
-                <div className="flex items-center space-x-3">
-                  <div className="flex-shrink-0">
-                    <AlertTriangle className="h-5 w-5 text-orange-500" />
+                {/* Error Message Input - Only show in Dispensación tab */}
+                {activeTab === "dispensacion" && (
+                  <div className="flex items-center space-x-3">
+                    <div className="flex-shrink-0">
+                      <AlertTriangle className="h-5 w-5 text-orange-500" />
+                    </div>
+                    <Input
+                      placeholder="Mensaje de error"
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === "Enter") {
+                          handleAddMessage();
+                        }
+                      }}
+                      className="flex-1"
+                    />
+                    <ErrorReportModal
+                      patientName={mockPatientData.name}
+                      patientId={mockPatientData.identification}
+                      errorType="alistamiento"
+                    />
+                    <Button
+                      onClick={handleAddMessage}
+                      className="bg-blue-600 hover:bg-blue-700"
+                      disabled={!newMessage.trim()}
+                    >
+                      <Send className="h-4 w-4 mr-2" />
+                      Agregar
+                    </Button>
                   </div>
-                  <Input
-                    placeholder="Mensaje de error"
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === "Enter") {
-                        handleAddMessage();
-                      }
-                    }}
-                    className="flex-1"
-                  />
-                  <Button
-                    onClick={handleAddMessage}
-                    className="bg-blue-600 hover:bg-blue-700"
-                    disabled={!newMessage.trim()}
-                  >
-                    <Send className="h-4 w-4 mr-2" />
-                    Agregar
-                  </Button>
-                </div>
+                )}
               </div>
             )}
           </CardContent>
