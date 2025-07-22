@@ -283,7 +283,7 @@ export function EstadisticasManagement() {
             <Calendar className="h-4 w-4" />
             Rango de fechas
           </label>
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
             <div className="flex-1 relative">
               <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
@@ -391,7 +391,7 @@ export function EstadisticasManagement() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+      </div>
 
               {/* Date Range Filter */}
               <div className="space-y-2">
@@ -482,7 +482,7 @@ export function EstadisticasManagement() {
             <div className="text-sm text-gray-500">
               Cargando estadísticas...
             </div>
-          </div>
+              </div>
         ) : hasData ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* On-Time Delivery */}
@@ -512,15 +512,15 @@ export function EstadisticasManagement() {
               value={statistics.patientsWithErrors}
               isLoading={isLoading}
             />
-          </div>
+              </div>
         ) : (
           <Card>
             <CardContent className="p-12">
               <div className="text-center text-gray-500">
                 No hay datos disponibles para los filtros seleccionados.
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          </CardContent>
+        </Card>
         )}
       </div>
 
