@@ -5,17 +5,20 @@ import { redirect } from "next/navigation";
 import PatientDetailView from "@/components/dashboard/pacientes-on-time/patient-detail-view";
 
 export const metadata: Metadata = {
-  title: "Detalles del Paciente",
-  description: "Vista detallada del paciente y procesos médicos",
+  title: "Detalles del Paciente - Nurse",
+  description:
+    "Vista detallada del paciente y gestión de medicación - Vista de enfermería",
 };
 
-interface Props {
+interface PatientDetailPageProps {
   params: Promise<{
     patientId: string;
   }>;
 }
 
-export default async function PatientDetailPage({ params }: Props) {
+export default async function NursePatientDetailPage({
+  params,
+}: PatientDetailPageProps) {
   const { patientId } = await params;
   const supabase = createServerComponentClient({ cookies });
   const {
@@ -26,9 +29,5 @@ export default async function PatientDetailPage({ params }: Props) {
     redirect("/sign-in");
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <PatientDetailView patientId={patientId} />
-    </div>
-  );
+  return <PatientDetailView patientId={patientId} />;
 }

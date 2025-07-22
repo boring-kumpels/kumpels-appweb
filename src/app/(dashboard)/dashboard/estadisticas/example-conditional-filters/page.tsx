@@ -104,8 +104,8 @@ export default function ExampleConditionalFiltersPage() {
               <div>
                 <h4 className="font-medium text-gray-900">Vista General</h4>
                 <p className="text-sm text-gray-600">
-                  Haz clic en la pestaña "General" para ver solo los filtros
-                  básicos: Línea y Rango de fechas.
+                  Haz clic en la pestaña &quot;General&quot; para ver solo los
+                  filtros básicos: Línea y Rango de fechas.
                 </p>
               </div>
             </div>
@@ -116,8 +116,8 @@ export default function ExampleConditionalFiltersPage() {
               <div>
                 <h4 className="font-medium text-gray-900">Vista Comparativo</h4>
                 <p className="text-sm text-gray-600">
-                  Haz clic en la pestaña "Comparativo" para acceder a todos los
-                  filtros avanzados.
+                  Haz clic en la pestaña &quot;Comparativo&quot; para acceder a
+                  todos los filtros avanzados.
                 </p>
               </div>
             </div>

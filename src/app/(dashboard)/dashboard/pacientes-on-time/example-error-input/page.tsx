@@ -70,7 +70,7 @@ export default function ExampleErrorInputPage() {
             </li>
             <li className="flex items-center gap-2">
               <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-              Botón "Reportar" integrado al lado del campo
+              Botón &quot;Reportar&quot; integrado al lado del campo
             </li>
             <li className="flex items-center gap-2">
               <span className="w-2 h-2 bg-blue-500 rounded-full"></span>

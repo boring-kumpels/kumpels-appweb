@@ -13,7 +13,6 @@ import {
   CheckCircle,
   AlertTriangle,
   Thermometer,
-  MapPin,
   Building,
   ArrowRight,
   Check,
@@ -48,8 +47,6 @@ export default function FloorArrivalPage() {
     second: "2-digit",
     hour12: true,
   });
-
-  const lines = ["linea 1", "linea 2", "linea 3", "linea 4", "ucis"];
 
   useEffect(() => {
     const lineParam = searchParams.get("line");

@@ -11,8 +11,8 @@ export default function ExampleNoReportButtonPage() {
           Ejemplo: Sin Botón de Reporte en Distribución
         </h1>
         <p className="text-gray-600">
-          El botón "Reportar" ha sido eliminado de la columna de Distribución
-          según lo solicitado
+          El botón &quot;Reportar&quot; ha sido eliminado de la columna de
+          Distribución según lo solicitado
         </p>
       </div>
 
@@ -29,9 +29,9 @@ export default function ExampleNoReportButtonPage() {
                   Columna de Distribución
                 </h3>
                 <p className="text-sm text-gray-600">
-                  Se eliminó el botón "Reportar" de todos los iconos en la
-                  columna de Distribución. Ahora solo muestran el estado visual
-                  (verde, naranja, rojo) sin botón de acción.
+                  Se eliminó el botón &quot;Reportar&quot; de todos los iconos
+                  en la columna de Distribución. Ahora solo muestran el estado
+                  visual (verde, naranja, rojo) sin botón de acción.
                 </p>
               </div>
             </div>
@@ -43,8 +43,9 @@ export default function ExampleNoReportButtonPage() {
                   Columna de Devoluciones
                 </h3>
                 <p className="text-sm text-gray-600">
-                  El botón "Reportar" se mantiene en la columna de Devoluciones
-                  para reportar errores cuando el estado es "error".
+                  El botón &quot;Reportar&quot; se mantiene en la columna de
+                  Devoluciones para reportar errores cuando el estado es
+                  &quot;error&quot;.
                 </p>
               </div>
             </div>

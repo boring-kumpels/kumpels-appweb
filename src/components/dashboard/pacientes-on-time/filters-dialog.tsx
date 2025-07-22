@@ -2,10 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-import type { FilterState } from "./pacientes-on-time-management";
 
+import { cn } from "@/lib/utils";
 export interface FilterState {
   lineas: string[]; // Keep as array for now but will only contain one item
   servicios: string[];

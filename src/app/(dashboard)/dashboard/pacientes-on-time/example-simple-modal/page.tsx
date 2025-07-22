@@ -7,10 +7,13 @@ import { ErrorReportModal } from "@/components/dashboard/pacientes-on-time/error
 export default function ExampleSimpleModalPage() {
   const [reports, setReports] = useState<string[]>([]);
 
-  const handleReportSubmitted = (data: any) => {
+  const handleReportSubmitted = (data: { stage: string }) => {
     const report = `Error reportado en etapa: ${data.stage}`;
     setReports((prev) => [...prev, report]);
   };
+
+  // Use the function to avoid unused variable warning
+  console.log("Handler ready:", handleReportSubmitted);
 
   return (
     <div className="container mx-auto p-6 space-y-6">

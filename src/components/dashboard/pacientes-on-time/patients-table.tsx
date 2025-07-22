@@ -9,7 +9,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import {
   Lock,
   Scale,
@@ -18,6 +17,7 @@ import {
   RotateCcw,
   FileText,
 } from "lucide-react";
+import { usePathname } from "next/navigation";
 import type { Patient } from "./pacientes-on-time-management";
 import { ErrorReportModal } from "./error-report-modal";
 
@@ -79,6 +79,8 @@ export function PatientsTable({
   isLoading,
   onOpenPatientDetail,
 }: PatientsTableProps) {
+  const pathname = usePathname();
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -91,7 +93,11 @@ export function PatientsTable({
 
   const handlePatientDetailClick = (patient: Patient) => {
     if (onOpenPatientDetail) {
-      window.location.href = `/dashboard/pacientes-on-time/${patient.id}`;
+      // Determine the base path based on current route
+      const basePath = pathname.includes("/nurse/")
+        ? "/nurse/pacientes-on-time"
+        : "/dashboard/pacientes-on-time";
+      window.location.href = `${basePath}/${patient.id}`;
     }
   };
 

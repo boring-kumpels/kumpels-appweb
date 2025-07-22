@@ -14,127 +14,9 @@ import {
   AlertTriangle,
   Send,
 } from "lucide-react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faUser,
-  faLock,
-  faCheck,
-  faShoppingCart,
-  faArrowLeft,
-  faClipboardList,
-  faExclamationTriangle,
-  faSearch,
-  faRefresh,
-  faPlus,
-  faEdit,
-  faTrash,
-  faEye,
-  faDownload,
-  faUpload,
-  faFile,
-  faFolder,
-  faHome,
-  faCog,
-  faBell,
-  faEnvelope,
-  faPhone,
-  faMapMarkerAlt,
-  faCalendar,
-  faClock,
-  faStar,
-  faHeart,
-  faThumbsUp,
-  faThumbsDown,
-  faComment,
-  faShare,
-  faBookmark,
-  faPrint,
-  faSave,
-  faUndo,
-  faRedo,
-  faCopy,
-  faPaste,
-  faCut,
-  faBold,
-  faItalic,
-  faUnderline,
-  faList,
-  faListOl,
-  faLink,
-  faUnlink,
-  faImage,
-  faVideo,
-  faMusic,
-  faVolumeUp,
-  faVolumeMute,
-  faPlay,
-  faPause,
-  faStop,
-  faForward,
-  faBackward,
-  faStepForward,
-  faStepBackward,
-  faExpand,
-  faCompress,
-  faMinus,
-  faTimes,
-  faInfoCircle,
-  faQuestionCircle,
-  faCheckCircle,
-  faTimesCircle,
-  faExclamationCircle,
-  faBan,
-  faShieldAlt,
-  faKey,
-  faUnlock,
-  faLockOpen,
-  faUserShield,
-  faUserSecret,
-  faUserTie,
-  faUserGraduate,
-  faUserNurse,
-  faUserDoctor,
-  faHospital,
-  faPills,
-  faSyringe,
-  faThermometer,
-  faStethoscope,
-  faHeartbeat,
-  faLungs,
-  faBrain,
-  faEyeDropper,
-  faFlask,
-  faMicroscope,
-  faDna,
-  faVirus,
-  faBacteria,
-  faVirusSlash,
-  faShieldVirus,
-  faHandHoldingMedical,
-  faHandHoldingHeart,
-  faHandHoldingDroplet,
-  faHandHolding,
-  faHandshake,
-  faHandsHelping,
-  faHandPaper,
-  faHandRock,
-  faHandScissors,
-  faHandSpock,
-  faHandPointUp,
-  faHandPointDown,
-  faHandPointLeft,
-  faHandPointRight,
-  faHandMiddleFinger,
-  faHandPeace,
-  faHandBackFist,
-  faHandLizard,
-  faHandPointer,
-  faHandSparkles,
-  faHandFist,
-} from "@fortawesome/free-solid-svg-icons";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -241,6 +123,7 @@ const initialLogEntries: LogEntry[] = [
 ];
 
 // Mock manual return data based on the image
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const mockManualReturn: ManualReturn = {
   id: "1",
   generatedBy: "Nurse",
@@ -260,9 +143,7 @@ const mockManualReturn: ManualReturn = {
   comments: "Comentario no proporcionado",
 };
 
-export default function PatientDetailView({
-  patientId,
-}: PatientDetailViewProps) {
+export default function PatientDetailView({}: PatientDetailViewProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<ProcessTab>("dispensacion");
   const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
@@ -400,7 +281,7 @@ export default function PatientDetailView({
   };
 
   const handleGenerateManualReturn = () => {
-    let returnData = [];
+    const returnData = [];
 
     if (selectedFilterType === "usuario" && userInput) {
       returnData.push(`Usuario: ${userInput}`);
@@ -510,23 +391,13 @@ export default function PatientDetailView({
     const getTypeIcon = (type: string) => {
       switch (type) {
         case "error":
-          return (
-            <FontAwesomeIcon
-              icon={faExclamationTriangle}
-              className="h-4 w-4 text-red-500"
-            />
-          );
+          return <AlertTriangle className="h-4 w-4 text-red-500" />;
         case "warning":
-          return (
-            <FontAwesomeIcon
-              icon={faExclamationTriangle}
-              className="h-4 w-4 text-orange-500"
-            />
-          );
+          return <AlertTriangle className="h-4 w-4 text-orange-500" />;
         default:
           return (
             <div className="h-4 w-4 bg-green-500 rounded-sm flex items-center justify-center">
-              <FontAwesomeIcon icon={faCheck} className="w-2 h-2 text-white" />
+              <Check className="w-2 h-2 text-white" />
             </div>
           );
       }
@@ -930,10 +801,7 @@ export default function PatientDetailView({
                 {/* Error Message Input */}
                 <div className="flex items-center space-x-3">
                   <div className="flex-shrink-0">
-                    <FontAwesomeIcon
-                      icon={faExclamationTriangle}
-                      className="h-5 w-5 text-orange-500"
-                    />
+                    <AlertTriangle className="h-5 w-5 text-orange-500" />
                   </div>
                   <Input
                     placeholder="Mensaje de error"
@@ -951,7 +819,7 @@ export default function PatientDetailView({
                     className="bg-blue-600 hover:bg-blue-700"
                     disabled={!newMessage.trim()}
                   >
-                    <FontAwesomeIcon icon={faSave} className="h-4 w-4 mr-2" />
+                    <Send className="h-4 w-4 mr-2" />
                     Agregar
                   </Button>
                 </div>

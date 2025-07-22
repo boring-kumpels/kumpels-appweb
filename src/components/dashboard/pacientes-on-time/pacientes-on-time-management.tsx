@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { Filter, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -105,8 +105,8 @@ const initialFilters: FilterState = {
 };
 
 export default function PacientesOnTimeManagement() {
-  const [patients, setPatients] = useState<Patient[]>(mockPatients);
-  const [isLoading, setIsLoading] = useState(false);
+  const [patients] = useState<Patient[]>(mockPatients);
+  const [isLoading] = useState(false);
   const [filters, setFilters] = useState<FilterState>(initialFilters);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 

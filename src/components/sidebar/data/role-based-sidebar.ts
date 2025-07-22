@@ -15,9 +15,7 @@ import {
   Package,
   ShieldCheck,
   UserCheck,
-  Database,
   BarChart3,
-  Shield,
   Pill,
   Clock,
   TrendingUp,
@@ -82,58 +80,17 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
     case "NURSE":
       baseSidebar.navGroups = [
         {
-          title: "Patient Care",
+          title: "Medical Operations",
           items: [
             {
-              title: "Dashboard",
-              url: "/dashboard",
-              icon: LayoutDashboard,
+              title: "On-Time Patients",
+              url: "/nurse/pacientes-on-time",
+              icon: Clock,
             },
             {
-              title: "My Patients",
-              url: "/nurse/patients",
-              icon: Heart,
-            },
-            {
-              title: "Patient Records",
-              url: "/nurse/records",
-              icon: FileText,
-            },
-            {
-              title: "Vital Signs",
-              url: "/nurse/vitals",
-              icon: Activity,
-            },
-          ],
-        },
-        {
-          title: "Scheduling",
-          items: [
-            {
-              title: "My Schedule",
-              url: "/nurse/schedule",
-              icon: Calendar,
-            },
-            {
-              title: "Shift Management",
-              url: "/nurse/shifts",
-              icon: ClipboardList,
-            },
-          ],
-        },
-        {
-          title: "Communication",
-          items: [
-            {
-              title: "Messages",
-              url: "/nurse/messages",
-              icon: MessageSquare,
-              badge: "3",
-            },
-            {
-              title: "Emergency Contacts",
-              url: "/nurse/emergency",
-              icon: Phone,
+              title: "Statistics",
+              url: "/nurse/estadisticas",
+              icon: TrendingUp,
             },
           ],
         },
@@ -272,22 +229,24 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
       ];
   }
 
-  // Add common settings section for all roles
-  baseSidebar.navGroups.push({
-    title: "Account",
-    items: [
-      {
-        title: "Settings",
-        icon: Settings,
-        url: "/settings",
-      },
-      {
-        title: "Help Center",
-        url: "/help-center",
-        icon: HelpCircle,
-      },
-    ],
-  });
+  // Add common settings section for all roles EXCEPT NURSE
+  if (role !== "NURSE") {
+    baseSidebar.navGroups.push({
+      title: "Account",
+      items: [
+        {
+          title: "Settings",
+          icon: Settings,
+          url: "/settings",
+        },
+        {
+          title: "Help Center",
+          url: "/help-center",
+          icon: HelpCircle,
+        },
+      ],
+    });
+  }
 
   return baseSidebar;
 };

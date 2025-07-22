@@ -27,7 +27,7 @@ interface QRScannerProps {
 export function QRScanner({ open, onOpenChange }: QRScannerProps) {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [scannedData, setScannedData] = useState<string | null>(null);
+
   const [showLineSelectionModal, setShowLineSelectionModal] = useState(false);
   const [selectedLine, setSelectedLine] = useState("");
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -45,31 +45,6 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
       stopCamera();
     };
   }, [open]);
-
-  const startCamera = async () => {
-    try {
-      // Request camera permissions with proper constraints
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "environment",
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-      });
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        streamRef.current = stream;
-        setIsCameraActive(true);
-        setCameraError(null);
-      }
-    } catch (error: any) {
-      console.error("Error accessing camera:", error);
-      setCameraError(error.message || "No se pudo acceder a la cámara");
-      // Fallback to simulated camera view
-      setIsCameraActive(true);
-    }
-  };
 
   const stopCamera = () => {
     if (streamRef.current) {
