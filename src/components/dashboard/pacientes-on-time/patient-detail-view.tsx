@@ -34,6 +34,8 @@ import {
 import { cn } from "@/lib/utils";
 import { ErrorReportModal } from "./error-report-modal";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 
 interface PatientDetailViewProps {
   patientId: string;
@@ -150,6 +152,8 @@ export default function PatientDetailView({}: PatientDetailViewProps) {
   const { profile } = useCurrentUser();
   const [activeTab, setActiveTab] = useState<ProcessTab>("dispensacion");
   const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
+  const [isManualReturnModalOpen, setIsManualReturnModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [logEntries, setLogEntries] = useState<LogEntry[]>(initialLogEntries);
   const [newMessage, setNewMessage] = useState("");
   const [manualReturn, setManualReturn] = useState<ManualReturn | null>(null);
@@ -161,6 +165,20 @@ export default function PatientDetailView({}: PatientDetailViewProps) {
   const [userInput, setUserInput] = useState("");
   const [selectedCausa, setSelectedCausa] = useState("");
   const [suministroInput, setSuministroInput] = useState("");
+
+  // New Manual Return Modal State
+  const [selectedSupply, setSelectedSupply] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [selectedCauses, setSelectedCauses] = useState<string[]>([]);
+  const [comment, setComment] = useState("");
+
+  // Export Modal State
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [selectedMedications, setSelectedMedications] = useState<string[]>([]);
+  const [selectedUser, setSelectedUser] = useState("Todos los usuarios");
+  const [selectedExportCause, setSelectedExportCause] =
+    useState("Todas las causas");
 
   const processSteps = {
     dispensacion: [
@@ -181,12 +199,6 @@ export default function PatientDetailView({}: PatientDetailViewProps) {
         name: "Validación",
         icon: <Check className="h-4 w-4" />,
         status: "completed" as const,
-      },
-      {
-        id: "entrega",
-        name: "Entrega",
-        icon: <ShoppingCart className="h-4 w-4" />,
-        status: "pending" as const,
       },
     ],
     entrega: [
@@ -353,37 +365,39 @@ export default function PatientDetailView({}: PatientDetailViewProps) {
   };
 
   const getProcessStepButton = (step: ProcessStep) => {
-    const getStatusColor = (status: string) => {
+    const getStatusDisplay = (status: string) => {
       switch (status) {
         case "completed":
-          return "text-green-500";
+          return {
+            text: "Completed (Ok)",
+            className: "bg-green-500 text-white",
+          };
         case "in_progress":
-          return "text-orange-500";
+          return { text: "In Progress", className: "bg-orange-500 text-white" };
         case "pending":
-          return "text-orange-500";
+          return { text: "Pending", className: "bg-orange-500 text-white" };
         case "error":
-          return "text-red-500";
+          return { text: "Error", className: "bg-red-500 text-white" };
         default:
-          return "text-muted-foreground";
+          return { text: "Pending", className: "bg-orange-500 text-white" };
       }
     };
+
+    const { text, className } = getStatusDisplay(step.status);
 
     return (
       <div key={step.id} className="flex flex-col items-center space-y-2">
         <Button
           variant="outline"
           size="sm"
-          className={cn(
-            "bg-white border-gray-200 hover:bg-gray-50 px-4 py-2 h-12 rounded-full min-w-[80px]",
-            getStatusColor(step.status)
-          )}
+          className={`px-4 py-2 h-12 rounded-full min-w-[120px] text-xs font-medium ${className}`}
           onClick={
             step.name === "Predespacho" || step.name === "Alistamiento"
               ? () => setIsEmergencyModalOpen(true)
               : undefined
           }
         >
-          {step.icon}
+          {text}
         </Button>
         <span className="text-xs text-center font-medium">{step.name}</span>
       </div>
@@ -564,89 +578,6 @@ export default function PatientDetailView({}: PatientDetailViewProps) {
         </div>
       </div>
 
-      {/* Patient Details Card - Horizontal Layout */}
-      <div className="px-6 py-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Patient Basic Info */}
-              <div className="space-y-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-foreground">
-                    {mockPatientData.name}
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    Cama:{" "}
-                    <span className="font-medium">{mockPatientData.bed}</span>
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <h4 className="text-xs font-medium text-foreground mb-1">
-                      Identificación
-                    </h4>
-                    <p className="text-xs text-blue-600">
-                      {mockPatientData.identification}
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-medium text-foreground mb-1">
-                      Edad
-                    </h4>
-                    <p className="text-xs text-muted-foreground">
-                      {mockPatientData.age}
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-medium text-foreground mb-1">
-                      Sexo
-                    </h4>
-                    <p className="text-xs text-muted-foreground">
-                      {mockPatientData.sex}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Medical Info */}
-              <div className="space-y-4">
-                <div>
-                  <h4 className="text-sm font-medium text-foreground mb-2">
-                    Médico responsable
-                  </h4>
-                  <p className="text-xs text-blue-600 leading-relaxed">
-                    {mockPatientData.responsibleDoctor}
-                  </p>
-                </div>
-              </div>
-
-              {/* Dates */}
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="text-xs font-medium text-foreground mb-1">
-                      Fecha de ingreso
-                    </h4>
-                    <p className="text-xs text-muted-foreground">
-                      {mockPatientData.admissionDate}
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-medium text-foreground mb-1">
-                      Fecha de salida
-                    </h4>
-                    <p className="text-xs text-muted-foreground">
-                      {mockPatientData.dischargeDate}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Main Content */}
       <div className="px-6">
         {/* Process Tabs */}
@@ -670,206 +601,404 @@ export default function PatientDetailView({}: PatientDetailViewProps) {
           </div>
         </div>
 
-        {/* Content Area */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="capitalize">
-              {activeTab.replace("_", " ")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {activeTab === "devoluciones_manuales" ? (
-              <div className="space-y-6">
-                {!manualReturn ? (
-                  <>
-                    <div>
-                      <h4 className="text-sm font-medium mb-4">
-                        Selecciona un filtro:
-                      </h4>
-                      <div className="flex items-center space-x-2 mb-4">
-                        <Input
-                          placeholder={
-                            selectedFilterType === "usuario"
-                              ? "Escribe el nombre del usuario"
-                              : selectedFilterType === "suministro"
-                                ? "Escribe el suministro"
-                                : "Selecciona un filtro para comenzar..."
-                          }
-                          value={
-                            selectedFilterType === "usuario"
-                              ? userInput
-                              : selectedFilterType === "suministro"
-                                ? suministroInput
-                                : ""
-                          }
-                          onChange={(e) => {
-                            if (selectedFilterType === "usuario") {
-                              setUserInput(e.target.value);
-                            } else if (selectedFilterType === "suministro") {
-                              setSuministroInput(e.target.value);
-                            }
-                          }}
-                          className="max-w-sm"
-                          readOnly={
-                            !selectedFilterType ||
-                            selectedFilterType === "causa_devolucion"
-                          }
-                        />
-                        <Select
-                          value={selectedFilterType}
-                          onValueChange={(value: FilterType) => {
-                            setSelectedFilterType(value);
-                            // Reset all fields when changing filter type
-                            setUserInput("");
-                            setSelectedCausa("");
-                            setSuministroInput("");
-                          }}
+        {/* Content Area - Side by Side Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Process Content - Left Side (2/3 width) */}
+          <div className="lg:col-span-2">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="capitalize">
+                    {activeTab.replace("_", " ")}
+                  </CardTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-red-500 text-white hover:bg-red-600"
+                    onClick={() => setIsEmergencyModalOpen(true)}
+                  >
+                    REPORTAR
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {activeTab === "devoluciones_manuales" ? (
+                  <div className="space-y-6">
+                    {/* Header Section */}
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-xl font-semibold text-foreground">
+                        Devoluciones Manuales
+                      </h2>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsExportModalOpen(true)}
                         >
-                          <SelectTrigger className="w-48">
-                            <SelectValue placeholder="Selecciona una opción" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="usuario">Usuario</SelectItem>
-                            <SelectItem value="causa_devolucion">
-                              Causa de la devolución
-                            </SelectItem>
-                            <SelectItem value="suministro">
-                              Suministro
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Button variant="outline" size="sm">
-                          😊
+                          <svg
+                            className="h-4 w-4 mr-2"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            />
+                          </svg>
+                          Exportar Devoluciones
+                        </Button>
+                        <Button
+                          className="bg-blue-600 hover:bg-blue-700"
+                          onClick={() => setIsManualReturnModalOpen(true)}
+                        >
+                          <svg
+                            className="h-4 w-4 mr-2"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 4v16m8-8H4"
+                            />
+                          </svg>
+                          Generar Devolución Manual
                         </Button>
                       </div>
+                    </div>
 
-                      {/* Causa dropdown when causa_devolucion is selected */}
-                      {selectedFilterType === "causa_devolucion" && (
-                        <div className="mb-4">
-                          <Select
-                            value={selectedCausa}
-                            onValueChange={setSelectedCausa}
-                          >
-                            <SelectTrigger className="max-w-sm">
-                              <SelectValue placeholder="Selecciona una causa" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {causasDevolucion.map((causa) => (
-                                <SelectItem key={causa} value={causa}>
-                                  {causa}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                    {/* Subtitle */}
+                    <p className="text-sm text-muted-foreground">
+                      Devoluciones Manuales Registradas
+                    </p>
+
+                    {/* Manual Return Card */}
+                    {manualReturn ? (
+                      <Card>
+                        <CardContent className="p-6">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-semibold text-foreground">
+                                  {manualReturn.supplies[0]?.supply ||
+                                    "Omeprazol 20mg"}
+                                </h3>
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-xs text-muted-foreground bg-gray-100 px-2 py-1 rounded-full">
+                                    Cantidad:{" "}
+                                    {manualReturn.supplies[0]
+                                      ?.quantityReturned || 1}
+                                  </span>
+                                  <svg
+                                    className="h-4 w-4 text-gray-400"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                    />
+                                  </svg>
+                                </div>
+                              </div>
+
+                              <div className="space-y-2 mb-4">
+                                <p className="text-sm">
+                                  <span className="font-medium">Causas:</span>{" "}
+                                  {manualReturn.cause}
+                                </p>
+                                <p className="text-sm">
+                                  <span className="font-medium">
+                                    Comentario:
+                                  </span>{" "}
+                                  {manualReturn.comments}
+                                </p>
+                              </div>
+
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                                  <svg
+                                    className="h-4 w-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                    />
+                                  </svg>
+                                  <span>
+                                    {manualReturn.creationDate} -{" "}
+                                    {manualReturn.generatedBy}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-xs text-muted-foreground bg-gray-100 px-2 py-1 rounded-full">
+                                    En espera de aceptación por Farmacia
+                                  </span>
+                                  <Button
+                                    size="sm"
+                                    className="bg-green-500 hover:bg-green-600"
+                                  >
+                                    <svg
+                                      className="h-4 w-4 mr-1"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M5 13l4 4L19 7"
+                                      />
+                                    </svg>
+                                    Aprobar
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="border-red-500 text-red-500 hover:bg-red-50"
+                                  >
+                                    <svg
+                                      className="h-4 w-4 mr-1"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M6 18L18 6M6 6l12 12"
+                                      />
+                                    </svg>
+                                    Rechazar
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <div className="text-center py-8">
+                        <p className="text-muted-foreground">
+                          No hay devoluciones manuales registradas.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {/* Process Steps with States */}
+                    <div className="grid grid-cols-3 gap-4">
+                      {processSteps[activeTab]?.map((step) => {
+                        const getStatusDisplay = (status: string) => {
+                          switch (status) {
+                            case "completed":
+                              return {
+                                text: "Completed (Ok)",
+                                className: "bg-green-500 text-white",
+                              };
+                            case "in_progress":
+                              return {
+                                text: "In Progress",
+                                className: "bg-orange-500 text-white",
+                              };
+                            case "pending":
+                              return {
+                                text: "Pending",
+                                className: "bg-orange-500 text-white",
+                              };
+                            case "error":
+                              return {
+                                text: "Error",
+                                className: "bg-red-500 text-white",
+                              };
+                            default:
+                              return {
+                                text: "Pending",
+                                className: "bg-orange-500 text-white",
+                              };
+                          }
+                        };
+
+                        const { text, className } = getStatusDisplay(
+                          step.status
+                        );
+
+                        return (
+                          <div key={step.id} className="text-center space-y-2">
+                            <div className="text-sm font-medium text-muted-foreground">
+                              {step.name}
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className={`px-4 py-2 h-12 rounded-full min-w-[120px] text-xs font-medium ${className}`}
+                            >
+                              {text}
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Messages Display */}
+                    <div className="border border-border rounded-lg p-4 min-h-[120px]">
+                      {logEntries.length > 0 ? (
+                        <div className="space-y-3">
+                          {logEntries.map((entry) => (
+                            <LogEntryComponent key={entry.id} entry={entry} />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center text-muted-foreground py-8">
+                          <p>No hay mensajes disponibles.</p>
                         </div>
                       )}
                     </div>
 
-                    <div className="flex justify-end">
-                      <Button
-                        className="bg-blue-600 hover:bg-blue-700"
-                        onClick={handleGenerateManualReturn}
-                      >
-                        Generar Devolución Manual
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  <ManualReturnDetails returnData={manualReturn} />
-                )}
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <div className="flex justify-center space-x-8">
-                  {processSteps[activeTab]?.map((step) =>
-                    getProcessStepButton(step)
-                  )}
-                </div>
+                    {/* Error Message Input - Show in Dispensación tab for all roles EXCEPT NURSE */}
+                    {activeTab === "dispensacion" &&
+                      profile?.role !== "NURSE" && (
+                        <div className="flex items-center space-x-3">
+                          <div className="flex-shrink-0">
+                            <AlertTriangle className="h-5 w-5 text-orange-500" />
+                          </div>
+                          <Input
+                            placeholder="Mensaje de error"
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            onKeyPress={(e) => {
+                              if (e.key === "Enter") {
+                                handleAddMessage();
+                              }
+                            }}
+                            className="flex-1"
+                          />
+                          <Button
+                            onClick={handleAddMessage}
+                            className="bg-blue-600 hover:bg-blue-700"
+                            disabled={!newMessage.trim()}
+                          >
+                            <Send className="h-4 w-4 mr-2" />
+                            Agregar
+                          </Button>
+                        </div>
+                      )}
 
-                {/* Messages Display */}
-                <div className="border border-border rounded-lg p-4 min-h-[120px]">
-                  {logEntries.length > 0 ? (
-                    <div className="space-y-3">
-                      {logEntries.map((entry) => (
-                        <LogEntryComponent key={entry.id} entry={entry} />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center text-muted-foreground py-8">
-                      <p>No hay mensajes disponibles.</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Error Message Input - Show in Dispensación tab for all roles EXCEPT NURSE */}
-                {activeTab === "dispensacion" && profile?.role !== "NURSE" && (
-                  <div className="flex items-center space-x-3">
-                    <div className="flex-shrink-0">
-                      <AlertTriangle className="h-5 w-5 text-orange-500" />
-                    </div>
-                    <Input
-                      placeholder="Mensaje de error"
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      onKeyPress={(e) => {
-                        if (e.key === "Enter") {
-                          handleAddMessage();
-                        }
-                      }}
-                      className="flex-1"
-                    />
-                    <ErrorReportModal
-                      patientName={mockPatientData.name}
-                      patientId={mockPatientData.identification}
-                      errorType="alistamiento"
-                    />
-                    <Button
-                      onClick={handleAddMessage}
-                      className="bg-blue-600 hover:bg-blue-700"
-                      disabled={!newMessage.trim()}
-                    >
-                      <Send className="h-4 w-4 mr-2" />
-                      Agregar
-                    </Button>
+                    {/* Error Message Input - Show in Devoluciones tab ONLY for NURSE role */}
+                    {activeTab === "devoluciones" &&
+                      profile?.role === "NURSE" && (
+                        <div className="flex items-center space-x-3">
+                          <div className="flex-shrink-0">
+                            <AlertTriangle className="h-5 w-5 text-orange-500" />
+                          </div>
+                          <Input
+                            placeholder="Mensaje de error"
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            onKeyPress={(e) => {
+                              if (e.key === "Enter") {
+                                handleAddMessage();
+                              }
+                            }}
+                            className="flex-1"
+                          />
+                          <Button
+                            onClick={handleAddMessage}
+                            className="bg-blue-600 hover:bg-blue-700"
+                            disabled={!newMessage.trim()}
+                          >
+                            <Send className="h-4 w-4 mr-2" />
+                            Agregar
+                          </Button>
+                        </div>
+                      )}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </div>
 
-                {/* Error Message Input - Show in Devoluciones tab ONLY for NURSE role */}
-                {activeTab === "devoluciones" && profile?.role === "NURSE" && (
-                  <div className="flex items-center space-x-3">
-                    <div className="flex-shrink-0">
-                      <AlertTriangle className="h-5 w-5 text-orange-500" />
-                    </div>
-                    <Input
-                      placeholder="Mensaje de error"
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      onKeyPress={(e) => {
-                        if (e.key === "Enter") {
-                          handleAddMessage();
-                        }
-                      }}
-                      className="flex-1"
-                    />
-                    <ErrorReportModal
-                      patientName={mockPatientData.name}
-                      patientId={mockPatientData.identification}
-                      errorType="devolucion"
-                    />
-                    <Button
-                      onClick={handleAddMessage}
-                      className="bg-blue-600 hover:bg-blue-700"
-                      disabled={!newMessage.trim()}
-                    >
-                      <Send className="h-4 w-4 mr-2" />
-                      Agregar
-                    </Button>
-                  </div>
-                )}
+          {/* Patient Info Card - Right Side */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">
+                Información del Paciente
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">
+                  {mockPatientData.name}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Cama:{" "}
+                  <span className="font-medium">{mockPatientData.bed}</span>
+                </p>
               </div>
-            )}
-          </CardContent>
-        </Card>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="text-xs font-medium text-foreground mb-1">
+                    Identificación
+                  </h4>
+                  <p className="text-xs text-blue-600">
+                    {mockPatientData.identification}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="text-xs font-medium text-foreground mb-1">
+                    Edad
+                  </h4>
+                  <p className="text-xs text-muted-foreground">
+                    {mockPatientData.age}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="text-xs font-medium text-foreground mb-1">
+                    Sexo
+                  </h4>
+                  <p className="text-xs text-muted-foreground">
+                    {mockPatientData.sex}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="text-xs font-medium text-foreground mb-1">
+                    Fecha de ingreso
+                  </h4>
+                  <p className="text-xs text-muted-foreground">
+                    {mockPatientData.admissionDate}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-medium text-foreground mb-2">
+                  Médico responsable
+                </h4>
+                <p className="text-xs text-blue-600 leading-relaxed">
+                  {mockPatientData.responsibleDoctor}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Emergency Modal - Now using the simplified ErrorReportModal */}
@@ -879,25 +1008,404 @@ export default function PatientDetailView({}: PatientDetailViewProps) {
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Selecciona que etapa presenta un error</DialogTitle>
+            <DialogTitle>Reportar Error en Etapa</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-4 py-4">
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Etapa con error
+              </label>
+              <Select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar etapa" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="predespacho">Predespacho</SelectItem>
+                  <SelectItem value="alistamiento">Alistamiento</SelectItem>
+                  <SelectItem value="validacion">Validación</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Descripción del error
+              </label>
+              <textarea
+                placeholder="Describe el error encontrado..."
+                className="w-full min-h-[100px] p-3 border border-border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-2">
             <Button
               variant="outline"
-              className="h-16 flex flex-col items-center justify-center space-y-2"
-              onClick={() => handleEmergencyReport("Predespacho")}
+              onClick={() => setIsEmergencyModalOpen(false)}
             >
-              <Lock className="h-5 w-5" />
-              <span>Predespacho</span>
+              Cancelar
             </Button>
             <Button
-              variant="outline"
-              className="h-16 flex flex-col items-center justify-center space-y-2"
-              onClick={() => handleEmergencyReport("Alistamiento")}
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={() => {
+                setIsEmergencyModalOpen(false);
+                // Handle error reporting logic here
+              }}
             >
-              <Scale className="h-5 w-5" />
-              <span>Alistamiento</span>
+              Reportar Error
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manual Return Modal */}
+      <Dialog
+        open={isManualReturnModalOpen}
+        onOpenChange={setIsManualReturnModalOpen}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Nueva Devolución Manual</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Suministro
+              </label>
+              <Select value={selectedSupply} onValueChange={setSelectedSupply}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar suministro" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="omeprazol">Omeprazol 20mg</SelectItem>
+                  <SelectItem value="paracetamol">Paracetamol 500mg</SelectItem>
+                  <SelectItem value="ibuprofeno">Ibuprofeno 400mg</SelectItem>
+                  <SelectItem value="amoxicilina">Amoxicilina 500mg</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Cantidad
+              </label>
+              <Input
+                placeholder="Cantidad a devolver"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Causa de devolución (selección múltiple)
+              </label>
+              <div className="space-y-2 max-h-32 overflow-y-auto">
+                {[
+                  "Suspensión médica",
+                  "Reacción adversa",
+                  "Dosis incorrecta",
+                  "Medicamento vencido",
+                  "Error de dispensación",
+                ].map((cause) => (
+                  <div key={cause} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={cause}
+                      checked={selectedCauses.includes(cause)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedCauses([...selectedCauses, cause]);
+                        } else {
+                          setSelectedCauses(
+                            selectedCauses.filter((c) => c !== cause)
+                          );
+                        }
+                      }}
+                    />
+                    <label htmlFor={cause} className="text-sm text-foreground">
+                      {cause}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Comentario
+              </label>
+              <Textarea
+                placeholder="Comentario adicional..."
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                className="min-h-[80px]"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsManualReturnModalOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={() => {
+                // Create manual return logic here
+                const newReturn: ManualReturn = {
+                  id: Date.now().toString(),
+                  generatedBy: "Usuario Actual",
+                  reviewedBy: "PharmacyRegents",
+                  creationDate: new Date().toLocaleString(),
+                  approvalDate: "",
+                  supplies: [
+                    {
+                      code: "temp-code",
+                      supplyCode: "temp-supply",
+                      supply: selectedSupply || "Omeprazol 20mg",
+                      quantityReturned: parseInt(quantity) || 1,
+                    },
+                  ],
+                  cause: selectedCauses.join(", "),
+                  comments: comment,
+                };
+                setManualReturn(newReturn);
+                setIsManualReturnModalOpen(false);
+                // Reset form
+                setSelectedSupply("");
+                setQuantity("");
+                setSelectedCauses([]);
+                setComment("");
+              }}
+            >
+              Crear Devolución
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Export Modal */}
+      <Dialog open={isExportModalOpen} onOpenChange={setIsExportModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              <span>Exportar Consolidado de Devoluciones Manuales</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4 max-h-96 overflow-y-auto">
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-sm font-medium text-foreground mb-2">
+                  Rango de Fechas
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs text-muted-foreground">
+                      Fecha Inicio
+                    </label>
+                    <div className="relative">
+                      <Input
+                        placeholder="mm/dd/yyyy"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                      />
+                      <svg
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-muted-foreground">
+                      Fecha Fin
+                    </label>
+                    <div className="relative">
+                      <Input
+                        placeholder="mm/dd/yyyy"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                      />
+                      <svg
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-medium text-foreground mb-2">
+                  Medicamentos Devueltos
+                </h4>
+                <div className="space-y-2">
+                  {[
+                    "Paracetamol",
+                    "Ibuprofeno",
+                    "Amoxicilina",
+                    "Omeprazol",
+                    "Loratadina",
+                  ].map((med) => (
+                    <div key={med} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={med}
+                        checked={selectedMedications.includes(med)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedMedications([
+                              ...selectedMedications,
+                              med,
+                            ]);
+                          } else {
+                            setSelectedMedications(
+                              selectedMedications.filter((m) => m !== med)
+                            );
+                          }
+                        }}
+                      />
+                      <label htmlFor={med} className="text-sm text-foreground">
+                        {med}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">
+                  Usuario que Generó o Aceptó
+                </label>
+                <Select value={selectedUser} onValueChange={setSelectedUser}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Todos los usuarios">
+                      Todos los usuarios
+                    </SelectItem>
+                    <SelectItem value="Usuario 1">Usuario 1</SelectItem>
+                    <SelectItem value="Usuario 2">Usuario 2</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">
+                  Causa de Devolución
+                </label>
+                <Select
+                  value={selectedExportCause}
+                  onValueChange={setSelectedExportCause}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Todas las causas">
+                      Todas las causas
+                    </SelectItem>
+                    <SelectItem value="Suspensión médica">
+                      Suspensión médica
+                    </SelectItem>
+                    <SelectItem value="Reacción adversa">
+                      Reacción adversa
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-between">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setStartDate("");
+                setEndDate("");
+                setSelectedMedications([]);
+                setSelectedUser("Todos los usuarios");
+                setSelectedExportCause("Todas las causas");
+              }}
+            >
+              <svg
+                className="h-4 w-4 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+              Limpiar Filtros
+            </Button>
+            <div className="flex space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsExportModalOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                className="bg-blue-600 hover:bg-blue-700"
+                onClick={() => {
+                  // Handle export logic here
+                  setIsExportModalOpen(false);
+                }}
+              >
+                <svg
+                  className="h-4 w-4 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+                Exportar
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
