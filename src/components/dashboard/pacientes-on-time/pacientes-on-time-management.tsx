@@ -30,11 +30,11 @@ export interface Patient {
   identificacion: string;
   paciente: string;
   predespacho: {
-    status: "ok" | "pending" | "error";
+    status: "ok" | "pending" | "in_progress" | "error";
     time?: string;
   };
   alistamiento: {
-    status: "ok" | "pending" | "error";
+    status: "ok" | "pending" | "in_progress" | "error";
     time?: string;
   };
   validacion: {
@@ -42,11 +42,11 @@ export interface Patient {
     time?: string;
   };
   entrega: {
-    status: "ok" | "pending" | "error";
+    status: "ok" | "pending" | "in_progress" | "error";
     time?: string;
   };
   devolucion: {
-    status: "ok" | "pending" | "error";
+    status: "ok" | "pending" | "in_progress" | "error";
     time?: string;
   };
 }
@@ -72,7 +72,7 @@ const mockPatients: Patient[] = [
     identificacion: "87654321",
     paciente: "Juan Pérez Morales",
     predespacho: { status: "ok" },
-    alistamiento: { status: "pending" },
+    alistamiento: { status: "in_progress" },
     validacion: { status: "pending" },
     entrega: { status: "pending" },
     devolucion: { status: "pending" },
@@ -87,7 +87,7 @@ const mockPatients: Patient[] = [
     alistamiento: { status: "ok" },
     validacion: { status: "ok" },
     entrega: { status: "error" },
-    devolucion: { status: "pending" },
+    devolucion: { status: "in_progress" },
   },
 ];
 
@@ -480,41 +480,7 @@ export default function PacientesOnTimeManagement() {
               Pacientes Activos ({patients.length} pacientes)
             </CardTitle>
             <div className="flex items-center gap-2">
-              <Dialog open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Filter className="h-4 w-4 mr-2" />
-                    Filtros Avanzados
-                    {activeFiltersCount > 0 && (
-                      <Badge variant="secondary" className="ml-2">
-                        {activeFiltersCount}
-                      </Badge>
-                    )}
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>Filtros Avanzados</DialogTitle>
-                  </DialogHeader>
-                  <FiltersDialog
-                    filters={filters}
-                    onApply={handleFiltersApply}
-                    onClear={handleFiltersClear}
-                  />
-                </DialogContent>
-              </Dialog>
-
-              {activeFiltersCount > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleFiltersClear}
-                  className="text-muted-foreground"
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  Borrar filtros
-                </Button>
-              )}
+          
             </div>
           </div>
         </CardHeader>

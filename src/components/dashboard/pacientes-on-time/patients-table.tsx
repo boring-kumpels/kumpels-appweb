@@ -145,7 +145,13 @@ export function PatientsTable({
               <StatusButton status={patient.alistamiento.status} />
             </TableCell>
             <TableCell className="text-center">
-              <StatusButton status={patient.validacion.status} />
+              <Button
+                variant="outline"
+                size="sm"
+                className="px-3 py-1 h-7 rounded-full min-w-[50px] text-xs font-medium bg-orange-50 text-orange-600 border-orange-200"
+              >
+                En Curso
+              </Button>
             </TableCell>
             <TableCell className="text-center">
               <StatusButton status={patient.entrega.status} />
