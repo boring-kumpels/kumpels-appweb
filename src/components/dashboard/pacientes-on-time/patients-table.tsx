@@ -9,18 +9,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import {
-  Lock,
-  Scale,
-  Check,
-  ShoppingCart,
-  RotateCcw,
-  FileText,
-  Copy,
-} from "lucide-react";
+import { Eye, CheckCircle, Clock, AlertCircle, Minus } from "lucide-react";
 import { usePathname } from "next/navigation";
 import type { Patient } from "./pacientes-on-time-management";
-import { ErrorReportModal } from "./error-report-modal";
 
 interface PatientsTableProps {
   patients: Patient[];
@@ -29,48 +20,50 @@ interface PatientsTableProps {
 }
 
 interface StatusButtonProps {
-  icon: React.ReactNode;
-  status: "empty" | "pending" | "in_progress" | "completed" | "error";
+  status: "ok" | "pending" | "in_progress" | "error";
   onClick?: () => void;
-  showErrorReport?: boolean;
-  patientName?: string;
-  patientId?: string;
-  errorType?: "distribución" | "devoluciones";
-  isDistributionColumn?: boolean;
 }
 
-const StatusButton: React.FC<StatusButtonProps> = ({
-  icon,
-  status,
-  onClick,
-  showErrorReport = false,
-  patientName,
-  patientId,
-  errorType,
-  isDistributionColumn = false,
-}) => {
+const StatusButton: React.FC<StatusButtonProps> = ({ status, onClick }) => {
+  const getStatusDisplay = () => {
+    switch (status) {
+      case "ok":
+        return { text: "OK", className: "bg-green-500 text-white" };
+      case "pending":
+        return { text: "Pend.", className: "bg-orange-500 text-white" };
+      case "in_progress":
+        return {
+          text: "Curso",
+          className:
+            "bg-orange-500 text-white border-2 border-dashed border-orange-600",
+        };
+      case "error":
+        return { text: "Error", className: "bg-red-500 text-white" };
+      default:
+        return { text: "--", className: "bg-gray-200 text-gray-500" };
+    }
+  };
+
+  const { text, className } = getStatusDisplay();
+
+  if (status === "pending" && text === "--") {
+    return (
+      <div className="flex items-center justify-center">
+        <span className="text-gray-400">--</span>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center gap-1">
       <Button
         variant="outline"
         size="sm"
-        className="bg-white border-gray-200 hover:bg-gray-100 px-3 py-1 h-7 rounded-full min-w-[40px] text-gray-500"
+        className={`px-3 py-1 h-7 rounded-full min-w-[50px] text-xs font-medium ${className}`}
         onClick={onClick}
       >
-        {icon}
+        {text}
       </Button>
-      {showErrorReport &&
-        status === "error" &&
-        patientName &&
-        patientId &&
-        errorType &&
-        !isDistributionColumn && (
-          <ErrorReportModal
-            patientName={patientName}
-            patientId={patientId}
-            errorType={errorType}
-          />
-        )}
     </div>
   );
 };
@@ -94,7 +87,6 @@ export function PatientsTable({
 
   const handlePatientDetailClick = (patient: Patient) => {
     if (onOpenPatientDetail) {
-      // Determine the base path based on current route
       let basePath = "/dashboard/pacientes-on-time";
 
       if (pathname.includes("/nurse/")) {
@@ -114,11 +106,15 @@ export function PatientsTable({
       <TableHeader>
         <TableRow>
           <TableHead className="text-center">Detalle</TableHead>
+          <TableHead className="text-center">Servicio</TableHead>
           <TableHead className="text-center">Cama</TableHead>
           <TableHead className="text-center">Identificación</TableHead>
-          <TableHead>Paciente</TableHead>
-          <TableHead className="text-center">Distribución</TableHead>
-          <TableHead className="text-center">Devoluciones</TableHead>
+          <TableHead>Nombre del Paciente</TableHead>
+          <TableHead className="text-center">Predespacho</TableHead>
+          <TableHead className="text-center">Alistamiento</TableHead>
+          <TableHead className="text-center">Validación</TableHead>
+          <TableHead className="text-center">Entrega</TableHead>
+          <TableHead className="text-center">Devolución</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -131,8 +127,11 @@ export function PatientsTable({
                 className="bg-white border-gray-200 hover:bg-gray-100 px-3 py-1 h-7 rounded-full min-w-[40px] text-gray-500"
                 onClick={() => handlePatientDetailClick(patient)}
               >
-                <Copy className="h-4 w-4" />
+                <Eye className="h-4 w-4" />
               </Button>
+            </TableCell>
+            <TableCell className="text-center font-medium">
+              {patient.servicio}
             </TableCell>
             <TableCell className="text-center">{patient.cama}</TableCell>
             <TableCell className="text-center">
@@ -140,54 +139,19 @@ export function PatientsTable({
             </TableCell>
             <TableCell>{patient.paciente}</TableCell>
             <TableCell className="text-center">
-              <div className="flex justify-center space-x-2">
-                <StatusButton
-                  icon={<Lock className="h-4 w-4" />}
-                  status={patient.distribución.status}
-                  showErrorReport
-                  patientName={patient.paciente}
-                  patientId={patient.id}
-                  errorType="distribución"
-                  isDistributionColumn
-                />
-                <StatusButton
-                  icon={<Scale className="h-4 w-4" />}
-                  status={patient.distribución.status}
-                  showErrorReport
-                  patientName={patient.paciente}
-                  patientId={patient.id}
-                  errorType="distribución"
-                  isDistributionColumn
-                />
-                <StatusButton
-                  icon={<Check className="h-4 w-4" />}
-                  status={patient.distribución.status}
-                  showErrorReport
-                  patientName={patient.paciente}
-                  patientId={patient.id}
-                  errorType="distribución"
-                  isDistributionColumn
-                />
-                <StatusButton
-                  icon={<ShoppingCart className="h-4 w-4" />}
-                  status={patient.distribución.status}
-                  showErrorReport
-                  patientName={patient.paciente}
-                  patientId={patient.id}
-                  errorType="distribución"
-                  isDistributionColumn
-                />
-              </div>
+              <StatusButton status={patient.predespacho.status} />
             </TableCell>
             <TableCell className="text-center">
-              <StatusButton
-                icon={<RotateCcw className="h-4 w-4" />}
-                status={patient.devoluciones.status}
-                showErrorReport
-                patientName={patient.paciente}
-                patientId={patient.id}
-                errorType="devoluciones"
-              />
+              <StatusButton status={patient.alistamiento.status} />
+            </TableCell>
+            <TableCell className="text-center">
+              <StatusButton status={patient.validacion.status} />
+            </TableCell>
+            <TableCell className="text-center">
+              <StatusButton status={patient.entrega.status} />
+            </TableCell>
+            <TableCell className="text-center">
+              <StatusButton status={patient.devolucion.status} />
             </TableCell>
           </TableRow>
         ))}

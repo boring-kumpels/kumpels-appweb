@@ -9,7 +9,12 @@ import { ErrorReportModal } from "./error-report-modal";
 interface ErrorMessageInputProps {
   patientName: string;
   patientId: string;
-  errorType: "distribución" | "devoluciones" | "alistamiento" | "predespacho";
+  errorType:
+    | "predespacho"
+    | "alistamiento"
+    | "validacion"
+    | "entrega"
+    | "devolucion";
   placeholder?: string;
   value?: string;
   onMessageChange?: (message: string) => void;

@@ -854,7 +854,7 @@ export default function PatientDetailView({}: PatientDetailViewProps) {
                     <ErrorReportModal
                       patientName={mockPatientData.name}
                       patientId={mockPatientData.identification}
-                      errorType="devoluciones"
+                      errorType="devolucion"
                     />
                     <Button
                       onClick={handleAddMessage}

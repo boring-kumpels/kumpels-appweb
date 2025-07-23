@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-
 import { cn } from "@/lib/utils";
+
 export interface FilterState {
-  lineas: string[]; // Keep as array for now but will only contain one item
+  lineas: string[];
   servicios: string[];
   camas: string[];
 }
@@ -18,38 +18,45 @@ interface FiltersDialogProps {
 
 // Mock data based on the screenshots
 const filterOptions = {
-  lineas: ["línea 1", "línea 2", "línea 3", "línea 4", "ucis"],
+  lineas: [
+    "Todas las líneas",
+    "Línea 1",
+    "Línea 2",
+    "Línea 3",
+    "Línea 4",
+    "Línea 5",
+  ],
   servicios: {
-    "línea 1": [
-      "uci pediátrica cardiovascular",
-      "uci quirúrgica",
-      "uci pediátrica general",
+    "Línea 1": [
+      "UCI Pediátrica Cardiovascular",
+      "UCI Quirúrgica",
+      "UCI Pediátrica General",
     ],
-    "línea 2": [
-      "segundo adultos",
-      "pebellón benefactores",
-      "unidad de trasplantes",
+    "Línea 2": [
+      "Segundo Adultos",
+      "Pabellón Benefactores",
+      "Unidad de Trasplantes",
     ],
-    "línea 3": ["tercero adultos", "cuarto adultos", "segundo pediatría"],
-    "línea 4": [
-      "tercero pediatría",
-      "suite pediátrica",
-      "neonatos",
-      "tercero renaldo",
-      "quinto renaldo",
-      "sexto renaldo",
+    "Línea 3": ["Tercero Adultos", "Cuarto Adultos", "Segundo Pediatría"],
+    "Línea 4": [
+      "Tercero Pediatría",
+      "Suite Pediátrica",
+      "Neonatos",
+      "Tercero Renal",
+      "Quinto Renal",
+      "Sexto Renal",
     ],
-    ucis: [
-      "uci medica 1",
-      "uci medica 2",
-      "uci medica 3",
-      "uci cardiovascular",
-      "urgencias",
+    "Línea 5": [
+      "UCI Médica 1",
+      "UCI Médica 2",
+      "UCI Médica 3",
+      "UCI Cardiovascular",
+      "Urgencias",
     ],
   },
   camas: {
     // Línea 1
-    "uci pediátrica cardiovascular": [
+    "UCI Pediátrica Cardiovascular": [
       "PC01",
       "PC02",
       "PC03",
@@ -73,7 +80,7 @@ const filterOptions = {
       "PC21",
       "PC22",
     ],
-    "uci quirúrgica": [
+    "UCI Quirúrgica": [
       "UQ1",
       "UQ2",
       "UQ3",
@@ -85,7 +92,7 @@ const filterOptions = {
       "UQ9",
       "UQ10",
     ],
-    "uci pediátrica general": [
+    "UCI Pediátrica General": [
       "UP01",
       "UP02",
       "UP03",
@@ -112,7 +119,7 @@ const filterOptions = {
     ],
 
     // Línea 2
-    "segundo adultos": [
+    "Segundo Adultos": [
       "213A",
       "213B",
       "213C",
@@ -160,7 +167,7 @@ const filterOptions = {
       "228C",
       "228D",
     ],
-    "pebellón benefactores": [
+    "Pabellón Benefactores": [
       "ST1A",
       "ST1B",
       "ST2",
@@ -184,10 +191,10 @@ const filterOptions = {
       "ST14",
       "ST15",
     ],
-    "unidad de trasplantes": ["UT1", "UT2", "UT3", "UT4", "UT5", "UT6", "UT7"],
+    "Unidad de Trasplantes": ["UT1", "UT2", "UT3", "UT4", "UT5", "UT6", "UT7"],
 
     // Línea 3
-    "tercero adultos": [
+    "Tercero Adultos": [
       "321",
       "322",
       "323",
@@ -219,7 +226,7 @@ const filterOptions = {
       "342A",
       "342B",
     ],
-    "cuarto adultos": [
+    "Cuarto Adultos": [
       "401",
       "402",
       "403",
@@ -251,7 +258,7 @@ const filterOptions = {
       "417",
       "418",
     ],
-    "segundo pediatría": [
+    "Segundo Pediatría": [
       "ST16A",
       "ST16B",
       "ST17",
@@ -268,7 +275,7 @@ const filterOptions = {
     ],
 
     // Línea 4
-    "tercero pediatría": [
+    "Tercero Pediatría": [
       "308",
       "309A",
       "309B",
@@ -290,7 +297,7 @@ const filterOptions = {
       "315B",
       "316",
     ],
-    "suite pediátrica": [
+    "Suite Pediátrica": [
       "STP1",
       "STP2",
       "STP3",
@@ -306,7 +313,7 @@ const filterOptions = {
       "307C",
       "307D",
     ],
-    neonatos: [
+    Neonatos: [
       "NE01",
       "NE02",
       "NE03",
@@ -327,7 +334,7 @@ const filterOptions = {
       "NE18",
       "NE19",
     ],
-    "tercero renaldo": [
+    "Tercero Renal": [
       "351",
       "352",
       "353",
@@ -345,7 +352,7 @@ const filterOptions = {
       "365",
       "366",
     ],
-    "quinto renaldo": [
+    "Quinto Renal": [
       "501",
       "502",
       "503",
@@ -363,7 +370,7 @@ const filterOptions = {
       "515",
       "516",
     ],
-    "sexto renaldo": [
+    "Sexto Renal": [
       "601",
       "602",
       "603",
@@ -382,8 +389,8 @@ const filterOptions = {
       "616",
     ],
 
-    // UCIs
-    "uci medica 1": [
+    // Línea 5
+    "UCI Médica 1": [
       "UM1-01",
       "UM1-02",
       "UM1-03",
@@ -397,7 +404,7 @@ const filterOptions = {
       "UM1-11",
       "UM1-12",
     ],
-    "uci medica 2": [
+    "UCI Médica 2": [
       "UM2-01",
       "UM2-02",
       "UM2-03",
@@ -415,7 +422,7 @@ const filterOptions = {
       "UM2-15",
       "UM2-16",
     ],
-    "uci medica 3": [
+    "UCI Médica 3": [
       "UM3-01",
       "UM3-02",
       "UM3-03",
@@ -432,7 +439,7 @@ const filterOptions = {
       "UM3-14",
       "UM3-15",
     ],
-    "uci cardiovascular": [
+    "UCI Cardiovascular": [
       "UQ11",
       "UQ12",
       "UQ13",
@@ -448,7 +455,7 @@ const filterOptions = {
       "UQ23",
       "UQ24",
     ],
-    urgencias: [
+    Urgencias: [
       "URG01",
       "URG02",
       "URG03",
@@ -541,6 +548,18 @@ export function FiltersDialog({
     }));
   };
 
+  const handleSelectAllServices = () => {
+    if (tempFilters.lineas.length > 0) {
+      const allServices = getAvailableServicios();
+      setTempFilters((prev) => ({
+        ...prev,
+        servicios: allServices,
+        camas: [], // Clear beds when selecting all services
+      }));
+      setTimeout(() => setSelectedTab("camas"), 100);
+    }
+  };
+
   const handleNext = () => {
     if (selectedTab === "lineas" && tempFilters.lineas.length > 0) {
       setSelectedTab("servicios");
@@ -595,117 +614,168 @@ export function FiltersDialog({
 
   return (
     <div className="space-y-6">
-      {/* Filter Tabs */}
-      <div className="flex space-x-1 bg-muted p-1 rounded-lg">
-        <button
-          className={cn(
-            "flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors",
-            selectedTab === "lineas"
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-          onClick={() => setSelectedTab("lineas")}
-        >
-          Líneas
-        </button>
-        <button
-          className={cn(
-            "flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors",
-            selectedTab === "servicios"
-              ? "bg-background text-foreground shadow-sm"
-              : tempFilters.lineas.length === 0
-                ? "text-muted-foreground/50 cursor-not-allowed"
-                : "text-muted-foreground hover:text-foreground"
-          )}
-          onClick={() =>
-            tempFilters.lineas.length > 0 && setSelectedTab("servicios")
-          }
-          disabled={tempFilters.lineas.length === 0}
-        >
-          Servicios
-        </button>
-        <button
-          className={cn(
-            "flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors",
-            selectedTab === "camas"
-              ? "bg-background text-foreground shadow-sm"
-              : tempFilters.servicios.length === 0
-                ? "text-muted-foreground/50 cursor-not-allowed"
-                : "text-muted-foreground hover:text-foreground"
-          )}
-          onClick={() =>
-            tempFilters.servicios.length > 0 && setSelectedTab("camas")
-          }
-          disabled={tempFilters.servicios.length === 0}
-        >
-          Camas
-        </button>
+      {/* Progress Steps */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-4">
+          <div
+            className={cn(
+              "flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium",
+              selectedTab === "lineas"
+                ? "bg-blue-600 text-white"
+                : "bg-gray-200 text-gray-600"
+            )}
+          >
+            1
+          </div>
+          <div
+            className={cn(
+              "flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium",
+              selectedTab === "servicios"
+                ? "bg-blue-600 text-white"
+                : tempFilters.lineas.length > 0
+                  ? "bg-blue-100 text-blue-600"
+                  : "bg-gray-200 text-gray-600"
+            )}
+          >
+            2
+          </div>
+          <div
+            className={cn(
+              "flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium",
+              selectedTab === "camas"
+                ? "bg-blue-600 text-white"
+                : tempFilters.servicios.length > 0
+                  ? "bg-blue-100 text-blue-600"
+                  : "bg-gray-200 text-gray-600"
+            )}
+          >
+            3
+          </div>
+        </div>
+        <div className="text-sm text-gray-500">
+          {selectedTab === "lineas" && "Selecciona una línea"}
+          {selectedTab === "servicios" && "Selecciona servicios"}
+          {selectedTab === "camas" && "Selecciona camas"}
+        </div>
       </div>
 
       {/* Filter Content */}
       <div className="min-h-[300px]">
         {selectedTab === "lineas" && (
           <div className="space-y-3">
-            {filterOptions.lineas.map((linea) => (
-              <Button
-                key={linea}
-                variant={
-                  tempFilters.lineas.includes(linea) ? "default" : "outline"
-                }
-                className="w-full justify-start"
-                onClick={() => handleLineaToggle(linea)}
-              >
-                {linea}
-              </Button>
-            ))}
+            <h3 className="text-lg font-medium mb-4">Líneas Hospitalarias</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {filterOptions.lineas.map((linea) => (
+                <Button
+                  key={linea}
+                  variant={
+                    tempFilters.lineas.includes(linea) ? "default" : "outline"
+                  }
+                  className="w-full justify-start h-12 text-left"
+                  onClick={() => handleLineaToggle(linea)}
+                >
+                  <div className="flex flex-col items-start">
+                    <span className="font-medium">{linea}</span>
+                    {linea !== "Todas las líneas" && (
+                      <span className="text-xs text-muted-foreground">
+                        {filterOptions.servicios[
+                          linea as keyof typeof filterOptions.servicios
+                        ]?.length || 0}{" "}
+                        servicios
+                      </span>
+                    )}
+                  </div>
+                </Button>
+              ))}
+            </div>
           </div>
         )}
 
         {selectedTab === "servicios" && (
           <div className="space-y-3">
+            <h3 className="text-lg font-medium mb-4">
+              Servicios de {tempFilters.lineas[0]}
+            </h3>
             {tempFilters.lineas.length === 0 ? (
-              <p className="text-muted-foreground text-center">
-                Selecciona una línea primero
-              </p>
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">
+                  Selecciona una línea primero
+                </p>
+              </div>
             ) : (
-              getAvailableServicios().map((servicio) => (
+              <div className="space-y-3">
+                {/* All Services Button */}
                 <Button
-                  key={servicio}
-                  variant={
-                    tempFilters.servicios.includes(servicio)
-                      ? "default"
-                      : "outline"
-                  }
-                  className="w-full justify-start"
-                  onClick={() => handleServicioToggle(servicio)}
+                  variant="outline"
+                  className="w-full justify-start h-12 text-left border-2 border-blue-200 hover:border-blue-300"
+                  onClick={handleSelectAllServices}
                 >
-                  {servicio}
+                  <div className="flex flex-col items-start">
+                    <span className="font-medium text-blue-600">
+                      Todos los Servicios
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      Seleccionar todos los servicios disponibles
+                    </span>
+                  </div>
                 </Button>
-              ))
+
+                {/* Individual Services */}
+                <div className="grid grid-cols-1 gap-3">
+                  {getAvailableServicios().map((servicio) => (
+                    <Button
+                      key={servicio}
+                      variant={
+                        tempFilters.servicios.includes(servicio)
+                          ? "default"
+                          : "outline"
+                      }
+                      className="w-full justify-start h-12 text-left"
+                      onClick={() => handleServicioToggle(servicio)}
+                    >
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium">{servicio}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {filterOptions.camas[
+                            servicio as keyof typeof filterOptions.camas
+                          ]?.length || 0}{" "}
+                          camas disponibles
+                        </span>
+                      </div>
+                    </Button>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         )}
 
         {selectedTab === "camas" && (
           <div className="space-y-3">
+            <h3 className="text-lg font-medium mb-4">Camas Disponibles</h3>
             {tempFilters.servicios.length === 0 ? (
-              <p className="text-muted-foreground text-center">
-                Selecciona un servicio primero
-              </p>
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">
+                  Selecciona un servicio primero
+                </p>
+              </div>
             ) : (
-              <div className="grid grid-cols-6 gap-2">
-                {getAvailableCamas().map((cama) => (
-                  <Button
-                    key={cama}
-                    variant={
-                      tempFilters.camas.includes(cama) ? "default" : "outline"
-                    }
-                    size="sm"
-                    onClick={() => handleCamaToggle(cama)}
-                  >
-                    {cama}
-                  </Button>
-                ))}
+              <div className="max-h-60 overflow-y-auto">
+                <div className="grid grid-cols-6 gap-2">
+                  {getAvailableCamas().map((cama) => (
+                    <Button
+                      key={cama}
+                      variant={
+                        tempFilters.camas.includes(cama) ? "default" : "outline"
+                      }
+                      size="sm"
+                      className="h-10 text-xs"
+                      onClick={() => handleCamaToggle(cama)}
+                    >
+                      {cama}
+                    </Button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -716,19 +786,23 @@ export function FiltersDialog({
       <div className="flex justify-between pt-4 border-t">
         <div className="space-x-2">
           <Button variant="outline" onClick={handleClear}>
-            Borrar
+            Borrar Todo
           </Button>
-          <span className="text-sm text-muted-foreground">Todos</span>
         </div>
         {isLastStep ? (
           <Button
             onClick={handleApply}
             disabled={tempFilters.camas.length === 0}
+            className="bg-blue-600 hover:bg-blue-700"
           >
-            Aplicar
+            Aplicar Filtros ({tempFilters.camas.length} camas)
           </Button>
         ) : (
-          <Button onClick={handleNext} disabled={!canGoNext()}>
+          <Button
+            onClick={handleNext}
+            disabled={!canGoNext()}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
             Siguiente
           </Button>
         )}

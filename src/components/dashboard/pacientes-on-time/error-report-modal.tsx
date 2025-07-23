@@ -15,7 +15,12 @@ import { AlertTriangle, Send, X } from "lucide-react";
 interface ErrorReportModalProps {
   patientName: string;
   patientId: string;
-  errorType: "distribución" | "devoluciones" | "alistamiento" | "predespacho";
+  errorType:
+    | "predespacho"
+    | "alistamiento"
+    | "validacion"
+    | "entrega"
+    | "devolucion";
 }
 
 const stageOptions = [
@@ -28,6 +33,21 @@ const stageOptions = [
     id: "alistamiento",
     label: "Alistamiento",
     icon: "⚖️",
+  },
+  {
+    id: "validacion",
+    label: "Validación",
+    icon: "✅",
+  },
+  {
+    id: "entrega",
+    label: "Entrega",
+    icon: "📦",
+  },
+  {
+    id: "devolucion",
+    label: "Devolución",
+    icon: "🔄",
   },
 ];
 
