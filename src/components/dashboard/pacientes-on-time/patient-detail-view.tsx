@@ -32,7 +32,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { ErrorReportModal } from "./error-report-modal";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,15 +45,6 @@ type ProcessTab =
   | "entrega"
   | "devoluciones"
   | "devoluciones_manuales";
-type FilterType = "usuario" | "causa_devolucion" | "suministro";
-
-interface ProcessStep {
-  id: string;
-  name: string;
-  icon: React.ReactNode;
-  status: "pending" | "in_progress" | "completed" | "error";
-  description?: string;
-}
 
 interface LogEntry {
   id: string;
@@ -159,12 +149,6 @@ export default function PatientDetailView({}: PatientDetailViewProps) {
   const [manualReturn, setManualReturn] = useState<ManualReturn | null>(null);
 
   // Manual Returns state
-  const [selectedFilterType, setSelectedFilterType] = useState<FilterType | "">(
-    ""
-  );
-  const [userInput, setUserInput] = useState("");
-  const [selectedCausa, setSelectedCausa] = useState("");
-  const [suministroInput, setSuministroInput] = useState("");
 
   // New Manual Return Modal State
   const [selectedSupply, setSelectedSupply] = useState("");
@@ -244,37 +228,6 @@ export default function PatientDetailView({}: PatientDetailViewProps) {
     devoluciones_manuales: [],
   };
 
-  const causasDevolucion = [
-    "Cambio de vía de administración",
-    "Cambio de forma farmacéutica",
-    "Cambio de frecuencia de administración",
-    "Cambio de dosis",
-    "Equivocación en entrega de farmacia",
-    "Suministro suspendido",
-    "Suministro rechazado por paciente",
-    "Paciente dado de alta",
-    "Paciente fallece",
-    "Otros",
-  ];
-
-  const handleEmergencyReport = (stage: string) => {
-    const now = new Date();
-    const timestamp = now.toISOString().slice(0, 19).replace("T", " ");
-
-    const newEntry: LogEntry = {
-      id: Date.now().toString(),
-      timestamp,
-      role: "PharmacyRegents",
-      message: `Se ha producido un error en el proceso de ${stage.toLowerCase()}.`,
-      type: "error",
-      patientName: mockPatientData.name,
-      patientId: mockPatientData.identification,
-    };
-
-    setLogEntries((prev) => [newEntry, ...prev]);
-    setIsEmergencyModalOpen(false);
-  };
-
   const handleAddMessage = () => {
     if (newMessage.trim()) {
       const now = new Date();
@@ -293,115 +246,6 @@ export default function PatientDetailView({}: PatientDetailViewProps) {
       setLogEntries((prev) => [newEntry, ...prev]);
       setNewMessage("");
     }
-  };
-
-  const handleGenerateManualReturn = () => {
-    const returnData = [];
-
-    if (selectedFilterType === "usuario" && userInput) {
-      returnData.push(`Usuario: ${userInput}`);
-    }
-    if (selectedFilterType === "causa_devolucion" && selectedCausa) {
-      returnData.push(`Causa: ${selectedCausa}`);
-    }
-    if (selectedFilterType === "suministro" && suministroInput) {
-      returnData.push(`Suministro: ${suministroInput}`);
-    }
-
-    if (returnData.length > 0) {
-      // Create a new manual return with the form data
-      const now = new Date();
-      const creationDate = now.toLocaleString("en-US", {
-        month: "numeric",
-        day: "numeric",
-        year: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true,
-      });
-
-      const approvalDate = new Date(now.getTime() + 65000).toLocaleString(
-        "en-US",
-        {
-          month: "numeric",
-          day: "numeric",
-          year: "numeric",
-          hour: "numeric",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: true,
-        }
-      );
-
-      const newManualReturn: ManualReturn = {
-        id: Date.now().toString(),
-        generatedBy: userInput || "Nurse",
-        reviewedBy: "PharmacyRegents",
-        creationDate,
-        approvalDate,
-        supplies: [
-          {
-            code: "f4f5644f-8732-4477-acd6-99e85fb78866",
-            supplyCode: "1400740",
-            supply:
-              suministroInput ||
-              "ABATACEPT 125MG/1ML SOL INYECTABLE SC JER PRELLENA* 1ML BRISTOL CJ *4U (ORENCIA)",
-            quantityReturned: 1,
-          },
-        ],
-        cause: selectedCausa || "Cambio de vía de administración",
-        comments: "Comentario no proporcionado",
-      };
-
-      setManualReturn(newManualReturn);
-
-      // Reset form
-      setSelectedFilterType("");
-      setUserInput("");
-      setSelectedCausa("");
-      setSuministroInput("");
-    }
-  };
-
-  const getProcessStepButton = (step: ProcessStep) => {
-    const getStatusDisplay = (status: string) => {
-      switch (status) {
-        case "completed":
-          return {
-            text: "Completed (Ok)",
-            className: "bg-green-500 text-white",
-          };
-        case "in_progress":
-          return { text: "In Progress", className: "bg-orange-500 text-white" };
-        case "pending":
-          return { text: "Pending", className: "bg-orange-500 text-white" };
-        case "error":
-          return { text: "Error", className: "bg-red-500 text-white" };
-        default:
-          return { text: "Pending", className: "bg-orange-500 text-white" };
-      }
-    };
-
-    const { text, className } = getStatusDisplay(step.status);
-
-    return (
-      <div key={step.id} className="flex flex-col items-center space-y-2">
-        <Button
-          variant="outline"
-          size="sm"
-          className={`px-4 py-2 h-12 rounded-full min-w-[120px] text-xs font-medium ${className}`}
-          onClick={
-            step.name === "Predespacho" || step.name === "Alistamiento"
-              ? () => setIsEmergencyModalOpen(true)
-              : undefined
-          }
-        >
-          {text}
-        </Button>
-        <span className="text-xs text-center font-medium">{step.name}</span>
-      </div>
-    );
   };
 
   const LogEntryComponent = ({ entry }: { entry: LogEntry }) => {
@@ -435,94 +279,6 @@ export default function PatientDetailView({}: PatientDetailViewProps) {
           <p className="text-sm text-foreground mb-1">{entry.message}</p>
           <p className="text-xs text-muted-foreground">
             Nombre: {entry.patientName}, Identificación: {entry.patientId}
-          </p>
-        </div>
-      </div>
-    );
-  };
-
-  const ManualReturnDetails = ({
-    returnData,
-  }: {
-    returnData: ManualReturn;
-  }) => {
-    return (
-      <div className="space-y-6">
-        {/* Return Status/Metadata */}
-        <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            <span className="text-sm text-foreground">
-              Generado por: {returnData.generatedBy} - Revisado por:{" "}
-              {returnData.reviewedBy}
-            </span>
-          </div>
-          <div className="text-right text-xs text-muted-foreground space-y-1">
-            <div>Fecha de creación: {returnData.creationDate}</div>
-            <div>Fecha de aprobación: {returnData.approvalDate}</div>
-          </div>
-        </div>
-
-        {/* Description of Supplies */}
-        <div className="space-y-3">
-          <h4 className="text-sm font-medium text-foreground">
-            Descripción de los suministros
-          </h4>
-          <div className="border border-border rounded-lg overflow-hidden">
-            <table className="w-full text-xs">
-              <thead className="bg-muted">
-                <tr>
-                  <th className="px-3 py-2 text-left font-medium text-foreground">
-                    Código
-                  </th>
-                  <th className="px-3 py-2 text-left font-medium text-foreground">
-                    Código suministro
-                  </th>
-                  <th className="px-3 py-2 text-left font-medium text-foreground">
-                    Suministro
-                  </th>
-                  <th className="px-3 py-2 text-left font-medium text-foreground">
-                    Cantidad devuelta
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {returnData.supplies.map((supply, index) => (
-                  <tr key={index} className="border-t border-border">
-                    <td className="px-3 py-2 text-foreground font-mono text-xs">
-                      {supply.code}
-                    </td>
-                    <td className="px-3 py-2 text-foreground">
-                      {supply.supplyCode}
-                    </td>
-                    <td className="px-3 py-2 text-foreground">
-                      {supply.supply}
-                    </td>
-                    <td className="px-3 py-2 text-foreground">
-                      {supply.quantityReturned}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Causes of Return */}
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium text-foreground">
-            Causas de la devolución
-          </h4>
-          <p className="text-sm text-foreground p-3 bg-muted rounded-lg">
-            {returnData.cause}
-          </p>
-        </div>
-
-        {/* Comments */}
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium text-foreground">Comentarios</h4>
-          <p className="text-sm text-foreground p-3 bg-muted rounded-lg">
-            {returnData.comments}
           </p>
         </div>
       </div>

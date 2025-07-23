@@ -9,7 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Eye, CheckCircle, Clock, AlertCircle, Minus } from "lucide-react";
+import { Eye } from "lucide-react";
 import { usePathname } from "next/navigation";
 import type { Patient } from "./pacientes-on-time-management";
 

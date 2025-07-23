@@ -1,18 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  AlertTriangle,
-  Thermometer,
-  Clock,
-  Eye,
-  EyeOff,
-  CheckCircle,
-  XCircle,
-} from "lucide-react";
+import { Eye, EyeOff, CheckCircle, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ProcessStage {
@@ -614,7 +605,7 @@ const LineSection: React.FC<{
 };
 
 export default function EstadoGeneralManagement() {
-  const [lines, setLines] = useState<LineData[]>(linesData);
+  const [lines] = useState<LineData[]>(linesData);
   const [showDetails, setShowDetails] = useState<{ [key: string]: boolean }>(
     {}
   );

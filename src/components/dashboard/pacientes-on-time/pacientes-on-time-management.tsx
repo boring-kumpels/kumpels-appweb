@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Filter, X, Search, Bed } from "lucide-react";
+import { Search, Bed } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -11,7 +11,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -21,7 +20,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PatientsTable } from "./patients-table";
-import { FiltersDialog, FilterState } from "./filters-dialog";
 
 export interface Patient {
   id: string;
@@ -90,12 +88,6 @@ const mockPatients: Patient[] = [
     devolucion: { status: "in_progress" },
   },
 ];
-
-const initialFilters: FilterState = {
-  lineas: ["Todas las líneas"],
-  servicios: [],
-  camas: [],
-};
 
 // Service and bed data based on lines
 const serviceData = {
@@ -267,29 +259,11 @@ const bedData = {
 export default function PacientesOnTimeManagement() {
   const [patients] = useState<Patient[]>(mockPatients);
   const [isLoading] = useState(false);
-  const [filters, setFilters] = useState<FilterState>(initialFilters);
-  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [isBedSelectionOpen, setIsBedSelectionOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedService, setSelectedService] = useState("Todos los servicios");
   const [selectedLine, setSelectedLine] = useState("Todas las líneas");
   const [selectedBeds, setSelectedBeds] = useState<string[]>([]);
-
-  const activeFiltersCount = [
-    ...filters.lineas,
-    ...filters.servicios,
-    ...filters.camas,
-  ].length;
-
-  const handleFiltersApply = (newFilters: FilterState) => {
-    setFilters(newFilters);
-    setIsFiltersOpen(false);
-    console.log("Applying filters:", newFilters);
-  };
-
-  const handleFiltersClear = () => {
-    setFilters({ lineas: [], servicios: [], camas: [] });
-  };
 
   const handleOpenPatientDetail = (patient: Patient) => {
     console.log("Opening patient detail for:", patient.paciente);
@@ -479,9 +453,7 @@ export default function PacientesOnTimeManagement() {
             <CardTitle className="text-lg">
               Pacientes Activos ({patients.length} pacientes)
             </CardTitle>
-            <div className="flex items-center gap-2">
-          
-            </div>
+            <div className="flex items-center gap-2"></div>
           </div>
         </CardHeader>
         <CardContent>
