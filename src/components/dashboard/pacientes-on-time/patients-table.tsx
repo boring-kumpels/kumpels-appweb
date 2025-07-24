@@ -11,12 +11,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Eye } from "lucide-react";
 import { usePathname } from "next/navigation";
-import type { Patient } from "./pacientes-on-time-management";
+import { PatientWithRelations } from "@/types/patient";
+import { getLineDisplayName } from "@/lib/lines";
 
 interface PatientsTableProps {
-  patients: Patient[];
+  patients: PatientWithRelations[];
   isLoading: boolean;
-  onOpenPatientDetail?: (patient: Patient) => void;
+  onOpenPatientDetail?: (patient: PatientWithRelations) => void;
 }
 
 interface StatusButtonProps {
@@ -85,7 +86,7 @@ export function PatientsTable({
     );
   }
 
-  const handlePatientDetailClick = (patient: Patient) => {
+  const handlePatientDetailClick = (patient: PatientWithRelations) => {
     if (onOpenPatientDetail) {
       let basePath = "/dashboard/pacientes-on-time";
 
@@ -131,18 +132,22 @@ export function PatientsTable({
               </Button>
             </TableCell>
             <TableCell className="text-center font-medium">
-              {patient.servicio}
-            </TableCell>
-            <TableCell className="text-center">{patient.cama}</TableCell>
-            <TableCell className="text-center">
-              {patient.identificacion}
-            </TableCell>
-            <TableCell>{patient.paciente}</TableCell>
-            <TableCell className="text-center">
-              <StatusButton status={patient.predespacho.status} />
+              {patient.bed?.lineName
+                ? getLineDisplayName(patient.bed.lineName)
+                : "N/A"}
             </TableCell>
             <TableCell className="text-center">
-              <StatusButton status={patient.alistamiento.status} />
+              {patient.bed?.number || "N/A"}
+            </TableCell>
+            <TableCell className="text-center">
+              {patient.externalId}
+            </TableCell>
+            <TableCell>{`${patient.firstName} ${patient.lastName}`}</TableCell>
+            <TableCell className="text-center">
+              <StatusButton status="ok" />
+            </TableCell>
+            <TableCell className="text-center">
+              <StatusButton status="in_progress" />
             </TableCell>
             <TableCell className="text-center">
               <Button
@@ -154,10 +159,10 @@ export function PatientsTable({
               </Button>
             </TableCell>
             <TableCell className="text-center">
-              <StatusButton status={patient.entrega.status} />
+              <StatusButton status="pending" />
             </TableCell>
             <TableCell className="text-center">
-              <StatusButton status={patient.devolucion.status} />
+              <StatusButton status="pending" />
             </TableCell>
           </TableRow>
         ))}

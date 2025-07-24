@@ -21,6 +21,21 @@ enum UserRole {
   PHARMACY_REGENT
 }
 
+enum PatientStatus {
+  ACTIVE
+  DISCHARGED
+  TRANSFERRED
+  DECEASED
+}
+
+enum LineName {
+  LINE_1
+  LINE_2
+  LINE_3
+  LINE_4
+  LINE_5
+}
+
 model Profile {
   id            String               @id @default(cuid())
   userId        String               @unique
@@ -34,4 +49,43 @@ model Profile {
 
   @@index([userId])
   @@map("profiles")
+}
+
+model Bed {
+  id        String   @id @default(cuid())
+  number    String   // Bed number (e.g., "A1", "B3")
+  lineName  LineName
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  active    Boolean  @default(true)
+  
+  // Relations
+  patients  Patient[]
+  
+  @@unique([lineName, number])
+  @@map("beds")
+}
+
+model Patient {
+  id              String        @id @default(cuid())
+  externalId      String        @unique // External system ID
+  firstName       String        @map("first_name")
+  lastName        String        @map("last_name")
+  dateOfBirth     DateTime      @map("date_of_birth")
+  gender          String
+  admissionDate   DateTime      @map("admission_date")
+  bedId           String
+  status          PatientStatus @default(ACTIVE)
+  medicalRecord   String?       @map("medical_record")
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  // Relations
+  bed             Bed           @relation(fields: [bedId], references: [id], onDelete: Cascade)
+  
+  @@index([externalId])
+  @@index([bedId])
+  @@index([status])
+  @@map("patients")
 }

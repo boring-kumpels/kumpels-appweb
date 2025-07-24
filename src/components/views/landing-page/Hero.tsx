@@ -1,5 +1,5 @@
-import Link from "next/link"
-import { ArrowRight, Sparkles } from "lucide-react"
+import Link from "next/link";
+import { ArrowRight, Sparkles } from "lucide-react";
 import { SparklesText } from "@/components/magicui/sparkles-text";
 import { BoxReveal } from "@/components/magicui/box-reveal";
 import { ShineBorder } from "@/components/magicui/shine-border";
@@ -43,7 +43,7 @@ export default function Hero() {
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
                   <ShimmerButton>
                     <Link
-                      href="/sign-up"
+                      href="/sign-in"
                       className="inline-flex items-center px-8 py-3 text-lg font-medium"
                     >
                       Get Started Free
@@ -53,7 +53,7 @@ export default function Hero() {
                       />
                     </Link>
                   </ShimmerButton>
-                  
+
                   <Link
                     href="/#features"
                     className="inline-flex items-center text-foreground hover:text-primary transition-colors px-8 py-3"
@@ -91,4 +91,3 @@ export default function Hero() {
     </section>
   );
 }
-

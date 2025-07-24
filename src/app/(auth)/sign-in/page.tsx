@@ -17,13 +17,7 @@ export default function SignInPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Login</h1>
           <p className="text-sm text-muted-foreground">
             Enter your email and password below <br />
-            to log into your account.{" "}
-            <Link
-              href="/sign-up"
-              className="underline underline-offset-4 hover:text-primary"
-            >
-              Don&apos;t have an account?
-            </Link>
+            to log into your account.
           </p>
         </div>
         <UserAuthForm />
