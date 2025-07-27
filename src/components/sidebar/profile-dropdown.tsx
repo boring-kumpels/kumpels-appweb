@@ -13,12 +13,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { useCurrentUser } from "@/hooks/use-current-user";
+import { useAuth } from "@/providers/auth-provider";
 import { Badge } from "@/components/ui/badge";
 import { UserRole } from "@prisma/client";
 
 export function ProfileDropdown() {
-  const { profile, user, isLoading } = useCurrentUser();
+  const { profile, user, isLoading } = useAuth();
 
   if (isLoading) {
     return (

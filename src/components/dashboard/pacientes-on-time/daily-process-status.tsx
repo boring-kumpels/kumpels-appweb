@@ -12,7 +12,7 @@ import {
   AlertTriangle,
   User,
 } from "lucide-react";
-import { useCurrentUser } from "@/hooks/use-current-user";
+import { useAuth } from "@/providers/auth-provider";
 import {
   useCurrentDailyProcess,
   useCancelDailyProcess,
@@ -26,7 +26,7 @@ import {
 import { toast } from "@/components/ui/use-toast";
 
 export function DailyProcessStatusCard() {
-  const { profile } = useCurrentUser();
+  const { profile } = useAuth();
   const { data: currentProcess, isLoading } = useCurrentDailyProcess();
   const cancelProcess = useCancelDailyProcess();
 

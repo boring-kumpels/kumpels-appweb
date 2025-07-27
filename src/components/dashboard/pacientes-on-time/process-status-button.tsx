@@ -18,7 +18,7 @@ import {
   useCompleteMedicationProcess,
   useCreateMedicationProcess,
 } from "@/hooks/use-medication-processes";
-import { useCurrentUser } from "@/hooks/use-current-user";
+import { useAuth } from "@/providers/auth-provider";
 import { useCurrentDailyProcess } from "@/hooks/use-daily-processes";
 import { useCreateDailyProcess } from "@/hooks/use-daily-processes";
 import {
@@ -38,7 +38,6 @@ interface ProcessStatusButtonProps {
   step: MedicationProcessStep;
   userRole: string;
   preloadedProcess?: MedicationProcess | null;
-  allPatientProcesses?: MedicationProcess[];
   preCalculatedState?: ProcessStatus | null;
 }
 
@@ -47,12 +46,11 @@ export function ProcessStatusButton({
   step,
   userRole,
   preloadedProcess,
-  allPatientProcesses = [],
   preCalculatedState,
 }: ProcessStatusButtonProps) {
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [errorNotes, setErrorNotes] = useState("");
-  const { user, profile } = useCurrentUser();
+  const { user, profile } = useAuth();
   const { data: currentDailyProcess } = useCurrentDailyProcess();
   const createDailyProcess = useCreateDailyProcess();
 
@@ -140,95 +138,139 @@ export function ProcessStatusButton({
         return;
       }
 
-      // Handle different step behaviors
+      // Determine the expected final status for optimistic updates
+      let expectedFinalStatus: ProcessStatus;
+      
       if (step === MedicationProcessStep.PREDESPACHO && isRegent) {
-        // Predespacho: Auto-complete on first click or complete if in progress
-        if (!process) {
-          // First click: create, start, and complete immediately
-          const createdProcess = await createProcess.mutateAsync({
-            patientId: patient.id,
-            step,
-            dailyProcessId: dailyProcess.id,
-          });
-          await startProcess.mutateAsync(createdProcess.id);
-          await completeProcess.mutateAsync(createdProcess.id);
-        } else if (process.status === ProcessStatus.IN_PROGRESS) {
-          // If showing as in progress, complete it
-          await completeProcess.mutateAsync(process.id);
-        }
+        expectedFinalStatus = ProcessStatus.COMPLETED; // Predespacho auto-completes
       } else if (step === MedicationProcessStep.ALISTAMIENTO && isRegent) {
-        // Alistamiento: First click = in progress, second click = complete
         if (!process) {
-          const createdProcess = await createProcess.mutateAsync({
-            patientId: patient.id,
-            step,
-            dailyProcessId: dailyProcess.id,
-          });
-          await startProcess.mutateAsync(createdProcess.id);
+          expectedFinalStatus = ProcessStatus.IN_PROGRESS; // First click starts it
         } else if (process.status === ProcessStatus.PENDING) {
-          await startProcess.mutateAsync(process.id);
-        } else if (process.status === ProcessStatus.IN_PROGRESS) {
-          await completeProcess.mutateAsync(process.id);
+          expectedFinalStatus = ProcessStatus.IN_PROGRESS; // Start it
+        } else {
+          expectedFinalStatus = ProcessStatus.COMPLETED; // Complete it
         }
       } else if (step === MedicationProcessStep.VALIDACION && actualUserRole === "PHARMACY_VALIDATOR") {
-        // Validacion: Auto-complete on first click by validator
-        if (!process) {
-          const createdProcess = await createProcess.mutateAsync({
-            patientId: patient.id,
-            step,
-            dailyProcessId: dailyProcess.id,
-          });
-          await startProcess.mutateAsync(createdProcess.id);
-          await completeProcess.mutateAsync(createdProcess.id);
-        } else if (process.status === ProcessStatus.PENDING) {
-          await startProcess.mutateAsync(process.id);
-          await completeProcess.mutateAsync(process.id);
-        }
+        expectedFinalStatus = ProcessStatus.COMPLETED; // Validacion auto-completes
       } else if (step === MedicationProcessStep.ENTREGA) {
-        // Entrega: Auto-complete on first click
-        if (!process) {
-          const createdProcess = await createProcess.mutateAsync({
-            patientId: patient.id,
-            step,
-            dailyProcessId: dailyProcess.id,
-          });
-          await startProcess.mutateAsync(createdProcess.id);
-          await completeProcess.mutateAsync(createdProcess.id);
-        } else if (process.status === ProcessStatus.PENDING) {
-          await startProcess.mutateAsync(process.id);
-          await completeProcess.mutateAsync(process.id);
-        }
+        expectedFinalStatus = ProcessStatus.COMPLETED; // Entrega auto-completes
       } else {
-        // Default behavior for other cases
+        // Default behavior
         if (!process) {
-          await createProcess.mutateAsync({
-            patientId: patient.id,
-            step,
-            dailyProcessId: dailyProcess.id,
-          });
+          expectedFinalStatus = ProcessStatus.PENDING;
+        } else if (process.status === ProcessStatus.PENDING && canStart) {
+          expectedFinalStatus = ProcessStatus.IN_PROGRESS;
+        } else if (process.status === ProcessStatus.IN_PROGRESS && canComplete) {
+          expectedFinalStatus = ProcessStatus.COMPLETED;
+        } else if (process.status === ProcessStatus.ERROR) {
+          expectedFinalStatus = ProcessStatus.IN_PROGRESS;
         } else {
-          const currentStatus = process.status;
-          if (currentStatus === ProcessStatus.PENDING && canStart) {
-            await startProcess.mutateAsync(process.id);
-          } else if (currentStatus === ProcessStatus.IN_PROGRESS && canComplete) {
-            await completeProcess.mutateAsync(process.id);
-          } else if (currentStatus === ProcessStatus.ERROR) {
-            await startProcess.mutateAsync(process.id);
-          }
+          return; // No action needed
         }
       }
+
+      // Perform optimistic update immediately
+      if (!process) {
+        // Create optimistic process first
+        const optimisticProcess: MedicationProcess = {
+          id: `temp-${Date.now()}`,
+          patientId: patient.id,
+          dailyProcessId: dailyProcess.id,
+          step: step,
+          status: expectedFinalStatus,
+          notes: undefined,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        // Update the cache optimistically
+        const currentProcesses = queryClient.getQueryData<MedicationProcess[]>([
+          "all-medication-processes",
+          dailyProcess.id,
+        ]) || [];
+        
+        queryClient.setQueryData(
+          ["all-medication-processes", dailyProcess.id],
+          [...currentProcesses, optimisticProcess]
+        );
+
+        // Now perform the actual operations in the background
+        const createdProcess = await createProcess.mutateAsync({
+          patientId: patient.id,
+          step,
+          dailyProcessId: dailyProcess.id,
+        });
+
+        // Continue with the workflow based on expected status
+        let finalProcess = createdProcess;
+        if (expectedFinalStatus === ProcessStatus.IN_PROGRESS) {
+          finalProcess = await startProcess.mutateAsync(createdProcess.id);
+        } else if (expectedFinalStatus === ProcessStatus.COMPLETED) {
+          await startProcess.mutateAsync(createdProcess.id);
+          finalProcess = await completeProcess.mutateAsync(createdProcess.id);
+        }
+
+        // Update the optimistic process with the real data once all operations complete
+        const finalCurrentProcesses = queryClient.getQueryData<MedicationProcess[]>([
+          "all-medication-processes",
+          dailyProcess.id,
+        ]) || [];
+        
+        const finalProcesses = finalCurrentProcesses.map(p => 
+          p.id === optimisticProcess.id ? finalProcess : p
+        );
+        queryClient.setQueryData(
+          ["all-medication-processes", dailyProcess.id],
+          finalProcesses
+        );
+      } else {
+        // Update existing process optimistically
+        const currentProcesses = queryClient.getQueryData<MedicationProcess[]>([
+          "all-medication-processes",
+          dailyProcess.id,
+        ]) || [];
+        
+        const updatedProcesses = currentProcesses.map(p => 
+          p.id === process.id 
+            ? { ...p, status: expectedFinalStatus, updatedAt: new Date() }
+            : p
+        );
+        queryClient.setQueryData(
+          ["all-medication-processes", dailyProcess.id],
+          updatedProcesses
+        );
+
+        // Perform actual server operations and update with real data
+        let finalProcess = process;
+        if (expectedFinalStatus === ProcessStatus.IN_PROGRESS) {
+          finalProcess = await startProcess.mutateAsync(process.id);
+        } else if (expectedFinalStatus === ProcessStatus.COMPLETED) {
+          if (process.status === ProcessStatus.PENDING) {
+            await startProcess.mutateAsync(process.id);
+          }
+          finalProcess = await completeProcess.mutateAsync(process.id);
+        }
+
+        // Update the cache with the real data once operations complete
+        const finalUpdatedProcesses = queryClient.getQueryData<MedicationProcess[]>([
+          "all-medication-processes",
+          dailyProcess.id,
+        ]) || [];
+        
+        const completedProcesses = finalUpdatedProcesses.map(p => 
+          p.id === process.id ? finalProcess : p
+        );
+        queryClient.setQueryData(
+          ["all-medication-processes", dailyProcess.id],
+          completedProcesses
+        );
+      }
       
-      // Invalidate and refetch queries to refresh the UI immediately
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["medication-processes"] }),
-        queryClient.invalidateQueries({ queryKey: ["all-medication-processes"] }),
-        queryClient.invalidateQueries({ queryKey: ["daily-processes"] }),
-        queryClient.invalidateQueries({ queryKey: ["current-daily-process"] })
-      ]);
-      
-      // Force refetch of all medication processes if daily process was just created
-      if (!currentDailyProcess && step === MedicationProcessStep.PREDESPACHO) {
-        await queryClient.refetchQueries({ queryKey: ["all-medication-processes"] });
+      // Only invalidate daily process queries if a new one was created
+      if (!currentDailyProcess && step === MedicationProcessStep.PREDESPACHO && dailyProcess) {
+        queryClient.invalidateQueries({ queryKey: ["daily-processes"] });
+        queryClient.invalidateQueries({ queryKey: ["current-daily-process"] });
       }
       
       toast({
@@ -237,6 +279,13 @@ export function ProcessStatusButton({
       });
     } catch (error) {
       console.error("Error handling process:", error);
+      
+      // Revert optimistic updates on error by invalidating and refetching
+      queryClient.invalidateQueries({ 
+        queryKey: ["all-medication-processes"],
+        refetchType: "active"
+      });
+      
       toast({
         title: "Error",
         description: "Error al procesar la acción",
@@ -276,51 +325,10 @@ export function ProcessStatusButton({
 
   const stepName = getStepDisplayName(step);
   
-  // Determine button status and appearance
-  const getButtonStatus = () => {
-    // If there's an actual process for this patient/step, return its status
-    if (process) {
-      return process.status;
-    }
-    
-    // No process exists for this patient/step - determine what state to show
-    if (step === MedicationProcessStep.PREDESPACHO) {
-      // Check if any predespacho has started in the daily process
-      const anyPredespachoStarted = allPatientProcesses.some(
-        p => p.step === MedicationProcessStep.PREDESPACHO && 
-        (p.status === ProcessStatus.IN_PROGRESS || p.status === ProcessStatus.COMPLETED)
-      );
-      
-      if (anyPredespachoStarted) {
-        return ProcessStatus.IN_PROGRESS; // Show as in progress (orange dotted)
-      }
-      return null; // Show as empty (black border) - not started yet
-    }
-    
-    if (step === MedicationProcessStep.ALISTAMIENTO) {
-      const predespachoProcess = allPatientProcesses.find(
-        p => p.patientId === patient.id && p.step === MedicationProcessStep.PREDESPACHO
-      );
-      if (predespachoProcess?.status === ProcessStatus.COMPLETED) {
-        return ProcessStatus.PENDING; // Show as pending (orange filled)
-      }
-      return null; // Show as disabled (black border)
-    }
-    
-    if (step === MedicationProcessStep.VALIDACION || step === MedicationProcessStep.ENTREGA) {
-      const alistamientoProcess = allPatientProcesses.find(
-        p => p.patientId === patient.id && p.step === MedicationProcessStep.ALISTAMIENTO
-      );
-      if (alistamientoProcess?.status === ProcessStatus.COMPLETED) {
-        return ProcessStatus.PENDING; // Show as pending (orange filled)
-      }
-      return null; // Show as disabled (black border)
-    }
-    
-    return null; // Default: disabled
-  };
+  // CRITICAL: Only use pre-calculated state to ensure all buttons update simultaneously
+  // Never fall back to individual calculations as this causes gradual button enabling
+  const buttonStatus = preCalculatedState;
   
-  const buttonStatus = preCalculatedState !== undefined ? preCalculatedState : getButtonStatus();
   const isStepEnabledByWorkflow = buttonStatus !== null;
   
   
@@ -330,28 +338,24 @@ export function ProcessStatusButton({
 
   // Determine if button should be clickable
   const isClickable = (() => {
-    // Special case for predespacho: always clickable for regents when no process exists (empty state)
-    if (step === MedicationProcessStep.PREDESPACHO && !process && isRegent) {
-      return true;
+    // If preCalculatedState is undefined, button states are still being computed
+    // Don't allow clicks during this phase to prevent inconsistent behavior
+    if (preCalculatedState === undefined) {
+      return false;
     }
     
-    // Special case for predespacho: clickable when in progress state (orange dotted)
-    if (step === MedicationProcessStep.PREDESPACHO && buttonStatus === ProcessStatus.IN_PROGRESS && isRegent) {
-      return true;
+    // Special case for predespacho: always clickable for regents when empty or in progress
+    if (step === MedicationProcessStep.PREDESPACHO && isRegent) {
+      return buttonStatus === null || buttonStatus === ProcessStatus.IN_PROGRESS;
     }
     
     if (!isStepEnabledByWorkflow) {
       return false; // Step not enabled due to workflow
     }
     
-    if (!currentDailyProcess) return false;
-    
     // Check role permissions
     if (!canStart && !canComplete) return false;
     
-    // If no process but step is enabled, can create and start
-    if (!process) return canStart;
-
     switch (buttonStatus) {
       case ProcessStatus.PENDING:
         return canStart;
@@ -362,32 +366,18 @@ export function ProcessStatusButton({
       case ProcessStatus.ERROR:
         return canStart; // Can retry from error
       default:
-        return false;
+        return canStart; // Can create new process if step is enabled and button shows as enabled
     }
   })();
 
   // Determine button text based on status and step
   const getButtonText = () => {
-    if (!isStepEnabledByWorkflow && buttonStatus !== ProcessStatus.COMPLETED) {
-      return stepName;
+    // If states are being computed, show loading indicator
+    if (preCalculatedState === undefined) {
+      return "...";
     }
     
-    if (!process && !currentDailyProcess && step !== MedicationProcessStep.PREDESPACHO) {
-      return stepName;
-    }
-    
-    switch (buttonStatus) {
-      case ProcessStatus.PENDING:
-        return stepName;
-      case ProcessStatus.IN_PROGRESS:
-        return stepName;
-      case ProcessStatus.COMPLETED:
-        return stepName;
-      case ProcessStatus.ERROR:
-        return stepName;
-      default:
-        return stepName;
-    }
+    return stepName;
   };
 
   const buttonText = getButtonText();
@@ -399,18 +389,9 @@ export function ProcessStatusButton({
         size="sm"
         className={`px-3 py-1 h-8 min-w-[80px] rounded-full text-xs font-medium ${colorClass} ${!isClickable ? 'cursor-not-allowed' : 'cursor-pointer'}`}
         onClick={isClickable ? handleButtonClick : undefined}
-        disabled={
-          !isClickable || startProcess.isPending || completeProcess.isPending
-        }
+        disabled={!isClickable || preCalculatedState === undefined}
       >
-        {startProcess.isPending || completeProcess.isPending ? (
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin"></div>
-            <span>...</span>
-          </div>
-        ) : (
-          buttonText
-        )}
+        {buttonText}
       </Button>
 
       {/* Error Report Dialog - Only show for processes that can have errors */}

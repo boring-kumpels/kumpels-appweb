@@ -32,7 +32,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { useCurrentUser } from "@/hooks/use-current-user";
+import { useAuth } from "@/providers/auth-provider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { usePatient } from "@/hooks/use-patients";
@@ -133,7 +133,7 @@ const mockManualReturn: ManualReturn = {
 
 export default function PatientDetailView({ patientId }: PatientDetailViewProps) {
   const router = useRouter();
-  const { profile } = useCurrentUser();
+  const { profile } = useAuth();
   const [activeTab, setActiveTab] = useState<ProcessTab>("dispensacion");
   const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
   const [isManualReturnModalOpen, setIsManualReturnModalOpen] = useState(false);
@@ -577,7 +577,6 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
                               preloadedProcess={patientProcesses.find(
                                 p => p.step === step.step
                               )}
-                              allPatientProcesses={patientProcesses}
                             />
                           </div>
                         );

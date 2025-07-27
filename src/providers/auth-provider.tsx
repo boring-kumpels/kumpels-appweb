@@ -35,12 +35,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = createClientComponentClient();
 
   // Fetch profile function
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async () => {
     try {
-      const response = await fetch(`/api/profile/${userId}`);
+      const response = await fetch("/api/profile");
       if (!response.ok) throw new Error("Failed to fetch profile");
       const data = await response.json();
-      setProfile(data.profile);
+      setProfile(data);
     } catch (error) {
       console.error("Error fetching profile:", error);
       setProfile(null);
@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id);
+        fetchProfile();
       }
       setIsLoading(false);
     });
@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        await fetchProfile(session.user.id);
+        await fetchProfile();
       } else {
         setProfile(null);
       }
@@ -89,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     if (error) throw error;
     if (data.user) {
-      await fetchProfile(data.user.id);
+      await fetchProfile();
     }
     router.push("/dashboard");
   };

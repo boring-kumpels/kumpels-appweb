@@ -10,11 +10,11 @@ import { NavUser } from "./nav-user";
 import { TeamSwitcher } from "./team-switcher";
 import { sidebarData } from "./data/sidebar-data";
 import { getRoleBasedSidebar } from "./data/role-based-sidebar";
-import { useCurrentUser } from "@/hooks/use-current-user";
+import { useAuth } from "@/providers/auth-provider";
 import type { NavGroupProps } from "./types";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { profile, isLoading } = useCurrentUser();
+  const { profile, isLoading } = useAuth();
   
   // Get role-based sidebar data, fallback to default if no profile or loading
   const currentSidebarData = profile?.role 

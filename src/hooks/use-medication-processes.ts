@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   MedicationProcess,
   MedicationProcessStep,
@@ -133,7 +133,6 @@ export const usePatientProcessStatus = (
 
 // Create a new medication process with optimistic updates
 export const useCreateMedicationProcess = () => {
-  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (
@@ -154,89 +153,17 @@ export const useCreateMedicationProcess = () => {
 
       return response.json();
     },
-    onMutate: async (newProcess) => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ["patient-process-status"] });
-      await queryClient.cancelQueries({ queryKey: ["medication-processes"] });
-      await queryClient.cancelQueries({
-        queryKey: ["all-medication-processes"],
-      });
-
-      // Create optimistic process
-      const optimisticProcess: MedicationProcess = {
-        id: `temp-${Date.now()}`,
-        patientId: newProcess.patientId,
-        dailyProcessId: newProcess.dailyProcessId || undefined,
-        step: newProcess.step,
-        status: ProcessStatus.PENDING,
-        notes: newProcess.notes || undefined,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      // Optimistically update the patient process status
-      queryClient.setQueryData(
-        [
-          "patient-process-status",
-          newProcess.patientId,
-          newProcess.step,
-          newProcess.dailyProcessId,
-        ],
-        optimisticProcess
-      );
-
-      // Also update the all medication processes cache
-      const allProcesses = queryClient.getQueryData<MedicationProcess[]>([
-        "all-medication-processes",
-        newProcess.dailyProcessId,
-      ]);
-      if (allProcesses) {
-        queryClient.setQueryData(
-          ["all-medication-processes", newProcess.dailyProcessId],
-          [...allProcesses, optimisticProcess]
-        );
-      }
-
-      return { optimisticProcess };
-    },
-    onError: (err, newProcess, context) => {
-      // Rollback optimistic update on error
-      if (context?.optimisticProcess) {
-        queryClient.setQueryData(
-          [
-            "patient-process-status",
-            newProcess.patientId,
-            newProcess.step,
-            newProcess.dailyProcessId,
-          ],
-          null
-        );
-
-        // Rollback all medication processes cache
-        const allProcesses = queryClient.getQueryData<MedicationProcess[]>([
-          "all-medication-processes",
-          newProcess.dailyProcessId,
-        ]);
-        if (allProcesses) {
-          queryClient.setQueryData(
-            ["all-medication-processes", newProcess.dailyProcessId],
-            allProcesses.filter((p) => p.id !== context.optimisticProcess.id)
-          );
-        }
-      }
-    },
+    // Optimistic updates are now handled manually in the component
+    // to provide immediate visual feedback with the correct final state
     onSettled: () => {
-      // Always refetch after error or success
-      queryClient.invalidateQueries({ queryKey: ["patient-process-status"] });
-      queryClient.invalidateQueries({ queryKey: ["medication-processes"] });
-      queryClient.invalidateQueries({ queryKey: ["all-medication-processes"] });
+      // No query invalidation - optimistic updates handle all UI changes
+      // Data will be consistent when operations complete
     },
   });
 };
 
 // Update a medication process with optimistic updates
 export const useUpdateMedicationProcess = () => {
-  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({
@@ -261,108 +188,11 @@ export const useUpdateMedicationProcess = () => {
 
       return response.json();
     },
-    onMutate: async ({ id, data }) => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ["medication-process", id] });
-      await queryClient.cancelQueries({ queryKey: ["patient-process-status"] });
-      await queryClient.cancelQueries({
-        queryKey: ["all-medication-processes"],
-      });
-
-      // Get the current process data
-      const previousProcess = queryClient.getQueryData([
-        "medication-process",
-        id,
-      ]);
-
-      // Create optimistic update
-      const optimisticProcess = previousProcess
-        ? ({
-            ...previousProcess,
-            ...data,
-            updatedAt: new Date(),
-          } as MedicationProcess)
-        : null;
-
-      // Optimistically update
-      if (optimisticProcess) {
-        queryClient.setQueryData(["medication-process", id], optimisticProcess);
-
-        // Also update patient process status if we have the patient info
-        if (optimisticProcess.patientId && optimisticProcess.step) {
-          queryClient.setQueryData(
-            [
-              "patient-process-status",
-              optimisticProcess.patientId,
-              optimisticProcess.step,
-              optimisticProcess.dailyProcessId,
-            ],
-            optimisticProcess
-          );
-        }
-
-        // Update all medication processes cache
-        const allProcesses = queryClient.getQueryData<MedicationProcess[]>([
-          "all-medication-processes",
-          optimisticProcess.dailyProcessId,
-        ]);
-        if (allProcesses) {
-          queryClient.setQueryData(
-            ["all-medication-processes", optimisticProcess.dailyProcessId],
-            allProcesses.map((p) => (p.id === id ? optimisticProcess : p))
-          );
-        }
-      }
-
-      return { previousProcess, optimisticProcess };
-    },
-    onError: (err, variables, context) => {
-      // Rollback optimistic update on error
-      if (context?.previousProcess) {
-        queryClient.setQueryData(
-          ["medication-process", variables.id],
-          context.previousProcess
-        );
-
-        const prevProcess = context.previousProcess as MedicationProcess;
-        if (prevProcess.patientId && prevProcess.step) {
-          queryClient.setQueryData(
-            [
-              "patient-process-status",
-              prevProcess.patientId,
-              prevProcess.step,
-              prevProcess.dailyProcessId,
-            ],
-            context.previousProcess
-          );
-        }
-
-        // Rollback all medication processes cache
-        const allProcesses = queryClient.getQueryData<MedicationProcess[]>([
-          "all-medication-processes",
-          prevProcess.dailyProcessId,
-        ]);
-        if (allProcesses) {
-          queryClient.setQueryData(
-            [
-              "all-medication-processes",
-              prevProcess.dailyProcessId,
-            ],
-            allProcesses.map((p) =>
-              p.id === variables.id ? context.previousProcess : p
-            )
-          );
-        }
-      }
-    },
-    onSettled: (data, error, variables) => {
-      // Always refetch after error or success
-      queryClient.invalidateQueries({
-        queryKey: ["medication-process", variables.id],
-      });
-      queryClient.invalidateQueries({ queryKey: ["patient-process-status"] });
-      queryClient.invalidateQueries({ queryKey: ["medication-processes"] });
-      queryClient.invalidateQueries({ queryKey: ["all-medication-processes"] });
+    // Optimistic updates are now handled manually in the component
+    // to provide immediate visual feedback with the correct final state
+    onSettled: () => {
+      // No query invalidation - optimistic updates handle all UI changes  
+      // Data will be consistent when operations complete
     },
   });
 };

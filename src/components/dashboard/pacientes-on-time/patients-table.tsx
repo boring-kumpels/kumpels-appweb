@@ -19,7 +19,7 @@ import {
 } from "@/types/patient";
 import { getLineDisplayName } from "@/lib/lines";
 import { ProcessStatusButton } from "./process-status-button";
-import { useCurrentUser } from "@/hooks/use-current-user";
+import { useAuth } from "@/providers/auth-provider";
 
 interface PatientsTableProps {
   patients: PatientWithRelations[];
@@ -28,6 +28,7 @@ interface PatientsTableProps {
   preloadedMedicationProcesses?: MedicationProcess[];
   currentDailyProcessId?: string;
   buttonStatesMap?: Map<string, Record<string, ProcessStatus | null>>;
+  isButtonStatesReady?: boolean;
 }
 
 export function PatientsTable({
@@ -37,9 +38,10 @@ export function PatientsTable({
   preloadedMedicationProcesses = [],
   currentDailyProcessId,
   buttonStatesMap,
+  isButtonStatesReady = false,
 }: PatientsTableProps) {
   const pathname = usePathname();
-  const { profile } = useCurrentUser();
+  const { profile } = useAuth();
 
   if (isLoading) {
     return (
@@ -128,10 +130,7 @@ export function PatientsTable({
                   patient.id,
                   MedicationProcessStep.PREDESPACHO
                 )}
-                allPatientProcesses={preloadedMedicationProcesses.filter(
-                  p => p.patientId === patient.id
-                )}
-                preCalculatedState={buttonStatesMap?.get(patient.id)?.[MedicationProcessStep.PREDESPACHO]}
+                preCalculatedState={isButtonStatesReady ? buttonStatesMap?.get(patient.id)?.[MedicationProcessStep.PREDESPACHO] : undefined}
               />
             </TableCell>
             <TableCell className="text-center">
@@ -143,10 +142,7 @@ export function PatientsTable({
                   patient.id,
                   MedicationProcessStep.ALISTAMIENTO
                 )}
-                allPatientProcesses={preloadedMedicationProcesses.filter(
-                  p => p.patientId === patient.id
-                )}
-                preCalculatedState={buttonStatesMap?.get(patient.id)?.[MedicationProcessStep.ALISTAMIENTO]}
+                preCalculatedState={isButtonStatesReady ? buttonStatesMap?.get(patient.id)?.[MedicationProcessStep.ALISTAMIENTO] : undefined}
               />
             </TableCell>
             <TableCell className="text-center">
@@ -158,10 +154,7 @@ export function PatientsTable({
                   patient.id,
                   MedicationProcessStep.VALIDACION
                 )}
-                allPatientProcesses={preloadedMedicationProcesses.filter(
-                  p => p.patientId === patient.id
-                )}
-                preCalculatedState={buttonStatesMap?.get(patient.id)?.[MedicationProcessStep.VALIDACION]}
+                preCalculatedState={isButtonStatesReady ? buttonStatesMap?.get(patient.id)?.[MedicationProcessStep.VALIDACION] : undefined}
               />
             </TableCell>
             <TableCell className="text-center">
@@ -173,10 +166,7 @@ export function PatientsTable({
                   patient.id,
                   MedicationProcessStep.ENTREGA
                 )}
-                allPatientProcesses={preloadedMedicationProcesses.filter(
-                  p => p.patientId === patient.id
-                )}
-                preCalculatedState={buttonStatesMap?.get(patient.id)?.[MedicationProcessStep.ENTREGA]}
+                preCalculatedState={isButtonStatesReady ? buttonStatesMap?.get(patient.id)?.[MedicationProcessStep.ENTREGA] : undefined}
               />
             </TableCell>
             <TableCell className="text-center">
@@ -188,10 +178,7 @@ export function PatientsTable({
                   patient.id,
                   MedicationProcessStep.DEVOLUCION
                 )}
-                allPatientProcesses={preloadedMedicationProcesses.filter(
-                  p => p.patientId === patient.id
-                )}
-                preCalculatedState={buttonStatesMap?.get(patient.id)?.[MedicationProcessStep.DEVOLUCION]}
+                preCalculatedState={isButtonStatesReady ? buttonStatesMap?.get(patient.id)?.[MedicationProcessStep.DEVOLUCION] : undefined}
               />
             </TableCell>
           </TableRow>

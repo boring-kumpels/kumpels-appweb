@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Search, Bed, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -75,6 +75,7 @@ export default function PacientesOnTimeManagement() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLineName, setSelectedLineName] = useState<LineName | "">("");
   const [selectedBeds, setSelectedBeds] = useState<string[]>([]);
+  const [isButtonStatesReady, setIsButtonStatesReady] = useState(false);
 
   // Fetch current daily process
   const { data: currentDailyProcess } = useCurrentDailyProcess();
@@ -83,8 +84,7 @@ export default function PacientesOnTimeManagement() {
   // Note: This will return empty array if no daily process exists, which is correct
   const { 
     data: allMedicationProcesses = [], 
-    isLoading: medicationProcessesLoading,
-    isFetching: medicationProcessesFetching
+    isLoading: medicationProcessesLoading
   } = useAllMedicationProcesses(currentDailyProcess?.id);
 
   // Fetch ALL active patients at once (no server-side filtering)
@@ -131,10 +131,11 @@ export default function PacientesOnTimeManagement() {
   }, [allPatients, searchQuery, selectedLineName, selectedBeds]);
 
   // Pre-calculate all button states to avoid individual calculations per button
+  // This automatically updates when allMedicationProcesses changes due to optimistic updates
   const buttonStatesMap = useMemo(() => {
     const statesMap = new Map();
     
-    // Only calculate if we have the data
+    // Calculate button states for all patients
     if (allPatients.length > 0) {
       allPatients.forEach(patient => {
         const patientStates: Record<string, ProcessStatus | null> = {};
@@ -170,6 +171,20 @@ export default function PacientesOnTimeManagement() {
 
   const { data: lines = [], isLoading: linesLoading } = useLines();
 
+  // Use effect to control when button states are considered "ready"
+  useEffect(() => {
+    const hasAllData = !isLoading && !linesLoading && !medicationProcessesLoading;
+    const hasPatients = allPatients.length > 0;
+    const hasCompleteButtonStates = buttonStatesMap.size === allPatients.length && 
+      allPatients.every(patient => buttonStatesMap.has(patient.id));
+    
+    if (hasAllData && hasPatients && hasCompleteButtonStates) {
+      setIsButtonStatesReady(true);
+    } else {
+      setIsButtonStatesReady(false);
+    }
+  }, [isLoading, linesLoading, medicationProcessesLoading, allPatients, buttonStatesMap]);
+
   const handleOpenPatientDetail = (patient: PatientWithRelations) => {
     console.log(
       "Opening patient detail for:",
@@ -199,23 +214,16 @@ export default function PacientesOnTimeManagement() {
     setSelectedBeds([]);
   };
 
-  // Check if all critical data is loaded
-  const isDataLoading = isLoading || linesLoading || (currentDailyProcess && (medicationProcessesLoading || medicationProcessesFetching));
-  
-  // Check if button states are being computed
-  const isComputingStates = allPatients.length > 0 && buttonStatesMap.size === 0;
-  
-  // Overall loading state
-  const isAllDataLoading = isDataLoading || isComputingStates;
+  // Use the new button states ready flag for more precise control
+  const isAllDataLoading = !isButtonStatesReady;
   
   // Show loading state until ALL data is ready
   if (isAllDataLoading) {
     const getLoadingMessage = () => {
       if (isLoading) return "Cargando pacientes...";
       if (linesLoading) return "Cargando líneas...";
-      if (medicationProcessesLoading || medicationProcessesFetching) return "Cargando procesos...";
-      if (isComputingStates) return "Calculando estados de botones...";
-      return "Cargando datos...";
+      if (medicationProcessesLoading) return "Cargando procesos...";
+      return "Calculando estados de botones...";
     };
 
     return (
@@ -254,8 +262,8 @@ export default function PacientesOnTimeManagement() {
               <span>Líneas</span>
             </div>
             
-            <div className={`flex items-center space-x-1 ${!medicationProcessesLoading && !medicationProcessesFetching ? 'text-green-600' : ''}`}>
-              {!medicationProcessesLoading && !medicationProcessesFetching ? (
+            <div className={`flex items-center space-x-1 ${!medicationProcessesLoading ? 'text-green-600' : ''}`}>
+              {!medicationProcessesLoading ? (
                 <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
                   <Check className="w-2 h-2 text-white" />
                 </div>
@@ -265,8 +273,8 @@ export default function PacientesOnTimeManagement() {
               <span>Procesos</span>
             </div>
             
-            <div className={`flex items-center space-x-1 ${!isComputingStates ? 'text-green-600' : ''}`}>
-              {!isComputingStates ? (
+            <div className={`flex items-center space-x-1 ${isButtonStatesReady ? 'text-green-600' : ''}`}>
+              {isButtonStatesReady ? (
                 <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
                   <Check className="w-2 h-2 text-white" />
                 </div>
@@ -279,7 +287,7 @@ export default function PacientesOnTimeManagement() {
           
           {/* Additional info */}
           <div className="text-xs text-muted-foreground text-center max-w-md">
-            {isComputingStates && (
+            {!isButtonStatesReady && allPatients.length > 0 && (
               <p>Procesando {allPatients.length} pacientes y calculando estados de botones...</p>
             )}
           </div>
@@ -452,11 +460,12 @@ export default function PacientesOnTimeManagement() {
           
           <PatientsTable
             patients={patients}
-            isLoading={isLoading}
+            isLoading={false} // Don't show loading since we already handled it above
             onOpenPatientDetail={handleOpenPatientDetail}
             preloadedMedicationProcesses={(allMedicationProcesses as MedicationProcess[]) || []}
             currentDailyProcessId={currentDailyProcess?.id}
             buttonStatesMap={buttonStatesMap}
+            isButtonStatesReady={isButtonStatesReady}
           />
         </CardContent>
       </Card>

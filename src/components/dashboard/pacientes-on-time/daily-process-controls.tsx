@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, XCircle } from "lucide-react";
-import { useCurrentUser } from "@/hooks/use-current-user";
+import { useAuth } from "@/providers/auth-provider";
 import {
   useCurrentDailyProcess,
   useCancelDailyProcess,
@@ -18,7 +18,7 @@ import {
 import { toast } from "@/components/ui/use-toast";
 
 export function DailyProcessControls() {
-  const { user } = useCurrentUser();
+  const { user } = useAuth();
   const { data: currentProcess } = useCurrentDailyProcess();
   const cancelProcess = useCancelDailyProcess();
 
