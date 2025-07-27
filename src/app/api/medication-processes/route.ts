@@ -3,6 +3,7 @@ import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import prisma from "@/lib/prisma";
 import { ProcessStatus, MedicationProcessStep } from "@/types/patient";
+import { LogType as PrismaLogType, MedicationProcessStep as PrismaMedicationProcessStep } from "@prisma/client";
 
 // GET /api/medication-processes - Get medication processes with filters
 export async function GET(request: NextRequest) {
@@ -129,6 +130,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get user profile for logging
+    const userProfileForLogging = await prisma.profile.findUnique({
+      where: { userId: session.user.id },
+    });
+
     // Create the medication process
     const process = await prisma.medicationProcess.create({
       data: {
@@ -148,6 +154,27 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Create automatic log entry for process creation
+    if (userProfileForLogging) {
+      const stepName = getStepDisplayName(step as PrismaMedicationProcessStep);
+      try {
+        await prisma.processErrorLog.create({
+          data: {
+            patientId: process.patientId,
+            medicationProcessId: process.id,
+            step: process.step,
+            logType: PrismaLogType.INFO,
+            message: `${stepName} creado`,
+            reportedBy: session.user.id,
+            reportedByRole: userProfileForLogging.role,
+          },
+        });
+      } catch (logError) {
+        console.error("Error creating process creation log:", logError);
+        // Don't fail the main operation if logging fails
+      }
+    }
+
     return NextResponse.json(process, { status: 201 });
   } catch (error) {
     console.error("Error creating medication process:", error);
@@ -155,5 +182,23 @@ export async function POST(request: NextRequest) {
       { error: "Internal server error" },
       { status: 500 }
     );
+  }
+}
+
+// Helper function to get step display name
+function getStepDisplayName(step: PrismaMedicationProcessStep): string {
+  switch (step) {
+    case PrismaMedicationProcessStep.PREDESPACHO:
+      return "Predespacho";
+    case PrismaMedicationProcessStep.ALISTAMIENTO:
+      return "Alistamiento";
+    case PrismaMedicationProcessStep.VALIDACION:
+      return "Validación";
+    case PrismaMedicationProcessStep.ENTREGA:
+      return "Entrega";
+    case PrismaMedicationProcessStep.DEVOLUCION:
+      return "Devolución";
+    default:
+      return "Proceso";
   }
 }

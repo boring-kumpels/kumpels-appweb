@@ -99,6 +99,8 @@ model Patient {
   // Relations
   bed             Bed           @relation(fields: [bedId], references: [id], onDelete: Cascade)
   medicationProcesses MedicationProcess[]
+  errorLogs       ProcessErrorLog[]
+  manualReturns   ManualReturn[]
   
   @@index([externalId])
   @@index([bedId])
@@ -143,6 +145,7 @@ model MedicationProcess {
   // Relations
   patient         Patient             @relation(fields: [patientId], references: [id], onDelete: Cascade)
   dailyProcess    DailyProcess?       @relation(fields: [dailyProcessId], references: [id], onDelete: SetNull)
+  errorLogs       ProcessErrorLog[]
   
   @@unique([patientId, step, dailyProcessId])
   @@index([patientId])
@@ -150,4 +153,78 @@ model MedicationProcess {
   @@index([status])
   @@index([dailyProcessId])
   @@map("medication_processes")
+}
+
+enum LogType {
+  ERROR
+  WARNING
+  INFO
+}
+
+model ProcessErrorLog {
+  id                  String              @id @default(cuid())
+  patientId           String
+  medicationProcessId String?             // Optional link to specific medication process
+  step                MedicationProcessStep?  // Process step where error occurred
+  logType             LogType             @default(INFO)
+  message             String
+  reportedBy          String              // User ID who reported the error
+  reportedByRole      UserRole
+  resolvedAt          DateTime?
+  resolvedBy          String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  
+  // Relations
+  patient             Patient             @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  medicationProcess   MedicationProcess?  @relation(fields: [medicationProcessId], references: [id], onDelete: SetNull)
+  
+  @@index([patientId])
+  @@index([medicationProcessId])
+  @@index([logType])
+  @@index([createdAt])
+  @@map("process_error_logs")
+}
+
+enum ManualReturnStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model ManualReturn {
+  id              String              @id @default(cuid())
+  patientId       String
+  generatedBy     String              // User ID who generated the return
+  reviewedBy      String?             // User ID who reviewed/approved the return
+  status          ManualReturnStatus  @default(PENDING)
+  approvalDate    DateTime?
+  cause           String
+  comments        String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  patient         Patient             @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  supplies        ManualReturnSupply[]
+  
+  @@index([patientId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("manual_returns")
+}
+
+model ManualReturnSupply {
+  id              String        @id @default(cuid())
+  manualReturnId  String
+  supplyCode      String
+  supplyName      String
+  quantityReturned Int
+  createdAt       DateTime      @default(now())
+  
+  // Relations
+  manualReturn    ManualReturn  @relation(fields: [manualReturnId], references: [id], onDelete: Cascade)
+  
+  @@index([manualReturnId])
+  @@map("manual_return_supplies")
 }

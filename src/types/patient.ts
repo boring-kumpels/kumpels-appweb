@@ -28,6 +28,18 @@ export enum ProcessStatus {
   ERROR = "ERROR",
 }
 
+export enum LogType {
+  ERROR = "ERROR",
+  WARNING = "WARNING",
+  INFO = "INFO",
+}
+
+export enum ManualReturnStatus {
+  PENDING = "PENDING",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+}
+
 export enum DailyProcessStatus {
   ACTIVE = "ACTIVE",
   COMPLETED = "COMPLETED",
@@ -89,6 +101,50 @@ export interface Patient {
   updatedAt: Date;
   bed?: Bed;
   medicationProcesses?: MedicationProcess[];
+  errorLogs?: ProcessErrorLog[];
+  manualReturns?: ManualReturn[];
+}
+
+export interface ProcessErrorLog {
+  id: string;
+  patientId: string;
+  medicationProcessId?: string;
+  step?: MedicationProcessStep;
+  logType: LogType;
+  message: string;
+  reportedBy: string;
+  reportedByRole: string;
+  resolvedAt?: Date;
+  resolvedBy?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  patient?: Patient;
+  medicationProcess?: MedicationProcess;
+}
+
+export interface ManualReturn {
+  id: string;
+  patientId: string;
+  generatedBy: string;
+  reviewedBy?: string;
+  status: ManualReturnStatus;
+  approvalDate?: Date;
+  cause: string;
+  comments?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  patient?: Patient;
+  supplies?: ManualReturnSupply[];
+}
+
+export interface ManualReturnSupply {
+  id: string;
+  manualReturnId: string;
+  supplyCode: string;
+  supplyName: string;
+  quantityReturned: number;
+  createdAt: Date;
+  manualReturn?: ManualReturn;
 }
 
 export interface PatientWithRelations extends Patient {
@@ -194,3 +250,60 @@ export type ProcessStepPermissionMap = Record<
   MedicationProcessStep,
   ProcessStepPermissions
 >;
+
+// Error Log Types
+export interface CreateProcessErrorLogData {
+  patientId: string;
+  medicationProcessId?: string;
+  step?: MedicationProcessStep;
+  logType: LogType;
+  message: string;
+  reportedByRole: string;
+}
+
+export interface UpdateProcessErrorLogData {
+  resolvedAt?: Date;
+  resolvedBy?: string;
+}
+
+export interface ProcessErrorLogFilters {
+  patientId?: string;
+  medicationProcessId?: string;
+  step?: MedicationProcessStep;
+  logType?: LogType;
+  resolvedAt?: Date;
+}
+
+// Manual Return Types
+export interface CreateManualReturnData {
+  patientId: string;
+  cause: string;
+  comments?: string;
+  supplies: {
+    supplyCode: string;
+    supplyName: string;
+    quantityReturned: number;
+  }[];
+}
+
+export interface UpdateManualReturnData {
+  status?: ManualReturnStatus;
+  reviewedBy?: string;
+  approvalDate?: Date;
+  comments?: string;
+}
+
+export interface ManualReturnFilters {
+  patientId?: string;
+  status?: ManualReturnStatus;
+  generatedBy?: string;
+  reviewedBy?: string;
+}
+
+// Extended Patient with new relations
+export interface PatientWithFullRelations extends Patient {
+  bed: Bed;
+  medicationProcesses: MedicationProcess[];
+  errorLogs: ProcessErrorLog[];
+  manualReturns: ManualReturn[];
+}

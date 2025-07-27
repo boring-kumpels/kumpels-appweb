@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import prisma from "@/lib/prisma";
-import { ProcessStatus as PrismaProcessStatus, MedicationProcessStep as PrismaMedicationProcessStep } from "@prisma/client";
+import { ProcessStatus as PrismaProcessStatus, MedicationProcessStep as PrismaMedicationProcessStep, LogType as PrismaLogType } from "@prisma/client";
 
 // GET /api/medication-processes/[id] - Get a specific medication process
 export async function GET(
@@ -78,8 +78,8 @@ export async function PATCH(
     
     const { id } = await params;
 
-    // Get current process
-    const currentProcess = await prisma.medicationProcess.findUnique({
+    // Get current process with retry logic for race conditions
+    let currentProcess = await prisma.medicationProcess.findUnique({
       where: { id },
       include: {
         patient: {
@@ -91,7 +91,25 @@ export async function PATCH(
     });
 
     if (!currentProcess) {
-      return NextResponse.json({ error: "Process not found" }, { status: 404 });
+      // Double-check if this might be a race condition - try once more
+      await new Promise(resolve => setTimeout(resolve, 100)); // Wait 100ms
+      currentProcess = await prisma.medicationProcess.findUnique({
+        where: { id },
+        include: {
+          patient: {
+            include: {
+              bed: true,
+            },
+          },
+        },
+      });
+      
+      if (!currentProcess) {
+        return NextResponse.json({ 
+          error: "Process not found", 
+          details: "El proceso puede haber sido eliminado o modificado por otro usuario."
+        }, { status: 404 });
+      }
     }
 
     // Role-based validation
@@ -137,6 +155,41 @@ export async function PATCH(
         },
       },
     });
+
+    // Create automatic status change log entries
+    if (status && status !== currentProcess.status) {
+      const stepName = getStepDisplayName(currentProcess.step);
+      let message = "";
+      
+      if (status === PrismaProcessStatus.IN_PROGRESS) {
+        message = `${stepName} iniciado`;
+      } else if (status === PrismaProcessStatus.COMPLETED) {
+        message = `${stepName} completado`;
+      } else if (status === PrismaProcessStatus.ERROR) {
+        message = `${stepName} marcado con error`;
+      } else if (status === PrismaProcessStatus.PENDING) {
+        message = `${stepName} reiniciado`;
+      }
+
+      if (message) {
+        try {
+          await prisma.processErrorLog.create({
+            data: {
+              patientId: currentProcess.patientId,
+              medicationProcessId: currentProcess.id,
+              step: currentProcess.step,
+              logType: PrismaLogType.INFO,
+              message: message,
+              reportedBy: session.user.id,
+              reportedByRole: userProfile.role,
+            },
+          });
+        } catch (logError) {
+          console.error("Error creating status change log:", logError);
+          // Don't fail the main operation if logging fails
+        }
+      }
+    }
 
     return NextResponse.json(updatedProcess);
   } catch (error) {
@@ -188,6 +241,24 @@ export async function DELETE(
       { error: "Internal server error" },
       { status: 500 }
     );
+  }
+}
+
+// Helper function to get step display name
+function getStepDisplayName(step: PrismaMedicationProcessStep): string {
+  switch (step) {
+    case PrismaMedicationProcessStep.PREDESPACHO:
+      return "Predespacho";
+    case PrismaMedicationProcessStep.ALISTAMIENTO:
+      return "Alistamiento";
+    case PrismaMedicationProcessStep.VALIDACION:
+      return "Validación";
+    case PrismaMedicationProcessStep.ENTREGA:
+      return "Entrega";
+    case PrismaMedicationProcessStep.DEVOLUCION:
+      return "Devolución";
+    default:
+      return "Proceso";
   }
 }
 

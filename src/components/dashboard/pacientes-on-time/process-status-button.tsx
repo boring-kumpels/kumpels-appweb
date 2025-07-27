@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 import {
   MedicationProcessStep,
   ProcessStatus,
@@ -21,15 +22,6 @@ import {
 import { useAuth } from "@/providers/auth-provider";
 import { useCurrentDailyProcess } from "@/hooks/use-daily-processes";
 import { useCreateDailyProcess } from "@/hooks/use-daily-processes";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -48,8 +40,7 @@ export function ProcessStatusButton({
   preloadedProcess,
   preCalculatedState,
 }: ProcessStatusButtonProps) {
-  const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
-  const [errorNotes, setErrorNotes] = useState("");
+  const [isSyncing, setIsSyncing] = useState(false);
   const { user, profile } = useAuth();
   const { data: currentDailyProcess } = useCurrentDailyProcess();
   const createDailyProcess = useCreateDailyProcess();
@@ -101,6 +92,16 @@ export function ProcessStatusButton({
   }
 
   const handleButtonClick = async () => {
+    // Prevent any action if process is in ERROR status
+    if (process?.status === ProcessStatus.ERROR) {
+      toast({
+        title: "Error",
+        description: "Este proceso tiene un error. Debe ser resuelto desde la página de detalles del paciente.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!user || !profile) {
       toast({
         title: "Error",
@@ -109,6 +110,9 @@ export function ProcessStatusButton({
       });
       return;
     }
+
+    // Set syncing state to show loading indicator
+    setIsSyncing(true);
 
     try {
       let dailyProcess = currentDailyProcess;
@@ -163,8 +167,6 @@ export function ProcessStatusButton({
           expectedFinalStatus = ProcessStatus.IN_PROGRESS;
         } else if (process.status === ProcessStatus.IN_PROGRESS && canComplete) {
           expectedFinalStatus = ProcessStatus.COMPLETED;
-        } else if (process.status === ProcessStatus.ERROR) {
-          expectedFinalStatus = ProcessStatus.IN_PROGRESS;
         } else {
           return; // No action needed
         }
@@ -173,8 +175,9 @@ export function ProcessStatusButton({
       // Perform optimistic update immediately
       if (!process) {
         // Create optimistic process first
+        const optimisticId = `temp-${Date.now()}-${Math.random()}`;
         const optimisticProcess: MedicationProcess = {
-          id: `temp-${Date.now()}`,
+          id: optimisticId,
           patientId: patient.id,
           dailyProcessId: dailyProcess.id,
           step: step,
@@ -195,35 +198,50 @@ export function ProcessStatusButton({
           [...currentProcesses, optimisticProcess]
         );
 
-        // Now perform the actual operations in the background
-        const createdProcess = await createProcess.mutateAsync({
-          patientId: patient.id,
-          step,
-          dailyProcessId: dailyProcess.id,
-        });
+        try {
+          // Now perform the actual operations in the background
+          const createdProcess = await createProcess.mutateAsync({
+            patientId: patient.id,
+            step,
+            dailyProcessId: dailyProcess.id,
+          });
 
-        // Continue with the workflow based on expected status
-        let finalProcess = createdProcess;
-        if (expectedFinalStatus === ProcessStatus.IN_PROGRESS) {
-          finalProcess = await startProcess.mutateAsync(createdProcess.id);
-        } else if (expectedFinalStatus === ProcessStatus.COMPLETED) {
-          await startProcess.mutateAsync(createdProcess.id);
-          finalProcess = await completeProcess.mutateAsync(createdProcess.id);
+          // Continue with the workflow based on expected status
+          let finalProcess = createdProcess;
+          if (expectedFinalStatus === ProcessStatus.IN_PROGRESS) {
+            finalProcess = await startProcess.mutateAsync(createdProcess.id);
+          } else if (expectedFinalStatus === ProcessStatus.COMPLETED) {
+            await startProcess.mutateAsync(createdProcess.id);
+            finalProcess = await completeProcess.mutateAsync(createdProcess.id);
+          }
+
+          // Update the optimistic process with the real data once all operations complete
+          const finalCurrentProcesses = queryClient.getQueryData<MedicationProcess[]>([
+            "all-medication-processes",
+            dailyProcess.id,
+          ]) || [];
+          
+          const finalProcesses = finalCurrentProcesses.map(p => 
+            p.id === optimisticId ? finalProcess : p
+          );
+          queryClient.setQueryData(
+            ["all-medication-processes", dailyProcess.id],
+            finalProcesses
+          );
+        } catch (error) {
+          // Remove the optimistic process on error
+          const revertProcesses = queryClient.getQueryData<MedicationProcess[]>([
+            "all-medication-processes",
+            dailyProcess.id,
+          ]) || [];
+          
+          const filteredProcesses = revertProcesses.filter(p => p.id !== optimisticId);
+          queryClient.setQueryData(
+            ["all-medication-processes", dailyProcess.id],
+            filteredProcesses
+          );
+          throw error; // Re-throw to be caught by outer error handler
         }
-
-        // Update the optimistic process with the real data once all operations complete
-        const finalCurrentProcesses = queryClient.getQueryData<MedicationProcess[]>([
-          "all-medication-processes",
-          dailyProcess.id,
-        ]) || [];
-        
-        const finalProcesses = finalCurrentProcesses.map(p => 
-          p.id === optimisticProcess.id ? finalProcess : p
-        );
-        queryClient.setQueryData(
-          ["all-medication-processes", dailyProcess.id],
-          finalProcesses
-        );
       } else {
         // Update existing process optimistically
         const currentProcesses = queryClient.getQueryData<MedicationProcess[]>([
@@ -231,6 +249,7 @@ export function ProcessStatusButton({
           dailyProcess.id,
         ]) || [];
         
+        const originalProcess = currentProcesses.find(p => p.id === process.id);
         const updatedProcesses = currentProcesses.map(p => 
           p.id === process.id 
             ? { ...p, status: expectedFinalStatus, updatedAt: new Date() }
@@ -241,30 +260,49 @@ export function ProcessStatusButton({
           updatedProcesses
         );
 
-        // Perform actual server operations and update with real data
-        let finalProcess = process;
-        if (expectedFinalStatus === ProcessStatus.IN_PROGRESS) {
-          finalProcess = await startProcess.mutateAsync(process.id);
-        } else if (expectedFinalStatus === ProcessStatus.COMPLETED) {
-          if (process.status === ProcessStatus.PENDING) {
-            await startProcess.mutateAsync(process.id);
+        try {
+          // Perform actual server operations and update with real data
+          let finalProcess = process;
+          if (expectedFinalStatus === ProcessStatus.IN_PROGRESS) {
+            finalProcess = await startProcess.mutateAsync(process.id);
+          } else if (expectedFinalStatus === ProcessStatus.COMPLETED) {
+            if (process.status === ProcessStatus.PENDING) {
+              await startProcess.mutateAsync(process.id);
+            }
+            finalProcess = await completeProcess.mutateAsync(process.id);
           }
-          finalProcess = await completeProcess.mutateAsync(process.id);
-        }
 
-        // Update the cache with the real data once operations complete
-        const finalUpdatedProcesses = queryClient.getQueryData<MedicationProcess[]>([
-          "all-medication-processes",
-          dailyProcess.id,
-        ]) || [];
-        
-        const completedProcesses = finalUpdatedProcesses.map(p => 
-          p.id === process.id ? finalProcess : p
-        );
-        queryClient.setQueryData(
-          ["all-medication-processes", dailyProcess.id],
-          completedProcesses
-        );
+          // Update the cache with the real data once operations complete
+          const finalUpdatedProcesses = queryClient.getQueryData<MedicationProcess[]>([
+            "all-medication-processes",
+            dailyProcess.id,
+          ]) || [];
+          
+          const completedProcesses = finalUpdatedProcesses.map(p => 
+            p.id === process.id ? finalProcess : p
+          );
+          queryClient.setQueryData(
+            ["all-medication-processes", dailyProcess.id],
+            completedProcesses
+          );
+        } catch (error) {
+          // Revert the optimistic update on error
+          if (originalProcess) {
+            const revertProcesses = queryClient.getQueryData<MedicationProcess[]>([
+              "all-medication-processes",
+              dailyProcess.id,
+            ]) || [];
+            
+            const revertedProcesses = revertProcesses.map(p => 
+              p.id === process.id ? originalProcess : p
+            );
+            queryClient.setQueryData(
+              ["all-medication-processes", dailyProcess.id],
+              revertedProcesses
+            );
+          }
+          throw error; // Re-throw to be caught by outer error handler
+        }
       }
       
       // Only invalidate daily process queries if a new one was created
@@ -280,47 +318,35 @@ export function ProcessStatusButton({
     } catch (error) {
       console.error("Error handling process:", error);
       
-      // Revert optimistic updates on error by invalidating and refetching
-      queryClient.invalidateQueries({ 
-        queryKey: ["all-medication-processes"],
-        refetchType: "active"
-      });
+      // Get error message
+      const errorMessage = error instanceof Error ? error.message : "Error desconocido";
       
-      toast({
-        title: "Error",
-        description: "Error al procesar la acción",
-        variant: "destructive",
-      });
+      // For conflict errors (409), invalidate and refetch to get latest state
+      if (errorMessage.includes("Ya existe un proceso") || errorMessage.includes("Process not found")) {
+        queryClient.invalidateQueries({ 
+          queryKey: ["all-medication-processes", currentDailyProcess?.id],
+          refetchType: "active"
+        });
+        
+        toast({
+          title: "Estado actualizado",
+          description: "Se ha detectado un cambio. La vista se ha actualizada con el estado más reciente.",
+          variant: "default",
+        });
+      } else {
+        // For other errors, just show the error message
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
+    } finally {
+      // Always clear syncing state
+      setIsSyncing(false);
     }
   };
 
-  const handleErrorReport = async () => {
-    if (!process) return;
-
-    try {
-      await fetch(`/api/medication-processes/${process.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: ProcessStatus.ERROR,
-          notes: errorNotes,
-        }),
-      });
-
-      setIsErrorDialogOpen(false);
-      setErrorNotes("");
-      toast({
-        title: "Error reportado",
-        description: "Se ha reportado el error correctamente",
-      });
-    } catch {
-      toast({
-        title: "Error",
-        description: "Error al reportar el problema",
-        variant: "destructive",
-      });
-    }
-  };
 
 
   const stepName = getStepDisplayName(step);
@@ -338,6 +364,11 @@ export function ProcessStatusButton({
 
   // Determine if button should be clickable
   const isClickable = (() => {
+    // If syncing is in progress, disable the button
+    if (isSyncing) {
+      return false;
+    }
+    
     // If preCalculatedState is undefined, button states are still being computed
     // Don't allow clicks during this phase to prevent inconsistent behavior
     if (preCalculatedState === undefined) {
@@ -364,7 +395,7 @@ export function ProcessStatusButton({
       case ProcessStatus.COMPLETED:
         return false; // Cannot modify completed process
       case ProcessStatus.ERROR:
-        return canStart; // Can retry from error
+        return false; // Cannot interact with error status - must be resolved from detail page
       default:
         return canStart; // Can create new process if step is enabled and button shows as enabled
     }
@@ -372,6 +403,11 @@ export function ProcessStatusButton({
 
   // Determine button text based on status and step
   const getButtonText = () => {
+    // If syncing is in progress, show syncing text
+    if (isSyncing) {
+      return "Sync...";
+    }
+    
     // If states are being computed, show loading indicator
     if (preCalculatedState === undefined) {
       return "...";
@@ -387,59 +423,18 @@ export function ProcessStatusButton({
       <Button
         variant="ghost"
         size="sm"
-        className={`px-3 py-1 h-8 min-w-[80px] rounded-full text-xs font-medium ${colorClass} ${!isClickable ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+        className={`px-3 py-1 h-8 min-w-[80px] rounded-full text-xs font-medium ${colorClass} ${!isClickable ? 'cursor-not-allowed' : 'cursor-pointer'} ${isSyncing ? 'opacity-75' : ''}`}
         onClick={isClickable ? handleButtonClick : undefined}
-        disabled={!isClickable || preCalculatedState === undefined}
+        disabled={!isClickable || preCalculatedState === undefined || isSyncing}
       >
-        {buttonText}
+        <div className="flex items-center gap-1">
+          {isSyncing && (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          )}
+          <span>{buttonText}</span>
+        </div>
       </Button>
 
-      {/* Error Report Dialog - Only show for processes that can have errors */}
-      {process && canStart && (
-        <Dialog open={isErrorDialogOpen} onOpenChange={setIsErrorDialogOpen}>
-          <DialogTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="px-2 py-1 h-7 rounded-full text-xs font-medium bg-red-50 text-red-600 border-red-200"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsErrorDialogOpen(true);
-              }}
-            >
-              !
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Reportar Error - {stepName}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="error-notes">Descripción del problema</Label>
-                <Textarea
-                  id="error-notes"
-                  placeholder="Describe el problema encontrado..."
-                  value={errorNotes}
-                  onChange={(e) => setErrorNotes(e.target.value)}
-                  rows={3}
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsErrorDialogOpen(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button onClick={handleErrorReport} disabled={!errorNotes.trim()}>
-                  Reportar Error
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
     </div>
   );
 }

@@ -147,8 +147,26 @@ export const useCreateMedicationProcess = () => {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to create medication process");
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+        
+        // Handle specific error cases
+        if (response.status === 409) {
+          throw new Error("Ya existe un proceso para este paciente y paso. Actualizando vista...");
+        }
+        
+        if (response.status === 403) {
+          throw new Error("No tienes permisos para crear este proceso.");
+        }
+        
+        if (response.status === 401) {
+          throw new Error("Sesión expirada. Por favor, inicia sesión nuevamente.");
+        }
+        
+        if (response.status === 400) {
+          throw new Error("Datos inválidos para crear el proceso.");
+        }
+        
+        throw new Error(errorData.error || "Error al crear el proceso de medicación");
       }
 
       return response.json();
@@ -182,8 +200,22 @@ export const useUpdateMedicationProcess = () => {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to update medication process");
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+        
+        // Handle specific error cases
+        if (response.status === 404) {
+          throw new Error("El proceso no fue encontrado. Puede haber sido eliminado o modificado por otro usuario.");
+        }
+        
+        if (response.status === 403) {
+          throw new Error("No tienes permisos para realizar esta acción.");
+        }
+        
+        if (response.status === 401) {
+          throw new Error("Sesión expirada. Por favor, inicia sesión nuevamente.");
+        }
+        
+        throw new Error(errorData.error || "Error al actualizar el proceso de medicación");
       }
 
       return response.json();

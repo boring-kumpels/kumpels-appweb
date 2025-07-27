@@ -37,9 +37,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { usePatient } from "@/hooks/use-patients";
 import { useCurrentDailyProcess } from "@/hooks/use-daily-processes";
-import { useAllMedicationProcesses } from "@/hooks/use-medication-processes";
+import { useAllMedicationProcesses, useUpdateMedicationProcess } from "@/hooks/use-medication-processes";
+import { useProcessErrorLogs, useCreateProcessErrorLog } from "@/hooks/use-process-error-logs";
+import { useManualReturns, useCreateManualReturn, useApproveManualReturn, useRejectManualReturn } from "@/hooks/use-manual-returns";
 import { ProcessStatusButton } from "./process-status-button";
-import { MedicationProcessStep, ProcessStatus, PatientWithRelations, MedicationProcess } from "@/types/patient";
+import { MedicationProcessStep, ProcessStatus, PatientWithRelations, MedicationProcess, LogType } from "@/types/patient";
+import { UserRole } from "@prisma/client";
 import { getLineDisplayName } from "@/lib/lines";
 
 // Helper function to calculate button state (same as in management component)
@@ -101,7 +104,8 @@ type ProcessTab =
   | "devoluciones"
   | "devoluciones_manuales";
 
-interface LogEntry {
+// UI-specific interfaces for compatibility
+interface LogEntryDisplay {
   id: string;
   timestamp: string;
   role: string;
@@ -111,75 +115,6 @@ interface LogEntry {
   patientId: string;
 }
 
-interface ManualReturn {
-  id: string;
-  generatedBy: string;
-  reviewedBy: string;
-  creationDate: string;
-  approvalDate: string;
-  supplies: {
-    code: string;
-    supplyCode: string;
-    supply: string;
-    quantityReturned: number;
-  }[];
-  cause: string;
-  comments: string;
-}
-
-
-// Mock log entries based on the image
-const initialLogEntries: LogEntry[] = [
-  {
-    id: "1",
-    timestamp: "2025-07-22 07:11:59",
-    role: "PharmacyRegents",
-    message: "Se ha producido un error en el proceso de predespacho.",
-    type: "error",
-    patientName: "JESUS PEREZ",
-    patientId: "1231231231",
-  },
-  {
-    id: "2",
-    timestamp: "2025-07-22 07:21:32",
-    role: "PharmacyRegents",
-    message: "Se ha producido un error en el proceso de alistamiento.",
-    type: "error",
-    patientName: "JESUS PEREZ",
-    patientId: "1231231231",
-  },
-  {
-    id: "3",
-    timestamp: "2025-07-22 09:39:45",
-    role: "SUPERUSER",
-    message: "que paso",
-    type: "info",
-    patientName: "JESUS PEREZ",
-    patientId: "1231231231",
-  },
-];
-
-// Mock manual return data based on the image
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const mockManualReturn: ManualReturn = {
-  id: "1",
-  generatedBy: "Nurse",
-  reviewedBy: "PharmacyRegents",
-  creationDate: "7/21/2025, 10:13:36 PM",
-  approvalDate: "7/21/2025, 10:14:41 PM",
-  supplies: [
-    {
-      code: "f4f5644f-8732-4477-acd6-99e85fb78866",
-      supplyCode: "1400740",
-      supply:
-        "ABATACEPT 125MG/1ML SOL INYECTABLE SC JER PRELLENA* 1ML BRISTOL CJ *4U (ORENCIA)",
-      quantityReturned: 1,
-    },
-  ],
-  cause: "Cambio de vía de administración",
-  comments: "Comentario no proporcionado",
-};
-
 export default function PatientDetailView({ patientId }: PatientDetailViewProps) {
   const router = useRouter();
   const { profile } = useAuth();
@@ -187,9 +122,8 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
   const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
   const [isManualReturnModalOpen, setIsManualReturnModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [logEntries, setLogEntries] = useState<LogEntry[]>(initialLogEntries);
   const [newMessage, setNewMessage] = useState("");
-  const [manualReturn, setManualReturn] = useState<ManualReturn | null>(null);
+  const [selectedErrorStep, setSelectedErrorStep] = useState<MedicationProcessStep | "">("");
   
   // Manual Returns state
   const [selectedSupply, setSelectedSupply] = useState("");
@@ -212,6 +146,24 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
   const { data: allMedicationProcesses = [] } = useAllMedicationProcesses(
     currentDailyProcess?.id
   );
+
+  // Fetch all logs for this patient (including resolved status change logs)
+  const { data: errorLogs = [] } = useProcessErrorLogs({
+    filters: { patientId },
+    includeResolved: true, // Include all logs to show complete timeline
+  });
+
+  // Fetch real manual returns for this patient  
+  const { data: manualReturns = [] } = useManualReturns({
+    filters: { patientId },
+  });
+
+  // Mutations
+  const createErrorLog = useCreateProcessErrorLog();
+  const updateMedicationProcess = useUpdateMedicationProcess();
+  const createManualReturn = useCreateManualReturn();
+  const approveManualReturn = useApproveManualReturn();
+  const rejectManualReturn = useRejectManualReturn();
   
   // Filter processes for this patient
   const patientProcesses = allMedicationProcesses.filter(
@@ -305,27 +257,72 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
     devoluciones_manuales: [],
   };
 
-  const handleAddMessage = () => {
-    if (newMessage.trim()) {
-      const now = new Date();
-      const timestamp = now.toISOString().slice(0, 19).replace("T", " ");
-
-      const newEntry: LogEntry = {
-        id: Date.now().toString(),
-        timestamp,
-        role: "SUPERUSER",
-        message: newMessage.trim(),
-        type: "info",
-        patientName: `${patient.firstName} ${patient.lastName}`,
-        patientId: patient.externalId,
-      };
-
-      setLogEntries((prev) => [newEntry, ...prev]);
-      setNewMessage("");
+  const handleAddMessage = async () => {
+    if (newMessage.trim() && patient) {
+      try {
+        await createErrorLog.mutateAsync({
+          patientId: patient.id,
+          logType: LogType.INFO,
+          message: newMessage.trim(),
+          reportedByRole: profile?.role || UserRole.SUPERADMIN,
+        });
+        setNewMessage("");
+      } catch (error) {
+        console.error("Error creating log entry:", error);
+      }
     }
   };
 
-  const LogEntryComponent = ({ entry }: { entry: LogEntry }) => {
+  const handleReportError = async () => {
+    if (newMessage.trim() && selectedErrorStep && patient) {
+      try {
+        // Find the medication process for this patient and step
+        const medicationProcess = patientProcesses.find(
+          p => p.step === selectedErrorStep && p.patientId === patient.id
+        );
+
+        // Create the error log
+        await createErrorLog.mutateAsync({
+          patientId: patient.id,
+          medicationProcessId: medicationProcess?.id,
+          step: selectedErrorStep as MedicationProcessStep,
+          logType: LogType.ERROR,
+          message: newMessage.trim(),
+          reportedByRole: profile?.role || UserRole.SUPERADMIN,
+        });
+
+        // Update the medication process to ERROR status if it exists
+        if (medicationProcess) {
+          await updateMedicationProcess.mutateAsync({
+            id: medicationProcess.id,
+            data: {
+              status: ProcessStatus.ERROR,
+              notes: `Error reported: ${newMessage.trim()}`,
+            },
+          });
+        }
+
+        setNewMessage("");
+        setSelectedErrorStep("");
+        setIsEmergencyModalOpen(false);
+      } catch (error) {
+        console.error("Error reporting error:", error);
+      }
+    }
+  };
+
+  // Convert error logs to display format
+  const logEntries: LogEntryDisplay[] = errorLogs.map(log => ({
+    id: log.id,
+    timestamp: new Date(log.createdAt).toLocaleString(),
+    role: log.reportedByRole,
+    message: log.message,
+    type: log.logType.toLowerCase() as "error" | "info" | "warning",
+    patientName: patient ? `${patient.firstName} ${patient.lastName}` : "",
+    patientId: patient?.externalId || "",
+  }));
+
+  const LogEntryComponent = ({ entry }: { entry: LogEntryDisplay }) => {
     const getTypeIcon = (type: string) => {
       switch (type) {
         case "error":
@@ -510,122 +507,104 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
                       Devoluciones Manuales Registradas
                     </p>
 
-                    {/* Manual Return Card */}
-                    {manualReturn ? (
-                      <Card>
-                        <CardContent className="p-6">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-lg font-semibold text-foreground">
-                                  {manualReturn.supplies[0]?.supply ||
-                                    "Omeprazol 20mg"}
-                                </h3>
-                                <div className="flex items-center space-x-2">
-                                  <span className="text-xs text-muted-foreground bg-gray-100 px-2 py-1 rounded-full">
-                                    Cantidad:{" "}
-                                    {manualReturn.supplies[0]
-                                      ?.quantityReturned || 1}
-                                  </span>
-                                  <svg
-                                    className="h-4 w-4 text-gray-400"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                    />
-                                  </svg>
+                    {/* Manual Return Cards */}
+                    {manualReturns.length > 0 ? (
+                      <div className="space-y-4">
+                        {manualReturns.map((manualReturn) => (
+                          <Card key={manualReturn.id}>
+                            <CardContent className="p-6">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-lg font-semibold text-foreground">
+                                      {manualReturn.supplies?.[0]?.supplyName ||
+                                        "Medicamento"}
+                                    </h3>
+                                    <div className="flex items-center space-x-2">
+                                      <span className="text-xs text-muted-foreground bg-gray-100 px-2 py-1 rounded-full">
+                                        Cantidad:{" "}
+                                        {manualReturn.supplies?.[0]?.quantityReturned || 0}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-2 mb-4">
+                                    <p className="text-sm">
+                                      <span className="font-medium">Causas:</span>{" "}
+                                      {manualReturn.cause}
+                                    </p>
+                                    <p className="text-sm">
+                                      <span className="font-medium">
+                                        Comentario:
+                                      </span>{" "}
+                                      {manualReturn.comments || "Sin comentarios"}
+                                    </p>
+                                  </div>
+
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                                      <svg
+                                        className="h-4 w-4"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth={2}
+                                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        />
+                                      </svg>
+                                      <span>
+                                        {new Date(manualReturn.createdAt).toLocaleString()}
+                                      </span>
+                                    </div>
+
+                                    <div className="flex items-center space-x-2">
+                                      <span className={`text-xs px-2 py-1 rounded-full ${
+                                        manualReturn.status === "PENDING" 
+                                          ? "bg-orange-100 text-orange-800"
+                                          : manualReturn.status === "APPROVED"
+                                          ? "bg-green-100 text-green-800" 
+                                          : "bg-red-100 text-red-800"
+                                      }`}>
+                                        {manualReturn.status === "PENDING" && "En espera de revisión"}
+                                        {manualReturn.status === "APPROVED" && "Aprobado"}
+                                        {manualReturn.status === "REJECTED" && "Rechazado"}
+                                      </span>
+                                      
+                                      {manualReturn.status === "PENDING" && (
+                                        <>
+                                          <Button
+                                            size="sm"
+                                            className="bg-green-500 hover:bg-green-600"
+                                            onClick={() => approveManualReturn.mutate(manualReturn.id)}
+                                            disabled={approveManualReturn.isPending}
+                                          >
+                                            <Check className="h-4 w-4 mr-1" />
+                                            Aprobar
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="border-red-500 text-red-500 hover:bg-red-50"
+                                            onClick={() => rejectManualReturn.mutate(manualReturn.id)}
+                                            disabled={rejectManualReturn.isPending}
+                                          >
+                                            <AlertTriangle className="h-4 w-4 mr-1" />
+                                            Rechazar
+                                          </Button>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
-
-                              <div className="space-y-2 mb-4">
-                                <p className="text-sm">
-                                  <span className="font-medium">Causas:</span>{" "}
-                                  {manualReturn.cause}
-                                </p>
-                                <p className="text-sm">
-                                  <span className="font-medium">
-                                    Comentario:
-                                  </span>{" "}
-                                  {manualReturn.comments}
-                                </p>
-                              </div>
-
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                                  <svg
-                                    className="h-4 w-4"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                                    />
-                                  </svg>
-                                  <span>
-                                    {manualReturn.creationDate} -{" "}
-                                    {manualReturn.generatedBy}
-                                  </span>
-                                </div>
-
-                                <div className="flex items-center space-x-2">
-                                  <span className="text-xs text-muted-foreground bg-gray-100 px-2 py-1 rounded-full">
-                                    En espera de aceptación por Farmacia
-                                  </span>
-                                  <Button
-                                    size="sm"
-                                    className="bg-green-500 hover:bg-green-600"
-                                  >
-                                    <svg
-                                      className="h-4 w-4 mr-1"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M5 13l4 4L19 7"
-                                      />
-                                    </svg>
-                                    Aprobar
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="border-red-500 text-red-500 hover:bg-red-50"
-                                  >
-                                    <svg
-                                      className="h-4 w-4 mr-1"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M6 18L18 6M6 6l12 12"
-                                      />
-                                    </svg>
-                                    Rechazar
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
                     ) : (
                       <div className="text-center py-8">
                         <p className="text-muted-foreground">
@@ -636,23 +615,39 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    {/* Process Steps with States */}
-                    <div className="grid grid-cols-3 gap-4">
+                    {/* Process Steps with Enhanced Layout */}
+                    <div className="grid grid-cols-3 gap-6">
                       {processSteps[activeTab]?.map((step) => {
                         return (
-                          <div key={step.id} className="text-center space-y-2">
-                            <div className="text-sm font-medium text-muted-foreground">
-                              {step.name}
+                          <div key={step.id} className="flex flex-col items-center space-y-3">
+                            {/* Process Button */}
+                            <div className="flex flex-col items-center space-y-2">
+                              <ProcessStatusButton
+                                patient={patient}
+                                step={step.step}
+                                userRole={profile?.role || ""}
+                                preloadedProcess={patientProcesses.find(
+                                  p => p.step === step.step
+                                )}
+                                preCalculatedState={buttonStates[step.step]}
+                              />
+                              {/* Step Label Below Button */}
+                              <div className="text-sm font-medium text-muted-foreground text-center">
+                                {step.name}
+                              </div>
                             </div>
-                            <ProcessStatusButton
-                              patient={patient}
-                              step={step.step}
-                              userRole={profile?.role || ""}
-                              preloadedProcess={patientProcesses.find(
-                                p => p.step === step.step
-                              )}
-                              preCalculatedState={buttonStates[step.step]}
-                            />
+                            
+                            {/* Step Icon and Status */}
+                            <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                              {step.icon}
+                              <span className="capitalize">
+                                {step.status === ProcessStatus.COMPLETED && "Completado"}
+                                {step.status === ProcessStatus.IN_PROGRESS && "En Progreso"}
+                                {step.status === ProcessStatus.PENDING && "Pendiente"}
+                                {step.status === ProcessStatus.ERROR && "Error"}
+                                {!step.status && "Sin Iniciar"}
+                              </span>
+                            </div>
                           </div>
                         );
                       })}
@@ -817,7 +812,7 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
         </div>
       </div>
 
-      {/* Emergency Modal - Now using the simplified ErrorReportModal */}
+      {/* Error Report Modal */}
       <Dialog
         open={isEmergencyModalOpen}
         onOpenChange={setIsEmergencyModalOpen}
@@ -831,14 +826,16 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
               <label className="text-sm font-medium text-foreground">
                 Etapa con error
               </label>
-              <Select>
+              <Select value={selectedErrorStep} onValueChange={(value) => setSelectedErrorStep(value as MedicationProcessStep | "")}>
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar etapa" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="predespacho">Predespacho</SelectItem>
-                  <SelectItem value="alistamiento">Alistamiento</SelectItem>
-                  <SelectItem value="validacion">Validación</SelectItem>
+                  <SelectItem value={MedicationProcessStep.PREDESPACHO}>Predespacho</SelectItem>
+                  <SelectItem value={MedicationProcessStep.ALISTAMIENTO}>Alistamiento</SelectItem>
+                  <SelectItem value={MedicationProcessStep.VALIDACION}>Validación</SelectItem>
+                  <SelectItem value={MedicationProcessStep.ENTREGA}>Entrega</SelectItem>
+                  <SelectItem value={MedicationProcessStep.DEVOLUCION}>Devolución</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -847,9 +844,11 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
               <label className="text-sm font-medium text-foreground">
                 Descripción del error
               </label>
-              <textarea
+              <Textarea
                 placeholder="Describe el error encontrado..."
-                className="w-full min-h-[100px] p-3 border border-border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                className="min-h-[100px] resize-none"
               />
             </div>
           </div>
@@ -857,18 +856,20 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
           <div className="flex justify-end space-x-2">
             <Button
               variant="outline"
-              onClick={() => setIsEmergencyModalOpen(false)}
+              onClick={() => {
+                setIsEmergencyModalOpen(false);
+                setNewMessage("");
+                setSelectedErrorStep("");
+              }}
             >
               Cancelar
             </Button>
             <Button
-              className="bg-blue-600 hover:bg-blue-700"
-              onClick={() => {
-                setIsEmergencyModalOpen(false);
-                // Handle error reporting logic here
-              }}
+              className="bg-red-600 hover:bg-red-700"
+              onClick={handleReportError}
+              disabled={!selectedErrorStep || !newMessage.trim() || createErrorLog.isPending}
             >
-              Reportar Error
+              {createErrorLog.isPending ? "Reportando..." : "Reportar Error"}
             </Button>
           </div>
         </DialogContent>
@@ -968,35 +969,36 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
             </Button>
             <Button
               className="bg-blue-600 hover:bg-blue-700"
-              onClick={() => {
-                // Create manual return logic here
-                const newReturn: ManualReturn = {
-                  id: Date.now().toString(),
-                  generatedBy: "Usuario Actual",
-                  reviewedBy: "PharmacyRegents",
-                  creationDate: new Date().toLocaleString(),
-                  approvalDate: "",
-                  supplies: [
-                    {
-                      code: "temp-code",
-                      supplyCode: "temp-supply",
-                      supply: selectedSupply || "Omeprazol 20mg",
-                      quantityReturned: parseInt(quantity) || 1,
-                    },
-                  ],
-                  cause: selectedCauses.join(", "),
-                  comments: comment,
-                };
-                setManualReturn(newReturn);
-                setIsManualReturnModalOpen(false);
-                // Reset form
-                setSelectedSupply("");
-                setQuantity("");
-                setSelectedCauses([]);
-                setComment("");
+              onClick={async () => {
+                if (!patient || !selectedSupply || !quantity || selectedCauses.length === 0) return;
+                
+                try {
+                  await createManualReturn.mutateAsync({
+                    patientId: patient.id,
+                    cause: selectedCauses.join(", "),
+                    comments: comment,
+                    supplies: [
+                      {
+                        supplyCode: "SUPPLY_" + Date.now(),
+                        supplyName: selectedSupply,
+                        quantityReturned: parseInt(quantity) || 1,
+                      },
+                    ],
+                  });
+                  
+                  setIsManualReturnModalOpen(false);
+                  // Reset form
+                  setSelectedSupply("");
+                  setQuantity("");
+                  setSelectedCauses([]);
+                  setComment("");
+                } catch (error) {
+                  console.error("Error creating manual return:", error);
+                }
               }}
+              disabled={!selectedSupply || !quantity || selectedCauses.length === 0 || createManualReturn.isPending}
             >
-              Crear Devolución
+              {createManualReturn.isPending ? "Creando..." : "Crear Devolución"}
             </Button>
           </div>
         </DialogContent>
