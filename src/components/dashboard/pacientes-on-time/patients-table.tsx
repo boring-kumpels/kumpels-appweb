@@ -11,70 +11,35 @@ import {
 import { Button } from "@/components/ui/button";
 import { Eye } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { PatientWithRelations } from "@/types/patient";
+import {
+  PatientWithRelations,
+  MedicationProcessStep,
+  MedicationProcess,
+  ProcessStatus,
+} from "@/types/patient";
 import { getLineDisplayName } from "@/lib/lines";
+import { ProcessStatusButton } from "./process-status-button";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 interface PatientsTableProps {
   patients: PatientWithRelations[];
   isLoading: boolean;
   onOpenPatientDetail?: (patient: PatientWithRelations) => void;
+  preloadedMedicationProcesses?: MedicationProcess[];
+  currentDailyProcessId?: string;
+  buttonStatesMap?: Map<string, Record<string, ProcessStatus | null>>;
 }
-
-interface StatusButtonProps {
-  status: "ok" | "pending" | "in_progress" | "error";
-  onClick?: () => void;
-}
-
-const StatusButton: React.FC<StatusButtonProps> = ({ status, onClick }) => {
-  const getStatusDisplay = () => {
-    switch (status) {
-      case "ok":
-        return { text: "OK", className: "bg-green-500 text-white" };
-      case "pending":
-        return { text: "Pend.", className: "bg-orange-500 text-white" };
-      case "in_progress":
-        return {
-          text: "Curso",
-          className:
-            "bg-orange-500 text-white border-2 border-dashed border-orange-600",
-        };
-      case "error":
-        return { text: "Error", className: "bg-red-500 text-white" };
-      default:
-        return { text: "--", className: "bg-gray-200 text-gray-500" };
-    }
-  };
-
-  const { text, className } = getStatusDisplay();
-
-  if (status === "pending" && text === "--") {
-    return (
-      <div className="flex items-center justify-center">
-        <span className="text-gray-400">--</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center gap-1">
-      <Button
-        variant="outline"
-        size="sm"
-        className={`px-3 py-1 h-7 rounded-full min-w-[50px] text-xs font-medium ${className}`}
-        onClick={onClick}
-      >
-        {text}
-      </Button>
-    </div>
-  );
-};
 
 export function PatientsTable({
   patients,
   isLoading,
   onOpenPatientDetail,
+  preloadedMedicationProcesses = [],
+  currentDailyProcessId,
+  buttonStatesMap,
 }: PatientsTableProps) {
   const pathname = usePathname();
+  const { profile } = useCurrentUser();
 
   if (isLoading) {
     return (
@@ -100,6 +65,19 @@ export function PatientsTable({
 
       window.location.href = `${basePath}/${patient.id}`;
     }
+  };
+
+  // Helper function to get preloaded process for a patient and step
+  const getPreloadedProcess = (
+    patientId: string,
+    step: MedicationProcessStep
+  ) => {
+    return preloadedMedicationProcesses.find(
+      (process) =>
+        process.patientId === patientId &&
+        process.step === step &&
+        process.dailyProcessId === currentDailyProcessId
+    );
   };
 
   return (
@@ -139,30 +117,82 @@ export function PatientsTable({
             <TableCell className="text-center">
               {patient.bed?.number || "N/A"}
             </TableCell>
-            <TableCell className="text-center">
-              {patient.externalId}
-            </TableCell>
+            <TableCell className="text-center">{patient.externalId}</TableCell>
             <TableCell>{`${patient.firstName} ${patient.lastName}`}</TableCell>
             <TableCell className="text-center">
-              <StatusButton status="ok" />
+              <ProcessStatusButton
+                patient={patient}
+                step={MedicationProcessStep.PREDESPACHO}
+                userRole={profile?.role || ""}
+                preloadedProcess={getPreloadedProcess(
+                  patient.id,
+                  MedicationProcessStep.PREDESPACHO
+                )}
+                allPatientProcesses={preloadedMedicationProcesses.filter(
+                  p => p.patientId === patient.id
+                )}
+                preCalculatedState={buttonStatesMap?.get(patient.id)?.[MedicationProcessStep.PREDESPACHO]}
+              />
             </TableCell>
             <TableCell className="text-center">
-              <StatusButton status="in_progress" />
+              <ProcessStatusButton
+                patient={patient}
+                step={MedicationProcessStep.ALISTAMIENTO}
+                userRole={profile?.role || ""}
+                preloadedProcess={getPreloadedProcess(
+                  patient.id,
+                  MedicationProcessStep.ALISTAMIENTO
+                )}
+                allPatientProcesses={preloadedMedicationProcesses.filter(
+                  p => p.patientId === patient.id
+                )}
+                preCalculatedState={buttonStatesMap?.get(patient.id)?.[MedicationProcessStep.ALISTAMIENTO]}
+              />
             </TableCell>
             <TableCell className="text-center">
-              <Button
-                variant="outline"
-                size="sm"
-                className="px-3 py-1 h-7 rounded-full min-w-[50px] text-xs font-medium bg-orange-50 text-orange-600 border-orange-200"
-              >
-                En Curso
-              </Button>
+              <ProcessStatusButton
+                patient={patient}
+                step={MedicationProcessStep.VALIDACION}
+                userRole={profile?.role || ""}
+                preloadedProcess={getPreloadedProcess(
+                  patient.id,
+                  MedicationProcessStep.VALIDACION
+                )}
+                allPatientProcesses={preloadedMedicationProcesses.filter(
+                  p => p.patientId === patient.id
+                )}
+                preCalculatedState={buttonStatesMap?.get(patient.id)?.[MedicationProcessStep.VALIDACION]}
+              />
             </TableCell>
             <TableCell className="text-center">
-              <StatusButton status="pending" />
+              <ProcessStatusButton
+                patient={patient}
+                step={MedicationProcessStep.ENTREGA}
+                userRole={profile?.role || ""}
+                preloadedProcess={getPreloadedProcess(
+                  patient.id,
+                  MedicationProcessStep.ENTREGA
+                )}
+                allPatientProcesses={preloadedMedicationProcesses.filter(
+                  p => p.patientId === patient.id
+                )}
+                preCalculatedState={buttonStatesMap?.get(patient.id)?.[MedicationProcessStep.ENTREGA]}
+              />
             </TableCell>
             <TableCell className="text-center">
-              <StatusButton status="pending" />
+              <ProcessStatusButton
+                patient={patient}
+                step={MedicationProcessStep.DEVOLUCION}
+                userRole={profile?.role || ""}
+                preloadedProcess={getPreloadedProcess(
+                  patient.id,
+                  MedicationProcessStep.DEVOLUCION
+                )}
+                allPatientProcesses={preloadedMedicationProcesses.filter(
+                  p => p.patientId === patient.id
+                )}
+                preCalculatedState={buttonStatesMap?.get(patient.id)?.[MedicationProcessStep.DEVOLUCION]}
+              />
             </TableCell>
           </TableRow>
         ))}

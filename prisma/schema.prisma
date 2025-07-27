@@ -36,6 +36,21 @@ enum LineName {
   LINE_5
 }
 
+enum MedicationProcessStep {
+  PREDESPACHO
+  ALISTAMIENTO
+  VALIDACION
+  ENTREGA
+  DEVOLUCION
+}
+
+enum ProcessStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  ERROR
+}
+
 model Profile {
   id            String               @id @default(cuid())
   userId        String               @unique
@@ -83,9 +98,56 @@ model Patient {
   
   // Relations
   bed             Bed           @relation(fields: [bedId], references: [id], onDelete: Cascade)
+  medicationProcesses MedicationProcess[]
   
   @@index([externalId])
   @@index([bedId])
   @@index([status])
   @@map("patients")
+}
+
+model DailyProcess {
+  id              String              @id @default(cuid())
+  date            DateTime            @db.Date // Date of the process (YYYY-MM-DD)
+  startedBy       String              // User ID who started the daily process
+  startedAt       DateTime            @default(now())
+  completedAt     DateTime?
+  status          String              @default("ACTIVE") // ACTIVE, COMPLETED, CANCELLED
+  notes           String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  medicationProcesses MedicationProcess[]
+  
+  @@unique([date])
+  @@index([date])
+  @@index([startedBy])
+  @@map("daily_processes")
+}
+
+model MedicationProcess {
+  id              String              @id @default(cuid())
+  patientId       String
+  dailyProcessId  String?             // Link to daily process session
+  step            MedicationProcessStep
+  status          ProcessStatus       @default(PENDING)
+  startedAt       DateTime?
+  completedAt     DateTime?
+  startedBy       String?             // User ID who started the process
+  completedBy     String?             // User ID who completed the process
+  notes           String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  patient         Patient             @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  dailyProcess    DailyProcess?       @relation(fields: [dailyProcessId], references: [id], onDelete: SetNull)
+  
+  @@unique([patientId, step, dailyProcessId])
+  @@index([patientId])
+  @@index([step])
+  @@index([status])
+  @@index([dailyProcessId])
+  @@map("medication_processes")
 }

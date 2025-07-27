@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { PatientWithRelations, PatientFilters, LineName } from "@/types/patient";
+import { PatientWithRelations, PatientFilters, LineName, PatientStatus } from "@/types/patient";
 
 interface UsePatientsOptions {
   filters?: PatientFilters;
@@ -66,7 +66,7 @@ export const usePatientsByLine = (lineName: LineName) => {
 // Fetch active patients
 export const useActivePatients = () => {
   return usePatients({
-    filters: { status: "ACTIVE" },
+    filters: { status: PatientStatus.ACTIVE },
   });
 };
 

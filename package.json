@@ -14,7 +14,8 @@
     "db:populate": "tsx scripts/populate-data.ts",
     "db:cleanup": "tsx scripts/cleanup-data.ts",
     "db:import-patients": "tsx scripts/import-patients.ts",
-    "db:test": "tsx scripts/test-setup.ts"
+    "db:test": "tsx scripts/test-setup.ts",
+    "db:reset-processes": "tsx scripts/reset-daily-processes.ts"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^6.7.2",

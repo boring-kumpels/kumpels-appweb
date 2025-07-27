@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, LineName } from "@prisma/client";
 import { readFileSync } from "fs";
 import { parse } from "csv-parse/sync";
 
@@ -35,22 +35,11 @@ async function importPatientsFromCSV(filePath: string) {
 
     for (const record of records) {
       try {
-        // Find the line
-        const line = await prisma.line.findUnique({
-          where: { name: record.lineName },
-        });
-
-        if (!line) {
-          console.error(`❌ Line not found: ${record.lineName}`);
-          errorCount++;
-          continue;
-        }
-
         // Find the bed
         const bed = await prisma.bed.findUnique({
           where: {
-            lineId_number: {
-              lineId: line.id,
+            lineName_number: {
+              lineName: record.lineName as LineName,
               number: record.bedNumber,
             },
           },

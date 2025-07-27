@@ -40,8 +40,9 @@ async function populateSamplePatients() {
 
   const beds = await prisma.bed.findMany();
 
-  // Sample patient data
+  // Sample patient data - 2 patients per line (10 total)
   const samplePatients = [
+    // Line 1 patients
     {
       externalId: "EXT001",
       firstName: "Maria",
@@ -62,6 +63,7 @@ async function populateSamplePatients() {
       medicalRecord: "MR002",
       notes: "Post-surgery recovery, stable condition",
     },
+    // Line 2 patients
     {
       externalId: "EXT003",
       firstName: "Ana",
@@ -82,6 +84,7 @@ async function populateSamplePatients() {
       medicalRecord: "MR004",
       notes: "Cardiac monitoring, stable",
     },
+    // Line 3 patients
     {
       externalId: "EXT005",
       firstName: "Isabella",
@@ -92,12 +95,74 @@ async function populateSamplePatients() {
       medicalRecord: "MR005",
       notes: "Pediatric case, fever resolved",
     },
+    {
+      externalId: "EXT006",
+      firstName: "Roberto",
+      lastName: "Silva",
+      dateOfBirth: new Date("1990-08-12"),
+      gender: "M",
+      admissionDate: new Date("2024-01-20"),
+      medicalRecord: "MR006",
+      notes: "Neurological assessment, stable",
+    },
+    // Line 4 patients
+    {
+      externalId: "EXT007",
+      firstName: "Carmen",
+      lastName: "Vargas",
+      dateOfBirth: new Date("1975-04-30"),
+      gender: "F",
+      admissionDate: new Date("2024-01-21"),
+      medicalRecord: "MR007",
+      notes: "ICU monitoring, critical condition",
+    },
+    {
+      externalId: "EXT008",
+      firstName: "Miguel",
+      lastName: "Torres",
+      dateOfBirth: new Date("1982-09-14"),
+      gender: "M",
+      admissionDate: new Date("2024-01-22"),
+      medicalRecord: "MR008",
+      notes: "Post-operative care, improving",
+    },
+    // Line 5 patients
+    {
+      externalId: "EXT009",
+      firstName: "Elena",
+      lastName: "Morales",
+      dateOfBirth: new Date("1995-12-25"),
+      gender: "F",
+      admissionDate: new Date("2024-01-23"),
+      medicalRecord: "MR009",
+      notes: "Maternity care, healthy pregnancy",
+    },
+    {
+      externalId: "EXT010",
+      firstName: "Diego",
+      lastName: "Herrera",
+      dateOfBirth: new Date("1988-06-08"),
+      gender: "M",
+      admissionDate: new Date("2024-01-24"),
+      medicalRecord: "MR010",
+      notes: "Emergency admission, stable now",
+    },
   ];
 
-  // Assign patients to different beds
+  // Assign patients to different beds across all lines
   for (let i = 0; i < samplePatients.length; i++) {
     const patient = samplePatients[i];
-    const bed = beds[i]; // Assign to first 5 beds
+    const lineIndex = Math.floor(i / 2); // 2 patients per line
+    const patientInLine = i % 2; // 0 or 1 for first or second patient in line
+    
+    // Get beds for the specific line
+    const lineBeds = beds.filter(bed => bed.lineName === `LINE_${lineIndex + 1}`);
+    const bed = lineBeds[patientInLine]; // First or second bed in the line
+
+    if (!bed) {
+      console.log(`⚠️ No bed available for patient ${patient.externalId} in line ${lineIndex + 1}`);
+      continue;
+    }
 
     await prisma.patient.upsert({
       where: { externalId: patient.externalId },

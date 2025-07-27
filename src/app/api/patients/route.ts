@@ -1,71 +1,84 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
 import prisma from "@/lib/prisma";
-import { PatientFilters, LineName, PatientStatus } from "@/types/patient";
+import { PatientStatus, LineName } from "@/types/patient";
 
+// GET /api/patients - List patients with optional filters
 export async function GET(request: NextRequest) {
   try {
+    const supabase = createServerComponentClient({ cookies });
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
-    const lineName = searchParams.get("lineName");
+    const lineName = searchParams.get("lineName") as LineName;
     const bedId = searchParams.get("bedId");
-    const status = searchParams.get("status");
+    const status = searchParams.get("status") as PatientStatus;
     const search = searchParams.get("search");
 
-    const filters: PatientFilters = {};
+    // Build where clause
+    const where: Record<string, unknown> = {};
 
-    if (lineName) filters.lineName = lineName as LineName;
-    if (bedId) filters.bedId = bedId;
-    if (status) filters.status = status as PatientStatus;
-    if (search) filters.search = search;
+    if (status) where.status = status;
+    if (bedId) where.bedId = bedId;
 
-    const whereClause: Record<string, unknown> = {};
-
-    if (filters.lineName) {
-      whereClause.bed = {
-        lineName: filters.lineName,
+    if (lineName) {
+      where.bed = {
+        lineName: lineName,
       };
     }
 
-    if (filters.bedId) {
-      whereClause.bedId = filters.bedId;
-    }
-
-    if (filters.status) {
-      whereClause.status = filters.status;
-    }
-
-    if (filters.search) {
-      whereClause.OR = [
-        { firstName: { contains: filters.search, mode: "insensitive" } },
-        { lastName: { contains: filters.search, mode: "insensitive" } },
-        { externalId: { contains: filters.search, mode: "insensitive" } },
-        { medicalRecord: { contains: filters.search, mode: "insensitive" } },
+    if (search) {
+      where.OR = [
+        { firstName: { contains: search, mode: "insensitive" } },
+        { lastName: { contains: search, mode: "insensitive" } },
+        { externalId: { contains: search, mode: "insensitive" } },
+        { bed: { number: { contains: search, mode: "insensitive" } } },
       ];
     }
 
     const patients = await prisma.patient.findMany({
-      where: whereClause,
+      where,
       include: {
         bed: true,
+        medicationProcesses: {
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
       },
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy: [{ bed: { lineName: "asc" } }, { bed: { number: "asc" } }],
     });
 
     return NextResponse.json(patients);
   } catch (error) {
     console.error("Error fetching patients:", error);
     return NextResponse.json(
-      { error: "Failed to fetch patients" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
 }
 
+// POST /api/patients - Create a new patient
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const supabase = createServerComponentClient({ cookies });
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await request.json();
     const {
       externalId,
       firstName,
@@ -94,7 +107,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if external ID already exists
+    // Check if patient with external ID already exists
     const existingPatient = await prisma.patient.findUnique({
       where: { externalId },
     });
@@ -111,7 +124,7 @@ export async function POST(request: NextRequest) {
       where: { id: bedId },
       include: {
         patients: {
-          where: { status: "ACTIVE" },
+          where: { status: PatientStatus.ACTIVE },
         },
       },
     });
@@ -127,6 +140,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Create patient
     const patient = await prisma.patient.create({
       data: {
         externalId,
@@ -138,13 +152,11 @@ export async function POST(request: NextRequest) {
         bedId,
         medicalRecord,
         notes,
+        status: PatientStatus.ACTIVE,
       },
       include: {
-        bed: {
-          include: {
-            line: true,
-          },
-        },
+        bed: true,
+        medicationProcesses: true,
       },
     });
 
@@ -152,7 +164,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Error creating patient:", error);
     return NextResponse.json(
-      { error: "Failed to create patient" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

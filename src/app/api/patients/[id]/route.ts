@@ -1,21 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
 import prisma from "@/lib/prisma";
+import { PatientStatus } from "@/types/patient";
 
-
-
+// GET /api/patients/[id] - Get a specific patient
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const supabase = createServerComponentClient({ cookies });
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await params;
 
     const patient = await prisma.patient.findUnique({
       where: { id },
       include: {
-        bed: {
-          include: {
-            line: true,
+        bed: true,
+        medicationProcesses: {
+          orderBy: {
+            createdAt: "desc",
           },
         },
       },
@@ -29,20 +41,28 @@ export async function GET(
   } catch (error) {
     console.error("Error fetching patient:", error);
     return NextResponse.json(
-      { error: "Failed to fetch patient" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
 }
 
-export async function PUT(
+// PATCH /api/patients/[id] - Update a patient
+export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
-    const body = await request.json();
+    const supabase = createServerComponentClient({ cookies });
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await request.json();
     const {
       firstName,
       lastName,
@@ -55,6 +75,8 @@ export async function PUT(
       notes,
     } = body;
 
+    const { id } = await params;
+
     // Check if patient exists
     const existingPatient = await prisma.patient.findUnique({
       where: { id },
@@ -64,29 +86,7 @@ export async function PUT(
       return NextResponse.json({ error: "Patient not found" }, { status: 404 });
     }
 
-    // If changing bed, check if new bed is available
-    if (bedId && bedId !== existingPatient.bedId) {
-      const newBed = await prisma.bed.findUnique({
-        where: { id: bedId },
-        include: {
-          patients: {
-            where: { status: "ACTIVE" },
-          },
-        },
-      });
-
-      if (!newBed) {
-        return NextResponse.json({ error: "Bed not found" }, { status: 404 });
-      }
-
-      if (newBed.patients.length > 0) {
-        return NextResponse.json(
-          { error: "Bed is already occupied" },
-          { status: 409 }
-        );
-      }
-    }
-
+    // Prepare update data
     const updateData: Record<string, unknown> = {};
 
     if (firstName !== undefined) updateData.firstName = firstName;
@@ -96,49 +96,93 @@ export async function PUT(
     if (gender !== undefined) updateData.gender = gender;
     if (admissionDate !== undefined)
       updateData.admissionDate = new Date(admissionDate);
-    if (bedId !== undefined) updateData.bedId = bedId;
     if (status !== undefined) updateData.status = status;
     if (medicalRecord !== undefined) updateData.medicalRecord = medicalRecord;
     if (notes !== undefined) updateData.notes = notes;
 
-    const patient = await prisma.patient.update({
+    // Handle bed change
+    if (bedId !== undefined && bedId !== existingPatient.bedId) {
+      // Check if new bed exists and is available
+      const newBed = await prisma.bed.findUnique({
+        where: { id: bedId },
+        include: {
+          patients: {
+            where: {
+              status: PatientStatus.ACTIVE,
+              id: { not: id }, // Exclude current patient
+            },
+          },
+        },
+      });
+
+      if (!newBed) {
+        return NextResponse.json(
+          { error: "New bed not found" },
+          { status: 404 }
+        );
+      }
+
+      if (newBed.patients.length > 0) {
+        return NextResponse.json(
+          { error: "New bed is already occupied" },
+          { status: 409 }
+        );
+      }
+
+      updateData.bedId = bedId;
+    }
+
+    // Update patient
+    const updatedPatient = await prisma.patient.update({
       where: { id },
       data: updateData,
       include: {
-        bed: {
-          include: {
-            line: true,
+        bed: true,
+        medicationProcesses: {
+          orderBy: {
+            createdAt: "desc",
           },
         },
       },
     });
 
-    return NextResponse.json(patient);
+    return NextResponse.json(updatedPatient);
   } catch (error) {
     console.error("Error updating patient:", error);
     return NextResponse.json(
-      { error: "Failed to update patient" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
 }
 
+// DELETE /api/patients/[id] - Delete a patient
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const supabase = createServerComponentClient({ cookies });
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await params;
 
     // Check if patient exists
-    const existingPatient = await prisma.patient.findUnique({
+    const patient = await prisma.patient.findUnique({
       where: { id },
     });
 
-    if (!existingPatient) {
+    if (!patient) {
       return NextResponse.json({ error: "Patient not found" }, { status: 404 });
     }
 
+    // Delete patient (this will cascade to medication processes)
     await prisma.patient.delete({
       where: { id },
     });
@@ -147,7 +191,7 @@ export async function DELETE(
   } catch (error) {
     console.error("Error deleting patient:", error);
     return NextResponse.json(
-      { error: "Failed to delete patient" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

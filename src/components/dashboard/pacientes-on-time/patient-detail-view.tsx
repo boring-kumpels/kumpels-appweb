@@ -35,6 +35,12 @@ import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { usePatient } from "@/hooks/use-patients";
+import { useCurrentDailyProcess } from "@/hooks/use-daily-processes";
+import { useAllMedicationProcesses } from "@/hooks/use-medication-processes";
+import { ProcessStatusButton } from "./process-status-button";
+import { MedicationProcessStep, ProcessStatus } from "@/types/patient";
+import { getLineDisplayName } from "@/lib/lines";
 
 interface PatientDetailViewProps {
   patientId: string;
@@ -72,18 +78,6 @@ interface ManualReturn {
   comments: string;
 }
 
-const mockPatientData = {
-  id: "1",
-  name: "JESUS PEREZ",
-  bed: "PC01",
-  identification: "123123123",
-  age: 30,
-  sex: "Sin datos",
-  admissionDate: "2025-06-21",
-  dischargeDate: "Sin datos",
-  responsibleDoctor:
-    "FIDEICOMISO PATRIMONIOS AUTONOMOS FIDUCIARIA LA PREVISORA S",
-};
 
 // Mock log entries based on the image
 const initialLogEntries: LogEntry[] = [
@@ -137,7 +131,7 @@ const mockManualReturn: ManualReturn = {
   comments: "Comentario no proporcionado",
 };
 
-export default function PatientDetailView({}: PatientDetailViewProps) {
+export default function PatientDetailView({ patientId }: PatientDetailViewProps) {
   const router = useRouter();
   const { profile } = useCurrentUser();
   const [activeTab, setActiveTab] = useState<ProcessTab>("dispensacion");
@@ -147,10 +141,8 @@ export default function PatientDetailView({}: PatientDetailViewProps) {
   const [logEntries, setLogEntries] = useState<LogEntry[]>(initialLogEntries);
   const [newMessage, setNewMessage] = useState("");
   const [manualReturn, setManualReturn] = useState<ManualReturn | null>(null);
-
+  
   // Manual Returns state
-
-  // New Manual Return Modal State
   const [selectedSupply, setSelectedSupply] = useState("");
   const [quantity, setQuantity] = useState("");
   const [selectedCauses, setSelectedCauses] = useState<string[]>([]);
@@ -161,68 +153,79 @@ export default function PatientDetailView({}: PatientDetailViewProps) {
   const [endDate, setEndDate] = useState("");
   const [selectedMedications, setSelectedMedications] = useState<string[]>([]);
   const [selectedUser, setSelectedUser] = useState("Todos los usuarios");
-  const [selectedExportCause, setSelectedExportCause] =
-    useState("Todas las causas");
+  const [selectedExportCause, setSelectedExportCause] = useState("Todas las causas");
+  
+  // Fetch patient data
+  const { data: patient, isLoading: patientLoading } = usePatient({ id: patientId });
+  
+  // Fetch current daily process and medication processes
+  const { data: currentDailyProcess } = useCurrentDailyProcess();
+  const { data: allMedicationProcesses = [] } = useAllMedicationProcesses(
+    currentDailyProcess?.id
+  );
+  
+  // Filter processes for this patient
+  const patientProcesses = allMedicationProcesses.filter(
+    p => p.patientId === patientId
+  );
+  
+  if (patientLoading || !patient) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-muted-foreground">Cargando datos del paciente...</p>
+        </div>
+      </div>
+    );
+  }
 
+
+  // Get process status for display
+  const getProcessStatus = (step: MedicationProcessStep) => {
+    const process = patientProcesses.find(p => p.step === step);
+    return process?.status || ProcessStatus.PENDING;
+  };
+  
   const processSteps = {
     dispensacion: [
       {
         id: "predespacho",
         name: "Predespacho",
         icon: <Lock className="h-4 w-4" />,
-        status: "completed" as const,
+        status: getProcessStatus(MedicationProcessStep.PREDESPACHO),
+        step: MedicationProcessStep.PREDESPACHO,
       },
       {
         id: "alistamiento",
         name: "Alistamiento",
         icon: <Scale className="h-4 w-4" />,
-        status: "completed" as const,
+        status: getProcessStatus(MedicationProcessStep.ALISTAMIENTO),
+        step: MedicationProcessStep.ALISTAMIENTO,
       },
       {
         id: "validacion",
         name: "Validación",
         icon: <Check className="h-4 w-4" />,
-        status: "completed" as const,
+        status: getProcessStatus(MedicationProcessStep.VALIDACION),
+        step: MedicationProcessStep.VALIDACION,
       },
     ],
     entrega: [
       {
-        id: "salida_farmacia",
-        name: "Salida de farmacia",
+        id: "entrega",
+        name: "Entrega",
         icon: <ShoppingCart className="h-4 w-4" />,
-        status: "completed" as const,
-      },
-      {
-        id: "llegada_piso",
-        name: "Llegada a piso",
-        icon: <ShoppingCart className="h-4 w-4" />,
-        status: "pending" as const,
-      },
-      {
-        id: "recepcion_enfermeria",
-        name: "Recepción enfermería",
-        icon: <User className="h-4 w-4" />,
-        status: "pending" as const,
+        status: getProcessStatus(MedicationProcessStep.ENTREGA),
+        step: MedicationProcessStep.ENTREGA,
       },
     ],
     devoluciones: [
       {
-        id: "solicitud_enfermeria",
-        name: "Solicitud enfermería",
-        icon: <User className="h-4 w-4" />,
-        status: "pending" as const,
-      },
-      {
-        id: "llegada_piso",
-        name: "Llegada a piso",
+        id: "devolucion",
+        name: "Devolución",
         icon: <RotateCcw className="h-4 w-4" />,
-        status: "pending" as const,
-      },
-      {
-        id: "recepcion_farmacia",
-        name: "Recepción farmacia",
-        icon: <User className="h-4 w-4" />,
-        status: "pending" as const,
+        status: getProcessStatus(MedicationProcessStep.DEVOLUCION),
+        step: MedicationProcessStep.DEVOLUCION,
       },
     ],
     devoluciones_manuales: [],
@@ -239,8 +242,8 @@ export default function PatientDetailView({}: PatientDetailViewProps) {
         role: "SUPERUSER",
         message: newMessage.trim(),
         type: "info",
-        patientName: mockPatientData.name,
-        patientId: mockPatientData.identification,
+        patientName: `${patient.firstName} ${patient.lastName}`,
+        patientId: patient.externalId,
       };
 
       setLogEntries((prev) => [newEntry, ...prev]);
@@ -562,52 +565,20 @@ export default function PatientDetailView({}: PatientDetailViewProps) {
                     {/* Process Steps with States */}
                     <div className="grid grid-cols-3 gap-4">
                       {processSteps[activeTab]?.map((step) => {
-                        const getStatusDisplay = (status: string) => {
-                          switch (status) {
-                            case "completed":
-                              return {
-                                text: "Completed (Ok)",
-                                className: "bg-green-500 text-white",
-                              };
-                            case "in_progress":
-                              return {
-                                text: "In Progress",
-                                className: "bg-orange-500 text-white",
-                              };
-                            case "pending":
-                              return {
-                                text: "Pending",
-                                className: "bg-orange-500 text-white",
-                              };
-                            case "error":
-                              return {
-                                text: "Error",
-                                className: "bg-red-500 text-white",
-                              };
-                            default:
-                              return {
-                                text: "Pending",
-                                className: "bg-orange-500 text-white",
-                              };
-                          }
-                        };
-
-                        const { text, className } = getStatusDisplay(
-                          step.status
-                        );
-
                         return (
                           <div key={step.id} className="text-center space-y-2">
                             <div className="text-sm font-medium text-muted-foreground">
                               {step.name}
                             </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className={`px-4 py-2 h-12 rounded-full min-w-[120px] text-xs font-medium ${className}`}
-                            >
-                              {text}
-                            </Button>
+                            <ProcessStatusButton
+                              patient={patient}
+                              step={step.step}
+                              userRole={profile?.role || ""}
+                              preloadedProcess={patientProcesses.find(
+                                p => p.step === step.step
+                              )}
+                              allPatientProcesses={patientProcesses}
+                            />
                           </div>
                         );
                       })}
@@ -701,11 +672,19 @@ export default function PatientDetailView({}: PatientDetailViewProps) {
             <CardContent className="space-y-4">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">
-                  {mockPatientData.name}
+                  {patient.firstName} {patient.lastName}
                 </h2>
                 <p className="text-sm text-muted-foreground">
                   Cama:{" "}
-                  <span className="font-medium">{mockPatientData.bed}</span>
+                  <span className="font-medium">
+                    {patient.bed?.number || "N/A"}
+                  </span>
+                  {" - "}
+                  <span className="font-medium">
+                    {patient.bed?.lineName
+                      ? getLineDisplayName(patient.bed.lineName)
+                      : "N/A"}
+                  </span>
                 </p>
               </div>
 
@@ -715,7 +694,7 @@ export default function PatientDetailView({}: PatientDetailViewProps) {
                     Identificación
                   </h4>
                   <p className="text-xs text-blue-600">
-                    {mockPatientData.identification}
+                    {patient.externalId}
                   </p>
                 </div>
                 <div>
@@ -723,7 +702,12 @@ export default function PatientDetailView({}: PatientDetailViewProps) {
                     Edad
                   </h4>
                   <p className="text-xs text-muted-foreground">
-                    {mockPatientData.age}
+                    {patient.dateOfBirth
+                      ? Math.floor(
+                          (new Date().getTime() - new Date(patient.dateOfBirth).getTime()) /
+                            (365.25 * 24 * 60 * 60 * 1000)
+                        )
+                      : "N/A"}
                   </p>
                 </div>
                 <div>
@@ -731,7 +715,7 @@ export default function PatientDetailView({}: PatientDetailViewProps) {
                     Sexo
                   </h4>
                   <p className="text-xs text-muted-foreground">
-                    {mockPatientData.sex}
+                    {patient.gender || "N/A"}
                   </p>
                 </div>
                 <div>
@@ -739,17 +723,19 @@ export default function PatientDetailView({}: PatientDetailViewProps) {
                     Fecha de ingreso
                   </h4>
                   <p className="text-xs text-muted-foreground">
-                    {mockPatientData.admissionDate}
+                    {patient.admissionDate
+                      ? new Date(patient.admissionDate).toLocaleDateString()
+                      : "N/A"}
                   </p>
                 </div>
               </div>
 
               <div>
                 <h4 className="text-sm font-medium text-foreground mb-2">
-                  Médico responsable
+                  Notas médicas
                 </h4>
                 <p className="text-xs text-blue-600 leading-relaxed">
-                  {mockPatientData.responsibleDoctor}
+                  {patient.notes || "No hay notas disponibles"}
                 </p>
               </div>
             </CardContent>
