@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -39,8 +39,57 @@ import { usePatient } from "@/hooks/use-patients";
 import { useCurrentDailyProcess } from "@/hooks/use-daily-processes";
 import { useAllMedicationProcesses } from "@/hooks/use-medication-processes";
 import { ProcessStatusButton } from "./process-status-button";
-import { MedicationProcessStep, ProcessStatus } from "@/types/patient";
+import { MedicationProcessStep, ProcessStatus, PatientWithRelations, MedicationProcess } from "@/types/patient";
 import { getLineDisplayName } from "@/lib/lines";
+
+// Helper function to calculate button state (same as in management component)
+function calculateButtonState(
+  patient: PatientWithRelations,
+  step: MedicationProcessStep,
+  process: MedicationProcess | undefined,
+  allMedicationProcesses: MedicationProcess[]
+) {
+  // If there's an actual process for this patient/step, return its status
+  if (process) {
+    return process.status;
+  }
+  
+  // No process exists for this patient/step - determine what state to show
+  if (step === MedicationProcessStep.PREDESPACHO) {
+    // Check if any predespacho has started in the daily process
+    const anyPredespachoStarted = allMedicationProcesses.some(
+      p => p.step === MedicationProcessStep.PREDESPACHO && 
+      (p.status === ProcessStatus.IN_PROGRESS || p.status === ProcessStatus.COMPLETED)
+    );
+    
+    if (anyPredespachoStarted) {
+      return ProcessStatus.IN_PROGRESS; // Show as in progress (orange dotted)
+    }
+    return null; // Show as empty (black border) - not started yet
+  }
+  
+  if (step === MedicationProcessStep.ALISTAMIENTO) {
+    const predespachoProcess = allMedicationProcesses.find(
+      p => p.patientId === patient.id && p.step === MedicationProcessStep.PREDESPACHO
+    );
+    if (predespachoProcess?.status === ProcessStatus.COMPLETED) {
+      return ProcessStatus.PENDING; // Show as pending (orange filled)
+    }
+    return null; // Show as disabled (black border)
+  }
+  
+  if (step === MedicationProcessStep.VALIDACION || step === MedicationProcessStep.ENTREGA) {
+    const alistamientoProcess = allMedicationProcesses.find(
+      p => p.patientId === patient.id && p.step === MedicationProcessStep.ALISTAMIENTO
+    );
+    if (alistamientoProcess?.status === ProcessStatus.COMPLETED) {
+      return ProcessStatus.PENDING; // Show as pending (orange filled)
+    }
+    return null; // Show as disabled (black border)
+  }
+  
+  return null; // Default: disabled
+}
 
 interface PatientDetailViewProps {
   patientId: string;
@@ -168,6 +217,31 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
   const patientProcesses = allMedicationProcesses.filter(
     p => p.patientId === patientId
   );
+
+  // Calculate button states for optimistic updates
+  const buttonStates = useMemo(() => {
+    if (!patient) return {};
+    
+    const states: Record<string, ProcessStatus | null> = {};
+    
+    [
+      MedicationProcessStep.PREDESPACHO,
+      MedicationProcessStep.ALISTAMIENTO, 
+      MedicationProcessStep.VALIDACION,
+      MedicationProcessStep.ENTREGA,
+      MedicationProcessStep.DEVOLUCION
+    ].forEach(step => {
+      const process = patientProcesses.find(p => p.step === step);
+      states[step] = calculateButtonState(
+        patient, 
+        step, 
+        process, 
+        allMedicationProcesses
+      );
+    });
+    
+    return states;
+  }, [patient, patientProcesses, allMedicationProcesses]);
   
   if (patientLoading || !patient) {
     return (
@@ -577,6 +651,7 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
                               preloadedProcess={patientProcesses.find(
                                 p => p.step === step.step
                               )}
+                              preCalculatedState={buttonStates[step.step]}
                             />
                           </div>
                         );
