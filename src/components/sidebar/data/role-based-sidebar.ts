@@ -75,6 +75,11 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
               icon: Clock,
             },
             {
+              title: "General Status",
+              url: "/nurse/estado-general",
+              icon: CheckCircle2,
+            },
+            {
               title: "Statistics",
               url: "/nurse/estadisticas",
               icon: TrendingUp,
@@ -93,6 +98,11 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
               title: "On-Time Patients",
               url: "/pharmacy/pacientes-on-time",
               icon: Clock,
+            },
+            {
+              title: "General Status",
+              url: "/pharmacy/estado-general",
+              icon: CheckCircle2,
             },
             {
               title: "Statistics",

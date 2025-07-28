@@ -5,12 +5,12 @@ import { redirect } from "next/navigation";
 import EstadoGeneralByPatients from "@/components/dashboard/estado-general/estado-general-by-patients";
 
 export const metadata: Metadata = {
-  title: "Estado General - Pharmacy Regent",
+  title: "Estado General - Nurse",
   description:
-    "Vista general del estado de todas las líneas - Vista de regente farmacéutico",
+    "Vista general del estado de todas las líneas - Vista de enfermero/a",
 };
 
-export default async function RegentEstadoGeneralPage() {
+export default async function NurseEstadoGeneralPage() {
   const supabase = createServerComponentClient({ cookies });
   const {
     data: { session },

@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import EstadoGeneralManagement from "@/components/dashboard/estado-general/estado-general-management";
+import EstadoGeneralByPatients from "@/components/dashboard/estado-general/estado-general-by-patients";
 
 export default function ExampleEstadoGeneralPage() {
   return (
@@ -133,7 +133,7 @@ export default function ExampleEstadoGeneralPage() {
         </CardContent>
       </Card>
 
-      <EstadoGeneralManagement />
+      <EstadoGeneralByPatients />
     </div>
   );
 }

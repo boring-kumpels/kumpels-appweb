@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { cookies } from "next/headers";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { redirect } from "next/navigation";
-import EstadoGeneralManagement from "@/components/dashboard/estado-general/estado-general-management";
+import EstadoGeneralByPatients from "@/components/dashboard/estado-general/estado-general-by-patients";
 
 export const metadata: Metadata = {
   title: "Estado General - Pharmacy Validator",
@@ -22,7 +22,7 @@ export default async function PharmacyEstadoGeneralPage() {
 
   return (
     <div className="container mx-auto p-6">
-      <EstadoGeneralManagement />
+      <EstadoGeneralByPatients />
     </div>
   );
 }
