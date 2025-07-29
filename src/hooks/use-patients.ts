@@ -22,6 +22,7 @@ export const usePatients = ({
       const params = new URLSearchParams();
 
       if (filters?.lineName) params.append("lineName", filters.lineName);
+      if (filters?.serviceId) params.append("serviceId", filters.serviceId);
       if (filters?.bedId) params.append("bedId", filters.bedId);
       if (filters?.status) params.append("status", filters.status);
       if (filters?.search) params.append("search", filters.search);
@@ -60,6 +61,14 @@ export const usePatientsByLine = (lineName: LineName) => {
   return usePatients({
     filters: { lineName },
     enabled: !!lineName,
+  });
+};
+
+// Fetch patients by service
+export const usePatientsByService = (serviceId: string) => {
+  return usePatients({
+    filters: { serviceId },
+    enabled: !!serviceId,
   });
 };
 

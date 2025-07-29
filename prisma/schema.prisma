@@ -49,6 +49,8 @@ enum ProcessStatus {
   IN_PROGRESS
   COMPLETED
   ERROR
+  DISPATCHED_FROM_PHARMACY  // When regent leaves pharmacy with medications
+  DELIVERED_TO_SERVICE      // When regent arrives at service/floor
 }
 
 model Profile {
@@ -66,18 +68,53 @@ model Profile {
   @@map("profiles")
 }
 
+model Line {
+  id        String     @id @default(cuid())
+  name      LineName   @unique
+  displayName String   @map("display_name")
+  description String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  active    Boolean    @default(true)
+  
+  // Relations
+  services  Service[]
+  beds      Bed[]
+  
+  @@map("lines")
+}
+
+model Service {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  lineId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  active      Boolean  @default(true)
+  
+  // Relations
+  line        Line     @relation(fields: [lineId], references: [id], onDelete: Cascade)
+  patients    Patient[]
+  
+  @@index([lineId])
+  @@map("services")
+}
+
 model Bed {
   id        String   @id @default(cuid())
   number    String   // Bed number (e.g., "A1", "B3")
-  lineName  LineName
+  lineId    String   // Changed from lineName to lineId
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   active    Boolean  @default(true)
   
   // Relations
+  line      Line     @relation(fields: [lineId], references: [id], onDelete: Cascade)
   patients  Patient[]
   
-  @@unique([lineName, number])
+  @@unique([lineId, number])
+  @@index([lineId])
   @@map("beds")
 }
 
@@ -90,6 +127,7 @@ model Patient {
   gender          String
   admissionDate   DateTime      @map("admission_date")
   bedId           String
+  serviceId       String        // New relation to Service
   status          PatientStatus @default(ACTIVE)
   medicalRecord   String?       @map("medical_record")
   notes           String?
@@ -98,12 +136,14 @@ model Patient {
   
   // Relations
   bed             Bed           @relation(fields: [bedId], references: [id], onDelete: Cascade)
+  service         Service       @relation(fields: [serviceId], references: [id], onDelete: Cascade)
   medicationProcesses MedicationProcess[]
   errorLogs       ProcessErrorLog[]
   manualReturns   ManualReturn[]
   
   @@index([externalId])
   @@index([bedId])
+  @@index([serviceId])
   @@index([status])
   @@map("patients")
 }

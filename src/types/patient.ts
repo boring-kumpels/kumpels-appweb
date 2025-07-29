@@ -26,6 +26,8 @@ export enum ProcessStatus {
   IN_PROGRESS = "IN_PROGRESS",
   COMPLETED = "COMPLETED",
   ERROR = "ERROR",
+  DISPATCHED_FROM_PHARMACY = "DISPATCHED_FROM_PHARMACY",
+  DELIVERED_TO_SERVICE = "DELIVERED_TO_SERVICE",
 }
 
 export enum LogType {
@@ -46,13 +48,38 @@ export enum DailyProcessStatus {
   CANCELLED = "CANCELLED",
 }
 
-export interface Bed {
+export interface Line {
   id: string;
-  number: string;
-  lineName: LineName;
+  name: LineName;
+  displayName: string;
+  description?: string;
   createdAt: Date;
   updatedAt: Date;
   active: boolean;
+  services?: Service[];
+  beds?: Bed[];
+}
+
+export interface Service {
+  id: string;
+  name: string;
+  description?: string;
+  lineId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  active: boolean;
+  line?: Line;
+  patients?: Patient[];
+}
+
+export interface Bed {
+  id: string;
+  number: string;
+  lineId: string; // Changed from lineName to lineId
+  createdAt: Date;
+  updatedAt: Date;
+  active: boolean;
+  line?: Line;
   patients?: Patient[];
 }
 
@@ -94,12 +121,14 @@ export interface Patient {
   gender: string;
   admissionDate: Date;
   bedId: string;
+  serviceId: string; // New field
   status: PatientStatus;
   medicalRecord?: string;
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
   bed?: Bed;
+  service?: Service; // New relation
   medicationProcesses?: MedicationProcess[];
   errorLogs?: ProcessErrorLog[];
   manualReturns?: ManualReturn[];
@@ -149,6 +178,7 @@ export interface ManualReturnSupply {
 
 export interface PatientWithRelations extends Patient {
   bed: Bed;
+  service: Service; // Add service relation
   medicationProcesses: MedicationProcess[];
 }
 
@@ -160,6 +190,7 @@ export interface CreatePatientData {
   gender: string;
   admissionDate: Date;
   bedId: string;
+  serviceId: string; // New field
   medicalRecord?: string;
   notes?: string;
 }
@@ -171,6 +202,7 @@ export interface UpdatePatientData {
   gender?: string;
   admissionDate?: Date;
   bedId?: string;
+  serviceId?: string; // New field
   status?: PatientStatus;
   medicalRecord?: string;
   notes?: string;
@@ -178,6 +210,7 @@ export interface UpdatePatientData {
 
 export interface PatientFilters {
   lineName?: LineName;
+  serviceId?: string; // Add service filter
   bedId?: string;
   status?: PatientStatus;
   search?: string;
@@ -191,6 +224,7 @@ export interface PatientImportData {
   gender: string;
   admissionDate: string;
   lineName: LineName;
+  serviceName: string; // Add service name
   bedNumber: string;
   medicalRecord?: string;
   notes?: string;
@@ -303,7 +337,34 @@ export interface ManualReturnFilters {
 // Extended Patient with new relations
 export interface PatientWithFullRelations extends Patient {
   bed: Bed;
+  service: Service; // Add service relation
   medicationProcesses: MedicationProcess[];
   errorLogs: ProcessErrorLog[];
   manualReturns: ManualReturn[];
+}
+
+// Service and Line specific types
+export interface CreateServiceData {
+  name: string;
+  description?: string;
+  lineId: string;
+}
+
+export interface UpdateServiceData {
+  name?: string;
+  description?: string;
+  lineId?: string;
+  active?: boolean;
+}
+
+export interface CreateLineData {
+  name: LineName;
+  displayName: string;
+  description?: string;
+}
+
+export interface UpdateLineData {
+  displayName?: string;
+  description?: string;
+  active?: boolean;
 }

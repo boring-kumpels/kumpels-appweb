@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const lineName = searchParams.get("lineName") as LineName;
+    const serviceId = searchParams.get("serviceId");
     const bedId = searchParams.get("bedId");
     const status = searchParams.get("status") as PatientStatus;
     const search = searchParams.get("search");
@@ -27,10 +28,13 @@ export async function GET(request: NextRequest) {
 
     if (status) where.status = status;
     if (bedId) where.bedId = bedId;
+    if (serviceId) where.serviceId = serviceId;
 
     if (lineName) {
-      where.bed = {
-        lineName: lineName,
+      where.service = {
+        line: {
+          name: lineName,
+        },
       };
     }
 
@@ -40,20 +44,34 @@ export async function GET(request: NextRequest) {
         { lastName: { contains: search, mode: "insensitive" } },
         { externalId: { contains: search, mode: "insensitive" } },
         { bed: { number: { contains: search, mode: "insensitive" } } },
+        { service: { name: { contains: search, mode: "insensitive" } } },
       ];
     }
 
     const patients = await prisma.patient.findMany({
       where,
       include: {
-        bed: true,
+        bed: {
+          include: {
+            line: true,
+          },
+        },
+        service: {
+          include: {
+            line: true,
+          },
+        },
         medicationProcesses: {
           orderBy: {
             createdAt: "desc",
           },
         },
       },
-      orderBy: [{ bed: { lineName: "asc" } }, { bed: { number: "asc" } }],
+      orderBy: [
+        { service: { line: { displayName: "asc" } } },
+        { service: { name: "asc" } },
+        { bed: { number: "asc" } },
+      ],
     });
 
     return NextResponse.json(patients);
@@ -87,6 +105,7 @@ export async function POST(request: NextRequest) {
       gender,
       admissionDate,
       bedId,
+      serviceId, // New field
       medicalRecord,
       notes,
     } = body;
@@ -99,7 +118,8 @@ export async function POST(request: NextRequest) {
       !dateOfBirth ||
       !gender ||
       !admissionDate ||
-      !bedId
+      !bedId ||
+      !serviceId // Add serviceId validation
     ) {
       return NextResponse.json(
         { error: "Missing required fields" },
@@ -140,6 +160,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if service exists
+    const service = await prisma.service.findUnique({
+      where: { id: serviceId },
+    });
+
+    if (!service) {
+      return NextResponse.json({ error: "Service not found" }, { status: 404 });
+    }
+
     // Create patient
     const patient = await prisma.patient.create({
       data: {
@@ -150,12 +179,22 @@ export async function POST(request: NextRequest) {
         gender,
         admissionDate: new Date(admissionDate),
         bedId,
+        serviceId, // Add serviceId
         medicalRecord,
         notes,
         status: PatientStatus.ACTIVE,
       },
       include: {
-        bed: true,
+        bed: {
+          include: {
+            line: true,
+          },
+        },
+        service: {
+          include: {
+            line: true,
+          },
+        },
         medicationProcesses: true,
       },
     });

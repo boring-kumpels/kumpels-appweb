@@ -17,7 +17,6 @@ import {
   MedicationProcess,
   ProcessStatus,
 } from "@/types/patient";
-import { getLineDisplayName } from "@/lib/lines";
 import { ProcessStatusButton } from "./process-status-button";
 import { useAuth } from "@/providers/auth-provider";
 
@@ -87,6 +86,7 @@ export function PatientsTable({
       <TableHeader>
         <TableRow>
           <TableHead className="text-center">Detalle</TableHead>
+          <TableHead className="text-center">Línea</TableHead>
           <TableHead className="text-center">Servicio</TableHead>
           <TableHead className="text-center">Cama</TableHead>
           <TableHead className="text-center">Identificación</TableHead>
@@ -112,9 +112,10 @@ export function PatientsTable({
               </Button>
             </TableCell>
             <TableCell className="text-center font-medium">
-              {patient.bed?.lineName
-                ? getLineDisplayName(patient.bed.lineName)
-                : "N/A"}
+              {patient.service?.line?.displayName || "N/A"}
+            </TableCell>
+            <TableCell className="text-center font-medium">
+              {patient.service?.name || "N/A"}
             </TableCell>
             <TableCell className="text-center">
               {patient.bed?.number || "N/A"}
@@ -130,7 +131,13 @@ export function PatientsTable({
                   patient.id,
                   MedicationProcessStep.PREDESPACHO
                 )}
-                preCalculatedState={isButtonStatesReady ? buttonStatesMap?.get(patient.id)?.[MedicationProcessStep.PREDESPACHO] : undefined}
+                preCalculatedState={
+                  isButtonStatesReady
+                    ? buttonStatesMap?.get(patient.id)?.[
+                        MedicationProcessStep.PREDESPACHO
+                      ]
+                    : undefined
+                }
               />
             </TableCell>
             <TableCell className="text-center">
@@ -142,7 +149,13 @@ export function PatientsTable({
                   patient.id,
                   MedicationProcessStep.ALISTAMIENTO
                 )}
-                preCalculatedState={isButtonStatesReady ? buttonStatesMap?.get(patient.id)?.[MedicationProcessStep.ALISTAMIENTO] : undefined}
+                preCalculatedState={
+                  isButtonStatesReady
+                    ? buttonStatesMap?.get(patient.id)?.[
+                        MedicationProcessStep.ALISTAMIENTO
+                      ]
+                    : undefined
+                }
               />
             </TableCell>
             <TableCell className="text-center">
@@ -154,7 +167,13 @@ export function PatientsTable({
                   patient.id,
                   MedicationProcessStep.VALIDACION
                 )}
-                preCalculatedState={isButtonStatesReady ? buttonStatesMap?.get(patient.id)?.[MedicationProcessStep.VALIDACION] : undefined}
+                preCalculatedState={
+                  isButtonStatesReady
+                    ? buttonStatesMap?.get(patient.id)?.[
+                        MedicationProcessStep.VALIDACION
+                      ]
+                    : undefined
+                }
               />
             </TableCell>
             <TableCell className="text-center">
@@ -166,7 +185,13 @@ export function PatientsTable({
                   patient.id,
                   MedicationProcessStep.ENTREGA
                 )}
-                preCalculatedState={isButtonStatesReady ? buttonStatesMap?.get(patient.id)?.[MedicationProcessStep.ENTREGA] : undefined}
+                preCalculatedState={
+                  isButtonStatesReady
+                    ? buttonStatesMap?.get(patient.id)?.[
+                        MedicationProcessStep.ENTREGA
+                      ]
+                    : undefined
+                }
               />
             </TableCell>
             <TableCell className="text-center">
@@ -178,7 +203,13 @@ export function PatientsTable({
                   patient.id,
                   MedicationProcessStep.DEVOLUCION
                 )}
-                preCalculatedState={isButtonStatesReady ? buttonStatesMap?.get(patient.id)?.[MedicationProcessStep.DEVOLUCION] : undefined}
+                preCalculatedState={
+                  isButtonStatesReady
+                    ? buttonStatesMap?.get(patient.id)?.[
+                        MedicationProcessStep.DEVOLUCION
+                      ]
+                    : undefined
+                }
               />
             </TableCell>
           </TableRow>

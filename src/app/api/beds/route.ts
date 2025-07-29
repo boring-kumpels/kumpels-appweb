@@ -4,13 +4,13 @@ import prisma from "@/lib/prisma";
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const lineName = searchParams.get("lineName");
+    const lineId = searchParams.get("lineId");
     const available = searchParams.get("available");
 
     const whereClause: Record<string, unknown> = {};
 
-    if (lineName) {
-      whereClause.lineName = lineName;
+    if (lineId) {
+      whereClause.lineId = lineId;
     }
 
     if (available === "true") {
@@ -24,11 +24,12 @@ export async function GET(request: NextRequest) {
     const beds = await prisma.bed.findMany({
       where: whereClause,
       include: {
+        line: true,
         patients: {
           where: { status: "ACTIVE" },
         },
       },
-      orderBy: [{ lineName: "asc" }, { number: "asc" }],
+      orderBy: [{ line: { displayName: "asc" } }, { number: "asc" }],
     });
 
     return NextResponse.json(beds);
@@ -45,21 +46,30 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    const { number, lineName } = body;
+    const { number, lineId } = body;
 
     // Validate required fields
-    if (!number || !lineName) {
+    if (!number || !lineId) {
       return NextResponse.json(
-        { error: "Bed number and line name are required" },
+        { error: "Bed number and line ID are required" },
         { status: 400 }
       );
+    }
+
+    // Check if line exists
+    const line = await prisma.line.findUnique({
+      where: { id: lineId },
+    });
+
+    if (!line) {
+      return NextResponse.json({ error: "Line not found" }, { status: 404 });
     }
 
     // Check if bed number already exists in this line
     const existingBed = await prisma.bed.findUnique({
       where: {
-        lineName_number: {
-          lineName,
+        lineId_number: {
+          lineId,
           number,
         },
       },
@@ -75,7 +85,10 @@ export async function POST(request: NextRequest) {
     const bed = await prisma.bed.create({
       data: {
         number,
-        lineName,
+        lineId,
+      },
+      include: {
+        line: true,
       },
     });
 

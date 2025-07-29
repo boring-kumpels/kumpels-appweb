@@ -1,180 +1,117 @@
-# Database Management Scripts
+# Database Scripts
 
-This directory contains scripts for managing the hospital database, including populating sample data, cleaning the database, and importing patients from external systems.
+This directory contains scripts to populate and clean up the database with sample data.
 
-## Prerequisites
+## 📋 Available Scripts
 
-1. Make sure you have the database set up and migrations applied:
-   ```bash
-   npm run db:generate
-   npm run db:migrate
-   ```
+### Population Scripts
 
-2. Install the CSV parser dependency:
-   ```bash
-   npm install csv-parse
-   ```
+#### `populate-lines-beds.ts`
 
-## Available Scripts
+Populates the database with:
 
-### 1. Populate Sample Data
-
-Populates the database with 5 lines (A, B, C, D, E), 10 beds per line, and 5 sample patients.
+- **5 Lines** (Línea 1-5)
+- **20 Services** distributed across the lines
+- **50 Beds** (10 beds per line, A1-A10)
 
 ```bash
-npm run db:populate
+npx tsx scripts/populate-lines-beds.ts
 ```
 
-This script will:
-- Create 5 lines: Line A (General Medicine), Line B (Surgery), Line C (Pediatrics), Line D (ICU), Line E (Maternity)
-- Create 10 beds per line (A1-A10, B1-B10, etc.)
-- Create 5 sample patients assigned to different beds
+#### `populate-patients.ts`
 
-### 2. Clean Database
+Populates the database with **10 sample patients** distributed across different services.
 
-Removes all patients, beds, and lines from the database.
+**Prerequisite**: Must run `populate-lines-beds.ts` first.
 
 ```bash
-npm run db:cleanup
+npx tsx scripts/populate-patients.ts
 ```
 
-⚠️ **Warning**: This will permanently delete all data in the patients, beds, and lines tables.
+### Cleanup Scripts
 
-### 3. Import Patients from CSV
+#### `cleanup-patients.ts`
 
-Imports patients from a CSV file that comes from an external system.
+Removes all patients from the database.
 
 ```bash
-npm run db:import-patients <path-to-csv-file>
+npx tsx scripts/cleanup-patients.ts
 ```
 
-Example:
+#### `cleanup-lines-beds.ts`
+
+Removes all lines, services, and beds from the database.
+
+**Note**: This will also remove any patients since they depend on services and beds.
+
 ```bash
-npm run db:import-patients scripts/sample-patients.csv
+npx tsx scripts/cleanup-lines-beds.ts
 ```
 
-#### CSV Format
+### Utility Scripts
 
-The CSV file should have the following columns:
+#### `check-data.ts`
 
-```csv
-externalId,firstName,lastName,dateOfBirth,gender,admissionDate,lineName,bedNumber,medicalRecord,notes
-EXT001,Maria,Garcia,1985-03-15,F,2024-01-15,Line A,A1,MR001,Patient with diabetes
+Displays current database content (lines, services, patients, beds).
+
+```bash
+npx tsx scripts/check-data.ts
 ```
 
-**Required columns:**
-- `externalId`: Unique identifier from external system
-- `firstName`: Patient's first name
-- `lastName`: Patient's last name
-- `dateOfBirth`: Date of birth (YYYY-MM-DD format)
-- `gender`: Gender (M/F)
-- `admissionDate`: Admission date (YYYY-MM-DD format)
-- `lineName`: Name of the line (must match existing line names)
-- `bedNumber`: Bed number (must match existing bed numbers in the line)
+## 🔄 Typical Workflow
 
-**Optional columns:**
-- `medicalRecord`: Medical record number
-- `notes`: Additional notes
+### Fresh Start
 
-## Database Schema
+```bash
+# 1. Populate infrastructure
+npx tsx scripts/populate-lines-beds.ts
+
+# 2. Add patients
+npx tsx scripts/populate-patients.ts
+
+# 3. Verify data
+npx tsx scripts/check-data.ts
+```
+
+### Reset Everything
+
+```bash
+# 1. Clean up patients
+npx tsx scripts/cleanup-patients.ts
+
+# 2. Clean up infrastructure
+npx tsx scripts/cleanup-lines-beds.ts
+
+# 3. Start fresh
+npx tsx scripts/populate-lines-beds.ts
+npx tsx scripts/populate-patients.ts
+```
+
+## 📊 Data Structure
 
 ### Lines
-- Represents hospital wards/units
-- Each line has a name and description
-- Contains multiple beds
+
+- **Línea 1**: UCI Pediátrica (3 services)
+- **Línea 2**: Adultos y Transplantes (3 services)
+- **Línea 3**: Adultos y Pediatría (3 services)
+- **Línea 4**: Pediatría y Neonatos (3 services)
+- **Línea 5**: UCI Médica y Urgencias (8 services)
+
+### Services per Line
+
+- **Línea 1**: UCI PEDIATRICA CARDIOVASCULAR, UCI QUIRÚRGICA, UCI PEDIATRICA GENERAL
+- **Línea 2**: SEGUNDO ADULTOS, PEBELLON BENEFACTORES, UNIDAD DE TRANSPLANTES
+- **Línea 3**: TERCERO ADULTOS, CUARTO ADULTOS, SEGUNDO PEDIATRIA
+- **Línea 4**: TERCERO PEDIATRÍA, SUITE PEDIATRICA, NEONATOS
+- **Línea 5**: TERCERO REINALDO, QUINTO REINALDO, SEXTO REINALDO, UCI MEDICA 1, UCI MEDICA 2, UCI MEDICA 3, UCI CARDIOVASCULAR, URGENCIAS
 
 ### Beds
-- Belongs to a specific line
-- Has a unique number within the line
-- Can be occupied by one active patient at a time
 
-### Patients
-- Assigned to a specific bed
-- Has an external ID for integration with external systems
-- Includes personal information, medical record, and status
-- Status can be: ACTIVE, DISCHARGED, TRANSFERRED, DECEASED
+- **10 beds per line** (A1-A10)
+- **50 total beds** across all lines
 
-## API Endpoints
+### Sample Patients
 
-The following API endpoints are available for managing the data:
-
-### Patients
-- `GET /api/patients` - List all patients with optional filters
-- `POST /api/patients` - Create a new patient
-- `GET /api/patients/[id]` - Get a specific patient
-- `PUT /api/patients/[id]` - Update a patient
-- `DELETE /api/patients/[id]` - Delete a patient
-
-### Lines
-- `GET /api/lines` - List all lines with their beds and patients
-- `POST /api/lines` - Create a new line
-
-### Beds
-- `GET /api/beds` - List all beds with optional filters
-- `POST /api/beds` - Create a new bed
-
-## Usage Examples
-
-### 1. Set up the database from scratch
-
-```bash
-# Generate Prisma client
-npm run db:generate
-
-# Apply migrations
-npm run db:migrate
-
-# Populate with sample data
-npm run db:populate
-```
-
-### 2. Import patients from external system
-
-```bash
-# First, ensure lines and beds exist
-npm run db:populate
-
-# Then import patients
-npm run db:import-patients data/patients-export.csv
-```
-
-### 3. Clean and start fresh
-
-```bash
-# Clean all data
-npm run db:cleanup
-
-# Populate with new data
-npm run db:populate
-```
-
-## Error Handling
-
-The scripts include comprehensive error handling:
-
-- **Duplicate data**: Scripts use `upsert` operations to handle existing data gracefully
-- **Missing dependencies**: Scripts check for required lines and beds before creating patients
-- **Bed conflicts**: Scripts warn about bed occupancy conflicts
-- **Invalid data**: Scripts validate required fields and data formats
-
-## Troubleshooting
-
-### Common Issues
-
-1. **"Line not found" error**: Make sure the line names in your CSV match exactly with the lines in the database
-2. **"Bed not found" error**: Ensure bed numbers exist in the specified line
-3. **"Bed is already occupied" warning**: The script will warn you if a bed is already occupied but will still create the patient
-
-### Database Connection Issues
-
-If you encounter database connection issues:
-
-1. Check your `.env` file has the correct `DATABASE_URL`
-2. Ensure the database is running and accessible
-3. Verify that Prisma migrations have been applied
-
-### Performance Tips
-
-- For large imports, consider running the script during off-peak hours
-- The scripts use transactions where appropriate to ensure data consistency
-- Consider using the `--batch-size` option for very large datasets (future enhancement) 
+- **10 patients** with realistic data
+- Distributed across different services
+- Each patient assigned to an available bed

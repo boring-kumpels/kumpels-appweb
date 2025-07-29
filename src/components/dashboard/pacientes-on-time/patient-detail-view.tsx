@@ -13,6 +13,8 @@ import {
   Check,
   AlertTriangle,
   Send,
+  QrCode,
+  Camera,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -41,6 +43,8 @@ import { useAllMedicationProcesses, useUpdateMedicationProcess } from "@/hooks/u
 import { useProcessErrorLogs, useCreateProcessErrorLog } from "@/hooks/use-process-error-logs";
 import { useManualReturns, useCreateManualReturn, useApproveManualReturn, useRejectManualReturn } from "@/hooks/use-manual-returns";
 import { ProcessStatusButton } from "./process-status-button";
+import { QRGenerator } from "../qr-generator";
+import { QRScanner } from "../qr-scanner";
 import { MedicationProcessStep, ProcessStatus, PatientWithRelations, MedicationProcess, LogType } from "@/types/patient";
 import { UserRole } from "@prisma/client";
 import { getLineDisplayName } from "@/lib/lines";
@@ -122,6 +126,8 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
   const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
   const [isManualReturnModalOpen, setIsManualReturnModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isQRGeneratorOpen, setIsQRGeneratorOpen] = useState(false);
+  const [isQRScannerOpen, setIsQRScannerOpen] = useState(false);
   const [newMessage, setNewMessage] = useState("");
   const [selectedErrorStep, setSelectedErrorStep] = useState<MedicationProcessStep | "">("");
   
@@ -642,6 +648,8 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
                               {step.icon}
                               <span className="capitalize">
                                 {step.status === ProcessStatus.COMPLETED && "Completado"}
+                                {step.status === ProcessStatus.DISPATCHED_FROM_PHARMACY && "Salió de Farmacia"}
+                                {step.status === ProcessStatus.DELIVERED_TO_SERVICE && "Entregado en Servicio"}
                                 {step.status === ProcessStatus.IN_PROGRESS && "En Progreso"}
                                 {step.status === ProcessStatus.PENDING && "Pendiente"}
                                 {step.status === ProcessStatus.ERROR && "Error"}
@@ -652,6 +660,37 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
                         );
                       })}
                     </div>
+
+                    {/* QR Tracking Buttons for Entrega Tab */}
+                    {activeTab === "entrega" && profile?.role === "PHARMACY_REGENT" && (
+                      <div className="border-t pt-6">
+                        <h3 className="text-lg font-semibold mb-4 text-center">
+                          Seguimiento con Códigos QR
+                        </h3>
+                        <div className="grid grid-cols-2 gap-4">
+                          <Button
+                            onClick={() => setIsQRGeneratorOpen(true)}
+                            className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transition-all duration-200"
+                          >
+                            <QrCode className="h-5 w-5" />
+                            Generar Código QR
+                          </Button>
+                          <Button
+                            onClick={() => setIsQRScannerOpen(true)}
+                            className="w-full h-14 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transition-all duration-200"
+                          >
+                            <Camera className="h-5 w-5" />
+                            Escanear Código QR
+                          </Button>
+                        </div>
+                        <div className="mt-4 text-center text-sm text-muted-foreground bg-muted/50 rounded-lg p-3">
+                          <p>
+                            <strong>Generar:</strong> Crear códigos QR para salida de farmacia o llegada a servicio<br/>
+                            <strong>Escanear:</strong> Procesar códigos QR para registrar el estado de entrega
+                          </p>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Messages Display */}
                     <div className="border border-border rounded-lg p-4 min-h-[120px]">
@@ -1227,6 +1266,18 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* QR Generator Modal */}
+      <QRGenerator 
+        open={isQRGeneratorOpen} 
+        onOpenChange={setIsQRGeneratorOpen}
+      />
+
+      {/* QR Scanner Modal */}
+      <QRScanner 
+        open={isQRScannerOpen} 
+        onOpenChange={setIsQRScannerOpen}
+      />
     </div>
   );
 }

@@ -33,6 +33,10 @@ export function getStatusDisplayName(status: ProcessStatus): string {
       return "Completado";
     case ProcessStatus.ERROR:
       return "Error";
+    case ProcessStatus.DISPATCHED_FROM_PHARMACY:
+      return "Salió de Farmacia";
+    case ProcessStatus.DELIVERED_TO_SERVICE:
+      return "Entregado en Servicio";
     default:
       return "Desconocido";
   }
@@ -53,6 +57,10 @@ export function getStatusColorClass(status: ProcessStatus, isEnabled: boolean = 
       return "bg-transparent text-orange-500 border-2 border-dashed border-orange-500 hover:bg-orange-50";
     case ProcessStatus.COMPLETED:
       return "bg-green-500 text-white border-0 hover:bg-green-600";
+    case ProcessStatus.DISPATCHED_FROM_PHARMACY:
+      return "bg-transparent text-blue-500 border-2 border-dashed border-blue-500 hover:bg-blue-50";
+    case ProcessStatus.DELIVERED_TO_SERVICE:
+      return "bg-blue-500 text-white border-0 hover:bg-blue-600";
     case ProcessStatus.ERROR:
       return "bg-red-500 text-white border-0 hover:bg-red-600";
     default:
@@ -128,7 +136,9 @@ export function isValidStatusTransition(
   const validTransitions: Record<ProcessStatus, ProcessStatus[]> = {
     [ProcessStatus.PENDING]: [ProcessStatus.IN_PROGRESS, ProcessStatus.ERROR],
     [ProcessStatus.IN_PROGRESS]: [ProcessStatus.COMPLETED, ProcessStatus.ERROR],
-    [ProcessStatus.COMPLETED]: [], // Cannot transition from completed
+    [ProcessStatus.COMPLETED]: [ProcessStatus.DISPATCHED_FROM_PHARMACY], // For ENTREGA step: completed -> dispatched
+    [ProcessStatus.DISPATCHED_FROM_PHARMACY]: [ProcessStatus.DELIVERED_TO_SERVICE], // dispatched -> delivered
+    [ProcessStatus.DELIVERED_TO_SERVICE]: [], // Final state for delivery tracking
     [ProcessStatus.ERROR]: [ProcessStatus.IN_PROGRESS], // Can retry from error
   };
 
@@ -144,7 +154,9 @@ export function getValidStatusTransitions(
   const validTransitions: Record<ProcessStatus, ProcessStatus[]> = {
     [ProcessStatus.PENDING]: [ProcessStatus.IN_PROGRESS, ProcessStatus.ERROR],
     [ProcessStatus.IN_PROGRESS]: [ProcessStatus.COMPLETED, ProcessStatus.ERROR],
-    [ProcessStatus.COMPLETED]: [],
+    [ProcessStatus.COMPLETED]: [ProcessStatus.DISPATCHED_FROM_PHARMACY],
+    [ProcessStatus.DISPATCHED_FROM_PHARMACY]: [ProcessStatus.DELIVERED_TO_SERVICE],
+    [ProcessStatus.DELIVERED_TO_SERVICE]: [],
     [ProcessStatus.ERROR]: [ProcessStatus.IN_PROGRESS],
   };
 

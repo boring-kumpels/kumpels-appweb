@@ -7,6 +7,7 @@ import {
   Clock,
   TrendingUp,
   CheckCircle2,
+  QrCode,
 } from "lucide-react";
 import type { SidebarData } from "../types";
 
@@ -58,6 +59,16 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
               title: "User Management",
               url: "/admin/users",
               icon: Users,
+            },
+          ],
+        },
+        {
+          title: "QR Management",
+          items: [
+            {
+              title: "QR Codes",
+              url: "/dashboard/qr-management",
+              icon: QrCode,
             },
           ],
         },
@@ -133,6 +144,16 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
               title: "Statistics",
               url: "/regent/estadisticas",
               icon: TrendingUp,
+            },
+          ],
+        },
+        {
+          title: "QR Management",
+          items: [
+            {
+              title: "QR Codes",
+              url: "/regent/qr-management",
+              icon: QrCode,
             },
           ],
         },

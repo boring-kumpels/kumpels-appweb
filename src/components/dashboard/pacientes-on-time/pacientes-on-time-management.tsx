@@ -16,10 +16,16 @@ import { Input } from "@/components/ui/input";
 import { PatientsTable } from "./patients-table";
 import { DailyProcessStatusCard } from "./daily-process-status";
 import { usePatients } from "@/hooks/use-patients";
-import { useLines } from "@/hooks/use-lines-beds";
+import { useLines, useServices } from "@/hooks/use-lines-beds";
 import { useCurrentDailyProcess } from "@/hooks/use-daily-processes";
 import { useAllMedicationProcesses } from "@/hooks/use-medication-processes";
-import { PatientWithRelations, PatientStatus, LineName, MedicationProcess, MedicationProcessStep, ProcessStatus } from "@/types/patient";
+import {
+  PatientWithRelations,
+  PatientStatus,
+  MedicationProcess,
+  MedicationProcessStep,
+  ProcessStatus,
+} from "@/types/patient";
 
 // Helper function to calculate button state (extracted from ProcessStatusButton logic)
 function calculateButtonState(
@@ -32,48 +38,58 @@ function calculateButtonState(
   if (process) {
     return process.status;
   }
-  
+
   // No process exists for this patient/step - determine what state to show
   if (step === MedicationProcessStep.PREDESPACHO) {
     // Check if any predespacho has started in the daily process
     const anyPredespachoStarted = allMedicationProcesses.some(
-      p => p.step === MedicationProcessStep.PREDESPACHO && 
-      (p.status === ProcessStatus.IN_PROGRESS || p.status === ProcessStatus.COMPLETED)
+      (p) =>
+        p.step === MedicationProcessStep.PREDESPACHO &&
+        (p.status === ProcessStatus.IN_PROGRESS ||
+          p.status === ProcessStatus.COMPLETED)
     );
-    
+
     if (anyPredespachoStarted) {
       return ProcessStatus.IN_PROGRESS; // Show as in progress (orange dotted)
     }
     return null; // Show as empty (black border) - not started yet
   }
-  
+
   if (step === MedicationProcessStep.ALISTAMIENTO) {
     const predespachoProcess = allMedicationProcesses.find(
-      p => p.patientId === patient.id && p.step === MedicationProcessStep.PREDESPACHO
+      (p) =>
+        p.patientId === patient.id &&
+        p.step === MedicationProcessStep.PREDESPACHO
     );
     if (predespachoProcess?.status === ProcessStatus.COMPLETED) {
       return ProcessStatus.PENDING; // Show as pending (orange filled)
     }
     return null; // Show as disabled (black border)
   }
-  
-  if (step === MedicationProcessStep.VALIDACION || step === MedicationProcessStep.ENTREGA) {
+
+  if (
+    step === MedicationProcessStep.VALIDACION ||
+    step === MedicationProcessStep.ENTREGA
+  ) {
     const alistamientoProcess = allMedicationProcesses.find(
-      p => p.patientId === patient.id && p.step === MedicationProcessStep.ALISTAMIENTO
+      (p) =>
+        p.patientId === patient.id &&
+        p.step === MedicationProcessStep.ALISTAMIENTO
     );
     if (alistamientoProcess?.status === ProcessStatus.COMPLETED) {
       return ProcessStatus.PENDING; // Show as pending (orange filled)
     }
     return null; // Show as disabled (black border)
   }
-  
+
   return null; // Default: disabled
 }
 
 export default function PacientesOnTimeManagement() {
   const [isBedSelectionOpen, setIsBedSelectionOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedLineName, setSelectedLineName] = useState<LineName | "">("");
+  const [selectedLineId, setSelectedLineId] = useState<string>("");
+  const [selectedServiceId, setSelectedServiceId] = useState<string>("");
   const [selectedBeds, setSelectedBeds] = useState<string[]>([]);
   const [isButtonStatesReady, setIsButtonStatesReady] = useState(false);
 
@@ -82,9 +98,9 @@ export default function PacientesOnTimeManagement() {
 
   // Pre-fetch all medication processes for the current daily process
   // Note: This will return empty array if no daily process exists, which is correct
-  const { 
-    data: allMedicationProcesses = [], 
-    isLoading: medicationProcessesLoading
+  const {
+    data: allMedicationProcesses = [],
+    isLoading: medicationProcessesLoading,
   } = useAllMedicationProcesses(currentDailyProcess?.id);
 
   // Fetch ALL active patients at once (no server-side filtering)
@@ -105,85 +121,123 @@ export default function PacientesOnTimeManagement() {
     // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(patient => 
-        patient.firstName.toLowerCase().includes(query) ||
-        patient.lastName.toLowerCase().includes(query) ||
-        patient.externalId.toLowerCase().includes(query) ||
-        patient.bed?.number.toLowerCase().includes(query)
+      filtered = filtered.filter(
+        (patient) =>
+          patient.firstName.toLowerCase().includes(query) ||
+          patient.lastName.toLowerCase().includes(query) ||
+          patient.externalId.toLowerCase().includes(query) ||
+          patient.bed?.number.toLowerCase().includes(query) ||
+          patient.service?.name.toLowerCase().includes(query)
       );
     }
 
     // Apply line filter
-    if (selectedLineName) {
-      filtered = filtered.filter(patient => 
-        patient.bed?.lineName === selectedLineName
+    if (selectedLineId) {
+      filtered = filtered.filter(
+        (patient) => patient.service?.lineId === selectedLineId
+      );
+    }
+
+    // Apply service filter
+    if (selectedServiceId) {
+      filtered = filtered.filter(
+        (patient) => patient.serviceId === selectedServiceId
       );
     }
 
     // Apply bed filter
     if (selectedBeds.length > 0) {
-      filtered = filtered.filter(patient => 
-        patient.bed && selectedBeds.includes(patient.bed.id)
+      filtered = filtered.filter(
+        (patient) => patient.bed && selectedBeds.includes(patient.bed.id)
       );
     }
 
     return filtered;
-  }, [allPatients, searchQuery, selectedLineName, selectedBeds]);
+  }, [
+    allPatients,
+    searchQuery,
+    selectedLineId,
+    selectedServiceId,
+    selectedBeds,
+  ]);
 
   // Pre-calculate all button states to avoid individual calculations per button
   // This automatically updates when allMedicationProcesses changes due to optimistic updates
   const buttonStatesMap = useMemo(() => {
     const statesMap = new Map();
-    
+
     // Calculate button states for all patients
     if (allPatients.length > 0) {
-      allPatients.forEach(patient => {
+      allPatients.forEach((patient) => {
         const patientStates: Record<string, ProcessStatus | null> = {};
-        
+
         // Get processes for this patient
         const patientProcesses = allMedicationProcesses.filter(
-          p => p.patientId === patient.id
+          (p) => p.patientId === patient.id
         );
-        
+
         // Calculate state for each step
         [
           MedicationProcessStep.PREDESPACHO,
-          MedicationProcessStep.ALISTAMIENTO, 
+          MedicationProcessStep.ALISTAMIENTO,
           MedicationProcessStep.VALIDACION,
           MedicationProcessStep.ENTREGA,
-          MedicationProcessStep.DEVOLUCION
-        ].forEach(step => {
-          const process = patientProcesses.find(p => p.step === step);
+          MedicationProcessStep.DEVOLUCION,
+        ].forEach((step) => {
+          const process = patientProcesses.find((p) => p.step === step);
           patientStates[step] = calculateButtonState(
-            patient, 
-            step, 
-            process, 
+            patient,
+            step,
+            process,
             allMedicationProcesses
           );
         });
-        
+
         statesMap.set(patient.id, patientStates);
       });
     }
-    
+
     return statesMap;
   }, [allPatients, allMedicationProcesses]);
 
   const { data: lines = [], isLoading: linesLoading } = useLines();
+  const { data: services = [], isLoading: servicesLoading = false } =
+    useServices(selectedLineId || undefined, true);
+
+  // Create a stable loading state object
+  const loadingStates = useMemo(
+    () => ({
+      patients: isLoading,
+      lines: linesLoading,
+      services: servicesLoading,
+      medicationProcesses: medicationProcessesLoading,
+    }),
+    [isLoading, linesLoading, servicesLoading, medicationProcessesLoading]
+  );
 
   // Use effect to control when button states are considered "ready"
   useEffect(() => {
-    const hasAllData = !isLoading && !linesLoading && !medicationProcessesLoading;
+    const hasAllData =
+      !loadingStates.patients &&
+      !loadingStates.lines &&
+      !loadingStates.services &&
+      !loadingStates.medicationProcesses;
     const hasPatients = allPatients.length > 0;
-    const hasCompleteButtonStates = buttonStatesMap.size === allPatients.length && 
-      allPatients.every(patient => buttonStatesMap.has(patient.id));
-    
+    const hasCompleteButtonStates =
+      buttonStatesMap.size === allPatients.length &&
+      allPatients.every((patient) => buttonStatesMap.has(patient.id));
+
     if (hasAllData && hasPatients && hasCompleteButtonStates) {
       setIsButtonStatesReady(true);
     } else {
       setIsButtonStatesReady(false);
     }
-  }, [isLoading, linesLoading, medicationProcessesLoading, allPatients, buttonStatesMap]);
+  }, [loadingStates, allPatients, buttonStatesMap]);
+
+  // Reset service selection when line changes
+  useEffect(() => {
+    setSelectedServiceId("");
+  }, [selectedLineId]);
 
   const handleOpenPatientDetail = (patient: PatientWithRelations) => {
     console.log(
@@ -194,10 +248,10 @@ export default function PacientesOnTimeManagement() {
 
   // Get available beds for the selected line
   const availableBeds = useMemo(() => {
-    if (!selectedLineName) return [];
-    const selectedLine = lines.find((line) => line.name === selectedLineName);
+    if (!selectedLineId) return [];
+    const selectedLine = lines.find((line) => line.id === selectedLineId);
     return selectedLine?.beds || [];
-  }, [selectedLineName, lines]);
+  }, [selectedLineId, lines]);
 
   const handleBedSelection = (bedId: string) => {
     setSelectedBeds((prev) =>
@@ -216,13 +270,14 @@ export default function PacientesOnTimeManagement() {
 
   // Use the new button states ready flag for more precise control
   const isAllDataLoading = !isButtonStatesReady;
-  
+
   // Show loading state until ALL data is ready
   if (isAllDataLoading) {
     const getLoadingMessage = () => {
-      if (isLoading) return "Cargando pacientes...";
-      if (linesLoading) return "Cargando líneas...";
-      if (medicationProcessesLoading) return "Cargando procesos...";
+      if (loadingStates.patients) return "Cargando pacientes...";
+      if (loadingStates.lines) return "Cargando líneas...";
+      if (loadingStates.services) return "Cargando servicios...";
+      if (loadingStates.medicationProcesses) return "Cargando procesos...";
       return "Calculando estados de botones...";
     };
 
@@ -230,18 +285,20 @@ export default function PacientesOnTimeManagement() {
       <div className="space-y-6">
         {/* Daily Process Status */}
         <DailyProcessStatusCard />
-        
+
         {/* Loading Indicator */}
         <div className="flex flex-col items-center justify-center h-64 space-y-4">
           <div className="flex items-center space-x-3">
             <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
             <span className="text-lg font-medium">{getLoadingMessage()}</span>
           </div>
-          
+
           {/* Progress indicators */}
           <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-            <div className={`flex items-center space-x-1 ${!isLoading ? 'text-green-600' : ''}`}>
-              {!isLoading ? (
+            <div
+              className={`flex items-center space-x-1 ${!loadingStates.patients ? "text-green-600" : ""}`}
+            >
+              {!loadingStates.patients ? (
                 <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
                   <Check className="w-2 h-2 text-white" />
                 </div>
@@ -250,9 +307,11 @@ export default function PacientesOnTimeManagement() {
               )}
               <span>Pacientes</span>
             </div>
-            
-            <div className={`flex items-center space-x-1 ${!linesLoading ? 'text-green-600' : ''}`}>
-              {!linesLoading ? (
+
+            <div
+              className={`flex items-center space-x-1 ${!loadingStates.lines ? "text-green-600" : ""}`}
+            >
+              {!loadingStates.lines ? (
                 <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
                   <Check className="w-2 h-2 text-white" />
                 </div>
@@ -261,9 +320,24 @@ export default function PacientesOnTimeManagement() {
               )}
               <span>Líneas</span>
             </div>
-            
-            <div className={`flex items-center space-x-1 ${!medicationProcessesLoading ? 'text-green-600' : ''}`}>
-              {!medicationProcessesLoading ? (
+
+            <div
+              className={`flex items-center space-x-1 ${!loadingStates.services ? "text-green-600" : ""}`}
+            >
+              {!loadingStates.services ? (
+                <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                  <Check className="w-2 h-2 text-white" />
+                </div>
+              ) : (
+                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              )}
+              <span>Servicios</span>
+            </div>
+
+            <div
+              className={`flex items-center space-x-1 ${!loadingStates.medicationProcesses ? "text-green-600" : ""}`}
+            >
+              {!loadingStates.medicationProcesses ? (
                 <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
                   <Check className="w-2 h-2 text-white" />
                 </div>
@@ -272,8 +346,10 @@ export default function PacientesOnTimeManagement() {
               )}
               <span>Procesos</span>
             </div>
-            
-            <div className={`flex items-center space-x-1 ${isButtonStatesReady ? 'text-green-600' : ''}`}>
+
+            <div
+              className={`flex items-center space-x-1 ${isButtonStatesReady ? "text-green-600" : ""}`}
+            >
               {isButtonStatesReady ? (
                 <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
                   <Check className="w-2 h-2 text-white" />
@@ -284,11 +360,14 @@ export default function PacientesOnTimeManagement() {
               <span>Estados</span>
             </div>
           </div>
-          
+
           {/* Additional info */}
           <div className="text-xs text-muted-foreground text-center max-w-md">
             {!isButtonStatesReady && allPatients.length > 0 && (
-              <p>Procesando {allPatients.length} pacientes y calculando estados de botones...</p>
+              <p>
+                Procesando {allPatients.length} pacientes y calculando estados
+                de botones...
+              </p>
             )}
           </div>
         </div>
@@ -323,7 +402,7 @@ export default function PacientesOnTimeManagement() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  placeholder="Buscar por nombre, cama o identificación..."
+                  placeholder="Buscar por nombre, cama, servicio o identificación..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
@@ -338,10 +417,11 @@ export default function PacientesOnTimeManagement() {
             <h4 className="text-sm font-medium mb-2">Filtro por Línea</h4>
             <div className="flex flex-wrap gap-2">
               <Button
-                variant={selectedLineName === "" ? "default" : "outline"}
+                variant={selectedLineId === "" ? "default" : "outline"}
                 size="sm"
                 onClick={() => {
-                  setSelectedLineName("");
+                  setSelectedLineId("");
+                  setSelectedServiceId("");
                   setSelectedBeds([]);
                 }}
                 className="rounded-full"
@@ -350,13 +430,12 @@ export default function PacientesOnTimeManagement() {
               </Button>
               {lines.map((line) => (
                 <Button
-                  key={line.name}
-                  variant={
-                    selectedLineName === line.name ? "default" : "outline"
-                  }
+                  key={line.id}
+                  variant={selectedLineId === line.id ? "default" : "outline"}
                   size="sm"
                   onClick={() => {
-                    setSelectedLineName(line.name as LineName);
+                    setSelectedLineId(line.id);
+                    setSelectedServiceId("");
                     setSelectedBeds([]);
                   }}
                   className="rounded-full"
@@ -366,6 +445,42 @@ export default function PacientesOnTimeManagement() {
               ))}
             </div>
           </div>
+
+          {/* Service Filter */}
+          {selectedLineId && (
+            <div>
+              <h4 className="text-sm font-medium mb-2">Filtro por Servicio</h4>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={selectedServiceId === "" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setSelectedServiceId("");
+                    setSelectedBeds([]);
+                  }}
+                  className="rounded-full"
+                >
+                  Todos los servicios
+                </Button>
+                {services.map((service) => (
+                  <Button
+                    key={service.id}
+                    variant={
+                      selectedServiceId === service.id ? "default" : "outline"
+                    }
+                    size="sm"
+                    onClick={() => {
+                      setSelectedServiceId(service.id);
+                      setSelectedBeds([]);
+                    }}
+                    className="rounded-full"
+                  >
+                    {service.name}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Bed Filter */}
           <div>
@@ -378,7 +493,7 @@ export default function PacientesOnTimeManagement() {
                 <Button
                   variant="outline"
                   className="w-full justify-start"
-                  disabled={!selectedLineName}
+                  disabled={!selectedLineId}
                 >
                   <Bed className="h-4 w-4 mr-2" />
                   {selectedBeds.length > 0
@@ -390,8 +505,8 @@ export default function PacientesOnTimeManagement() {
                 <DialogHeader>
                   <DialogTitle>
                     Camas Disponibles -{" "}
-                    {lines.find((l) => l.name === selectedLineName)
-                      ?.displayName || "Línea"}
+                    {lines.find((l) => l.id === selectedLineId)?.displayName ||
+                      "Línea"}
                   </DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
@@ -452,17 +567,20 @@ export default function PacientesOnTimeManagement() {
               <div className="flex items-center space-x-2 text-green-700">
                 <Check className="w-4 h-4" />
                 <span className="text-sm font-medium">
-                  Todos los estados calculados correctamente ({buttonStatesMap.size} pacientes procesados)
+                  Todos los estados calculados correctamente (
+                  {buttonStatesMap.size} pacientes procesados)
                 </span>
               </div>
             </div>
           )}
-          
+
           <PatientsTable
             patients={patients}
             isLoading={false} // Don't show loading since we already handled it above
             onOpenPatientDetail={handleOpenPatientDetail}
-            preloadedMedicationProcesses={(allMedicationProcesses as MedicationProcess[]) || []}
+            preloadedMedicationProcesses={
+              (allMedicationProcesses as MedicationProcess[]) || []
+            }
             currentDailyProcessId={currentDailyProcess?.id}
             buttonStatesMap={buttonStatesMap}
             isButtonStatesReady={isButtonStatesReady}
