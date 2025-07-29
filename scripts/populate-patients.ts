@@ -219,7 +219,7 @@ async function main() {
     for (const patientData of samplePatients) {
       // Find the line
       const line = await prisma.line.findUnique({
-        where: { name: patientData.lineName },
+        where: { name: patientData.lineName as any },
       });
 
       if (!line) {

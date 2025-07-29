@@ -789,8 +789,8 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
                   </span>
                   {" - "}
                   <span className="font-medium">
-                    {patient.bed?.lineName
-                      ? getLineDisplayName(patient.bed.lineName)
+                    {patient.bed?.line?.name
+                      ? getLineDisplayName(patient.bed.line.name)
                       : "N/A"}
                   </span>
                 </p>

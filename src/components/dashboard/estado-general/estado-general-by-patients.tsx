@@ -352,7 +352,6 @@ export default function EstadoGeneralByPatients() {
 
   // Fetch all medication processes for the current daily process
   const {
-    data: allMedicationProcesses = [],
     isLoading: medicationProcessesLoading,
   } = useAllMedicationProcesses(currentDailyProcess?.id);
 
@@ -373,7 +372,11 @@ export default function EstadoGeneralByPatients() {
 
     const patientsByLine = allPatients.reduce(
       (acc, patient) => {
-        const lineName = patient.bed.lineName;
+        const lineName = patient.bed.line?.name;
+        if (!lineName) {
+          console.warn(`Patient ${patient.id} has no line information`);
+          return acc;
+        }
         if (!acc[lineName]) {
           acc[lineName] = [];
         }
@@ -480,7 +483,7 @@ export default function EstadoGeneralByPatients() {
         patients,
       };
     });
-  }, [allPatients, allMedicationProcesses, showDetails]);
+  }, [allPatients, showDetails]);
 
   const handleToggleDetails = (lineId: string) => {
     setShowDetails((prev) => ({

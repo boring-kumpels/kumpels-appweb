@@ -305,6 +305,8 @@ function validateProcessUpdate(
     [PrismaProcessStatus.IN_PROGRESS]: [PrismaProcessStatus.COMPLETED, PrismaProcessStatus.ERROR],
     [PrismaProcessStatus.COMPLETED]: [PrismaProcessStatus.ERROR], // Can only change to error if completed
     [PrismaProcessStatus.ERROR]: [PrismaProcessStatus.PENDING, PrismaProcessStatus.IN_PROGRESS], // Can retry from error
+    [PrismaProcessStatus.DISPATCHED_FROM_PHARMACY]: [PrismaProcessStatus.DELIVERED_TO_SERVICE, PrismaProcessStatus.ERROR],
+    [PrismaProcessStatus.DELIVERED_TO_SERVICE]: [PrismaProcessStatus.COMPLETED, PrismaProcessStatus.ERROR],
   };
 
   const allowedTransitions = validTransitions[currentStatus] || [];

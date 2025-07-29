@@ -78,7 +78,7 @@ export function useQRScanner({
             resolve();
           };
 
-          const handleError = (e: Event) => {
+          const handleError = () => {
             videoRef.current?.removeEventListener("canplay", handleCanPlay);
             videoRef.current?.removeEventListener("error", handleError);
             reject(new Error("Video element error"));
@@ -104,7 +104,7 @@ export function useQRScanner({
       setTimeout(() => {
         if (videoRef.current && readerRef.current) {
           readerRef.current.decodeFromVideoDevice(
-            undefined,
+            null,
             videoRef.current,
             (result: Result | null, error) => {
               if (result) {

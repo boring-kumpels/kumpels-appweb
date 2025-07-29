@@ -43,7 +43,6 @@ export async function generatePharmacyDispatchQR(
     const qrCodeDataURL = await QRCode.toDataURL(qrString, {
       errorCorrectionLevel: "M",
       type: "image/png",
-      quality: 0.92,
       margin: 1,
       width: 256,
       color: {
@@ -79,7 +78,6 @@ export async function generateFloorArrivalQR(
     const qrCodeDataURL = await QRCode.toDataURL(qrString, {
       errorCorrectionLevel: "M",
       type: "image/png",
-      quality: 0.92,
       margin: 1,
       width: 256,
       color: {

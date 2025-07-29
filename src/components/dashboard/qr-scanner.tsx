@@ -64,7 +64,6 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
     isScanning,
     error: cameraError,
     hasPermission,
-    startScanning,
     stopScanning,
     resetPermissions,
   } = useQRScanner({
