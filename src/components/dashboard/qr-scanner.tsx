@@ -10,26 +10,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import {
   Camera,
   ArrowRight,
   QrCode,
   X,
-  ChevronDown,
   CheckCircle,
   Loader2,
   AlertCircle,
   Smartphone,
 } from "lucide-react";
 import { parseQRData, QRCodeType } from "@/lib/qr-generator";
-import { useLines, useServices } from "@/hooks/use-lines-beds";
 import { useQRScanner } from "@/hooks/use-qr-scanner";
 import { toast } from "@/components/ui/use-toast";
 
@@ -44,19 +34,14 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
     message: string;
     data?: {
       patientsCount: number;
-      lineName?: string;
-      serviceName?: string;
     };
   } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [showLineSelectionModal, setShowLineSelectionModal] = useState(false);
-  const [selectedLine, setSelectedLine] = useState("");
   const [enableCamera, setEnableCamera] = useState(false);
+  const [isSecureContext, setIsSecureContext] = useState<boolean | null>(null);
   const lastScannedRef = useRef<string | null>(null);
   const scanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const { data: lines = [] } = useLines();
-  const { data: allServices = [] } = useServices(undefined, true);
 
   // QR Scanner hook
   const {
@@ -99,6 +84,13 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
     },
   });
 
+  // Check secure context on client side
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsSecureContext(window.isSecureContext);
+    }
+  }, []);
+
   // Debug logging
   useEffect(() => {
     console.log(
@@ -111,12 +103,12 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
     );
 
     // Check if we're in a secure context
-    if (!window.isSecureContext) {
+    if (isSecureContext === false) {
       console.warn(
         "Camera access requires HTTPS. Current context is not secure."
       );
     }
-  }, [enableCamera, open]);
+  }, [enableCamera, open, isSecureContext]);
 
   useEffect(() => {
     console.log("QRScanner: Dialog open changed to", open);
@@ -160,12 +152,11 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
         return;
       }
 
-      // Check if QR is for today's process
-      const today = new Date().toISOString().split("T")[0];
-      if (qrData.processDate !== today) {
+      // Validate that the QR is active
+      if (!qrData.isActive) {
         setScanResult({
           success: false,
-          message: `Este código QR es para la fecha ${qrData.processDate}, pero hoy es ${today}`,
+          message: "Este código QR no está activo",
         });
         return;
       }
@@ -177,8 +168,7 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            lineId: qrData.lineId,
-            processDate: qrData.processDate,
+            qrId: qrData.id,
           }),
         });
 
@@ -201,15 +191,14 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
             message: result.error || "Error procesando salida de farmacia",
           });
         }
-      } else if (qrData.type === QRCodeType.FLOOR_ARRIVAL) {
-        const response = await fetch("/api/qr-scan/floor-arrival", {
+      } else if (qrData.type === QRCodeType.SERVICE_ARRIVAL) {
+        const response = await fetch("/api/qr-scan/service-arrival", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            serviceName: qrData.serviceName,
-            processDate: qrData.processDate,
+            qrId: qrData.id,
           }),
         });
 
@@ -250,59 +239,31 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
   };
 
   const handleSimulatePharmacyDispatch = () => {
-    if (lines.length === 0) {
-      toast({
-        title: "Error",
-        description: "No hay líneas disponibles",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Simulate scanning a pharmacy dispatch QR for the first line
-    const firstLine = lines[0];
+    // Simulate scanning a general pharmacy dispatch QR
     const simulatedQRData = JSON.stringify({
       type: QRCodeType.PHARMACY_DISPATCH,
-      lineId: firstLine.id,
+      id: `simulated_qr_${Date.now()}`,
       timestamp: new Date().toISOString(),
-      processDate: new Date().toISOString().split("T")[0],
+      isActive: true,
     });
 
     processQRData(simulatedQRData);
   };
 
-  const handleSimulateFloorArrival = () => {
-    setShowLineSelectionModal(true);
+  const handleSimulateServiceArrival = () => {
+    // Simulate scanning a service arrival QR
+    const simulatedQRData = JSON.stringify({
+      type: QRCodeType.SERVICE_ARRIVAL,
+      id: `simulated_service_qr_${Date.now()}`,
+      serviceId: "test_service_id",
+      serviceName: "Servicio de Prueba",
+      timestamp: new Date().toISOString(),
+      isActive: true,
+    });
+
+    processQRData(simulatedQRData);
   };
 
-  const handleLineSelection = () => {
-    if (selectedLine && allServices.length > 0) {
-      // Find a service in the selected line
-      const serviceInLine = allServices.find(
-        (service) => service.lineId === selectedLine
-      );
-
-      if (!serviceInLine) {
-        toast({
-          title: "Error",
-          description: "No se encontraron servicios en la línea seleccionada",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Simulate scanning a floor arrival QR for the service
-      const simulatedQRData = JSON.stringify({
-        type: QRCodeType.FLOOR_ARRIVAL,
-        serviceName: serviceInLine.name,
-        timestamp: new Date().toISOString(),
-        processDate: new Date().toISOString().split("T")[0],
-      });
-
-      setShowLineSelectionModal(false);
-      processQRData(simulatedQRData);
-    }
-  };
 
   return (
     <>
@@ -524,7 +485,7 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
                 </div>
               )}
 
-              {!window.isSecureContext && (
+              {isSecureContext === false && (
                 <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                   <div className="flex items-center justify-center gap-2 text-orange-700 mb-2">
                     <AlertCircle className="h-4 w-4" />
@@ -553,15 +514,14 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
                   <ArrowRight className="h-4 w-4" />
                   Simular Salida de Farmacia
                 </Button>
-
                 <Button
-                  onClick={handleSimulateFloorArrival}
+                  onClick={handleSimulateServiceArrival}
                   disabled={isProcessing}
                   variant="outline"
                   className="w-full h-12 flex items-center justify-center gap-2"
                 >
-                  <ArrowRight className="h-4 w-4" />
-                  Simular Llegada a Piso
+                  <QrCode className="h-4 w-4" />
+                  Simular Llegada a Servicio
                 </Button>
               </div>
             </div>
@@ -574,65 +534,13 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
               </div>
               <p>
                 Posiciona el código QR dentro del marco de escaneo. El sistema
-                detectará automáticamente el tipo de QR y procesará la
-                información.
+                procesará automáticamente todos los pacientes elegibles para salida de farmacia.
               </p>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Line Selection Modal */}
-      <Dialog
-        open={showLineSelectionModal}
-        onOpenChange={setShowLineSelectionModal}
-      >
-        <DialogContent className="sm:max-w-md bg-background border-0 shadow-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-center text-xl font-bold text-foreground">
-              Selecciona la línea de llegada
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-6">
-            <div className="space-y-3">
-              <Label className="text-sm font-medium text-foreground">
-                Línea de destino
-              </Label>
-              <Select value={selectedLine} onValueChange={setSelectedLine}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Selecciona una línea" />
-                  <ChevronDown className="h-4 w-4 opacity-50" />
-                </SelectTrigger>
-                <SelectContent>
-                  {lines.map((line) => (
-                    <SelectItem key={line.id} value={line.id}>
-                      {line.displayName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setShowLineSelectionModal(false)}
-                className="flex-1"
-              >
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleLineSelection}
-                disabled={!selectedLine}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                Continuar
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }

@@ -2,41 +2,68 @@ import QRCode from "qrcode";
 
 export enum QRCodeType {
   PHARMACY_DISPATCH = "PHARMACY_DISPATCH",
-  FLOOR_ARRIVAL = "FLOOR_ARRIVAL",
+  SERVICE_ARRIVAL = "SERVICE_ARRIVAL",
 }
 
 export interface QRDataPayload {
   type: QRCodeType;
-  lineId?: string;
-  serviceName?: string;
+  id: string;
   timestamp: string;
-  processDate: string;
+  isActive: boolean;
 }
 
 export interface PharmacyDispatchQRData extends QRDataPayload {
   type: QRCodeType.PHARMACY_DISPATCH;
-  lineId: string;
+  id: string;
 }
 
-export interface FloorArrivalQRData extends QRDataPayload {
-  type: QRCodeType.FLOOR_ARRIVAL;
+export interface ServiceArrivalQRData extends QRDataPayload {
+  type: QRCodeType.SERVICE_ARRIVAL;
+  id: string;
+  serviceId: string;
   serviceName: string;
 }
 
 /**
- * Generate QR code for pharmacy dispatch (when regent leaves pharmacy)
+ * Generate QR code for general pharmacy dispatch
  */
 export async function generatePharmacyDispatchQR(
-  lineId: string,
-  processDate: Date = new Date()
+  qrId: string = generateQRId()
 ): Promise<string> {
   const data: PharmacyDispatchQRData = {
     type: QRCodeType.PHARMACY_DISPATCH,
-    lineId,
+    id: qrId,
     timestamp: new Date().toISOString(),
-    processDate: processDate.toISOString().split("T")[0], // YYYY-MM-DD format
+    isActive: true,
   };
 
+  return generateQRCode(data);
+}
+
+/**
+ * Generate QR code for service arrival (per service)
+ */
+export async function generateServiceArrivalQR(
+  serviceId: string,
+  serviceName: string,
+  qrId: string = generateQRId()
+): Promise<string> {
+  const data: ServiceArrivalQRData = {
+    type: QRCodeType.SERVICE_ARRIVAL,
+    id: qrId,
+    serviceId,
+    serviceName,
+    timestamp: new Date().toISOString(),
+    isActive: true,
+  };
+
+  return generateQRCode(data);
+}
+
+/**
+ * Generic QR code generation function
+ */
+async function generateQRCode(data: QRDataPayload): Promise<string> {
   const qrString = JSON.stringify(data);
 
   try {
@@ -53,45 +80,18 @@ export async function generatePharmacyDispatchQR(
 
     return qrCodeDataURL;
   } catch (error) {
-    console.error("Error generating pharmacy dispatch QR code:", error);
+    console.error("Error generating QR code:", error);
     throw new Error("Failed to generate QR code");
   }
 }
 
 /**
- * Generate QR code for floor arrival (when regent reaches service/floor)
+ * Generate unique QR ID
  */
-export async function generateFloorArrivalQR(
-  serviceName: string,
-  processDate: Date = new Date()
-): Promise<string> {
-  const data: FloorArrivalQRData = {
-    type: QRCodeType.FLOOR_ARRIVAL,
-    serviceName,
-    timestamp: new Date().toISOString(),
-    processDate: processDate.toISOString().split("T")[0], // YYYY-MM-DD format
-  };
-
-  const qrString = JSON.stringify(data);
-
-  try {
-    const qrCodeDataURL = await QRCode.toDataURL(qrString, {
-      errorCorrectionLevel: "M",
-      type: "image/png",
-      margin: 1,
-      width: 256,
-      color: {
-        dark: "#000000",
-        light: "#FFFFFF",
-      },
-    });
-
-    return qrCodeDataURL;
-  } catch (error) {
-    console.error("Error generating floor arrival QR code:", error);
-    throw new Error("Failed to generate QR code");
-  }
+function generateQRId(): string {
+  return `qr_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 }
+
 
 /**
  * Parse QR code data from scanned string
@@ -107,7 +107,7 @@ export function parseQRData(qrString: string): QRDataPayload | null {
     const data = JSON.parse(qrString);
 
     // Validate required fields
-    if (!data.type || !data.timestamp || !data.processDate) {
+    if (!data.type || !data.timestamp || !data.id || typeof data.isActive !== 'boolean') {
       console.warn("QR code missing required fields:", data);
       return null;
     }
@@ -119,13 +119,13 @@ export function parseQRData(qrString: string): QRDataPayload | null {
     }
 
     // Type-specific validation
-    if (data.type === QRCodeType.PHARMACY_DISPATCH && !data.lineId) {
-      console.warn("Pharmacy dispatch QR missing lineId:", data);
+    if (data.type === QRCodeType.PHARMACY_DISPATCH && !data.id) {
+      console.warn("Pharmacy dispatch QR missing id:", data);
       return null;
     }
 
-    if (data.type === QRCodeType.FLOOR_ARRIVAL && !data.serviceName) {
-      console.warn("Floor arrival QR missing serviceName:", data);
+    if (data.type === QRCodeType.SERVICE_ARRIVAL && (!data.id || !data.serviceId || !data.serviceName)) {
+      console.warn("Service arrival QR missing required fields:", data);
       return null;
     }
 
@@ -141,13 +141,14 @@ export function parseQRData(qrString: string): QRDataPayload | null {
  * Generate display text for QR codes
  */
 export function getQRDisplayText(data: QRDataPayload): string {
-  const date = new Date(data.processDate).toLocaleDateString("es-ES");
+  const date = new Date(data.timestamp).toLocaleDateString("es-ES");
 
   switch (data.type) {
     case QRCodeType.PHARMACY_DISPATCH:
       return `Salida de Farmacia - ${date}`;
-    case QRCodeType.FLOOR_ARRIVAL:
-      return `Llegada a ${data.serviceName} - ${date}`;
+    case QRCodeType.SERVICE_ARRIVAL:
+      const serviceData = data as ServiceArrivalQRData;
+      return `Llegada a Servicio - ${serviceData.serviceName} - ${date}`;
     default:
       return `QR Code - ${date}`;
   }

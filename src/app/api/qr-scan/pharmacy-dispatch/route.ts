@@ -7,49 +7,70 @@ import { MedicationProcessStep, ProcessStatus } from "@/types/patient";
 export async function POST(request: NextRequest) {
   try {
     const supabase = createRouteHandlerClient({ cookies });
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session }, error } = await supabase.auth.getSession();
+    const user = session?.user;
 
-    if (!session) {
+    if (error || !user) {
       return NextResponse.json(
         { error: "Usuario no autenticado" },
         { status: 401 }
       );
     }
 
-    const { lineId, processDate } = await request.json();
+    const { qrId } = await request.json();
 
-    if (!lineId || !processDate) {
+    if (!qrId) {
       return NextResponse.json(
-        { error: "lineId y processDate son requeridos" },
+        { error: "qrId es requerido" },
         { status: 400 }
       );
     }
 
-    // Get the daily process for the given date
-    const targetDate = new Date(processDate);
+    // Validate that the QR code is active and is a pharmacy dispatch QR
+    const qrCode = await prisma.qRCode.findUnique({
+      where: { 
+        qrId,
+        isActive: true,
+        type: 'PHARMACY_DISPATCH'
+      },
+    });
+
+    if (!qrCode) {
+      return NextResponse.json(
+        { error: "Código QR no válido, inactivo o no es de farmacia" },
+        { status: 400 }
+      );
+    }
+
+    // Get the daily process for today
+    const today = new Date();
     const dailyProcess = await prisma.dailyProcess.findFirst({
       where: {
         date: {
-          gte: new Date(targetDate.toISOString().split('T')[0]),
-          lt: new Date(new Date(targetDate.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]),
+          gte: new Date(today.toISOString().split('T')[0]),
+          lt: new Date(new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]),
         },
       },
     });
 
     if (!dailyProcess) {
       return NextResponse.json(
-        { error: "No se encontró un proceso diario para la fecha especificada" },
+        { error: "No se encontró un proceso diario para hoy" },
         { status: 404 }
       );
     }
 
-    // Get all patients in the specified line that have completed ENTREGA step
-    const patientsInLine = await prisma.patient.findMany({
+    // Get all patients that have completed ENTREGA step (across all services)
+    const eligiblePatients = await prisma.patient.findMany({
       where: {
         status: "ACTIVE",
-        service: {
-          lineId: lineId,
-        },
+        medicationProcesses: {
+          some: {
+            dailyProcessId: dailyProcess.id,
+            step: MedicationProcessStep.ENTREGA,
+            status: ProcessStatus.COMPLETED,
+          }
+        }
       },
       include: {
         service: {
@@ -57,60 +78,65 @@ export async function POST(request: NextRequest) {
             line: true,
           },
         },
-        medicationProcesses: {
+        qrScanRecords: {
           where: {
             dailyProcessId: dailyProcess.id,
-            step: MedicationProcessStep.ENTREGA,
-            status: ProcessStatus.COMPLETED,
-          },
-        },
+            qrCode: {
+              type: 'PHARMACY_DISPATCH'
+            }
+          }
+        }
       },
     });
 
-    // Filter patients that have completed ENTREGA but not yet marked as pharmacy dispatch
-    const eligiblePatients = patientsInLine.filter(
-      (patient) => patient.medicationProcesses.length > 0
+    // Filter patients that haven't been scanned yet for pharmacy dispatch
+    const patientsToDispatch = eligiblePatients.filter(
+      (patient) => patient.qrScanRecords.length === 0
     );
 
-    if (eligiblePatients.length === 0) {
+    if (patientsToDispatch.length === 0) {
       return NextResponse.json(
-        { error: "No hay pacientes elegibles para salida de farmacia en esta línea" },
+        { error: "No hay pacientes elegibles para salida de farmacia o ya fueron registrados" },
         { status: 400 }
       );
     }
 
-    // Create or update the medication processes to mark pharmacy dispatch
-    const updatePromises = eligiblePatients.map(async (patient) => {
-      // Check if there's already a pharmacy dispatch process
-      const existingProcess = await prisma.medicationProcess.findFirst({
+    // Create scan records for all eligible patients
+    await Promise.all(
+      patientsToDispatch.map(patient =>
+        prisma.qRScanRecord.create({
+          data: {
+            patientId: patient.id,
+            qrCodeId: qrCode.id,
+            scannedBy: user.id,
+            dailyProcessId: dailyProcess.id
+          }
+        })
+      )
+    );
+
+    // Update the medication processes to mark pharmacy dispatch
+    const updatePromises = patientsToDispatch.map(async (patient) => {
+      return prisma.medicationProcess.updateMany({
         where: {
           patientId: patient.id,
           dailyProcessId: dailyProcess.id,
           step: MedicationProcessStep.ENTREGA,
           status: ProcessStatus.COMPLETED,
         },
+        data: {
+          status: "DISPATCHED_FROM_PHARMACY",
+          updatedAt: new Date(),
+        },
       });
-
-      if (existingProcess) {
-        // Update existing process to DISPATCHED_FROM_PHARMACY status
-        return prisma.medicationProcess.update({
-          where: { id: existingProcess.id },
-          data: {
-            status: "DISPATCHED_FROM_PHARMACY",
-            notes: `${existingProcess.notes || ""}\nSalida de farmacia: ${new Date().toISOString()}`,
-            updatedAt: new Date(),
-          },
-        });
-      }
     });
 
     await Promise.all(updatePromises);
 
     return NextResponse.json({
       success: true,
-      message: `Salida de farmacia registrada para ${eligiblePatients.length} pacientes de la línea`,
-      patientsCount: eligiblePatients.length,
-      lineName: eligiblePatients[0]?.service?.line?.displayName || "Línea",
+      message: `Salida de farmacia registrada para ${patientsToDispatch.length} pacientes`,
+      patientsCount: patientsToDispatch.length,
     });
 
   } catch (error) {

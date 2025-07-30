@@ -19,13 +19,12 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { QrCode, Download, Printer, Loader2, X } from "lucide-react";
-import { useLines, useServices } from "@/hooks/use-lines-beds";
+import { useLines } from "@/hooks/use-lines-beds";
 import { 
   generatePharmacyDispatchQR, 
-  generateFloorArrivalQR, 
   QRCodeType
 } from "@/lib/qr-generator";
-import { Line, Service } from "@/types/patient";
+import { Line } from "@/types/patient";
 
 interface QRGeneratorProps {
   open: boolean;
@@ -35,32 +34,22 @@ interface QRGeneratorProps {
 export function QRGenerator({ open, onOpenChange }: QRGeneratorProps) {
   const [qrType, setQrType] = useState<QRCodeType | "">("");
   const [selectedLineId, setSelectedLineId] = useState("");
-  const [selectedServiceId, setSelectedServiceId] = useState("");
   const [generatedQR, setGeneratedQR] = useState<string | null>(null);
   const [qrDisplayText, setQrDisplayText] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
 
   const { data: lines = [], isLoading: linesLoading } = useLines();
-  const { data: services = [], isLoading: servicesLoading } = useServices(
-    selectedLineId || undefined,
-    true
-  );
 
   // Reset form when dialog closes
   useEffect(() => {
     if (!open) {
       setQrType("");
       setSelectedLineId("");
-      setSelectedServiceId("");
       setGeneratedQR(null);
       setQrDisplayText("");
     }
   }, [open]);
 
-  // Reset service selection when line changes
-  useEffect(() => {
-    setSelectedServiceId("");
-  }, [selectedLineId]);
 
   const handleGenerateQR = async () => {
     if (!qrType) return;
@@ -78,18 +67,6 @@ export function QRGenerator({ open, onOpenChange }: QRGeneratorProps) {
         const selectedLine = lines.find((line: Line) => line.id === selectedLineId);
         qrDataURL = await generatePharmacyDispatchQR(selectedLineId);
         displayText = `Salida de Farmacia - ${selectedLine?.displayName || 'Línea'}`;
-      } else if (qrType === QRCodeType.FLOOR_ARRIVAL) {
-        if (!selectedServiceId) {
-          throw new Error("Debe seleccionar un servicio");
-        }
-        
-        const selectedService = services.find((service: Service) => service.id === selectedServiceId);
-        if (!selectedService) {
-          throw new Error("Servicio no encontrado");
-        }
-        
-        qrDataURL = await generateFloorArrivalQR(selectedService.name);
-        displayText = `Llegada a ${selectedService.name}`;
       } else {
         throw new Error("Tipo de QR no válido");
       }
@@ -178,9 +155,6 @@ export function QRGenerator({ open, onOpenChange }: QRGeneratorProps) {
     if (qrType === QRCodeType.PHARMACY_DISPATCH) {
       return !!selectedLineId;
     }
-    if (qrType === QRCodeType.FLOOR_ARRIVAL) {
-      return !!selectedServiceId;
-    }
     return false;
   };
 
@@ -218,9 +192,6 @@ export function QRGenerator({ open, onOpenChange }: QRGeneratorProps) {
                 <SelectItem value={QRCodeType.PHARMACY_DISPATCH}>
                   Salida de Farmacia (por línea)
                 </SelectItem>
-                <SelectItem value={QRCodeType.FLOOR_ARRIVAL}>
-                  Llegada a Servicio (por servicio)
-                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -252,62 +223,6 @@ export function QRGenerator({ open, onOpenChange }: QRGeneratorProps) {
             </div>
           )}
 
-          {/* Service Selection for Floor Arrival */}
-          {qrType === QRCodeType.FLOOR_ARRIVAL && (
-            <>
-              {/* Line Selection */}
-              <div className="space-y-3">
-                <Label className="text-sm font-medium text-foreground">
-                  Seleccionar Línea
-                </Label>
-                <Select
-                  value={selectedLineId}
-                  onValueChange={setSelectedLineId}
-                  disabled={linesLoading}
-                >
-                  <SelectTrigger>
-                    <SelectValue 
-                      placeholder={linesLoading ? "Cargando líneas..." : "Selecciona una línea"} 
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {lines.map((line: Line) => (
-                      <SelectItem key={line.id} value={line.id}>
-                        {line.displayName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Service Selection */}
-              {selectedLineId && (
-                <div className="space-y-3">
-                  <Label className="text-sm font-medium text-foreground">
-                    Seleccionar Servicio
-                  </Label>
-                  <Select
-                    value={selectedServiceId}
-                    onValueChange={setSelectedServiceId}
-                    disabled={servicesLoading}
-                  >
-                    <SelectTrigger>
-                      <SelectValue 
-                        placeholder={servicesLoading ? "Cargando servicios..." : "Selecciona un servicio"} 
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {services.map((service: Service) => (
-                        <SelectItem key={service.id} value={service.id}>
-                          {service.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </>
-          )}
 
           {/* Generate Button */}
           <Button

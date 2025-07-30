@@ -147,16 +147,6 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
             },
           ],
         },
-        {
-          title: "QR Management",
-          items: [
-            {
-              title: "QR Codes",
-              url: "/regent/qr-management",
-              icon: QrCode,
-            },
-          ],
-        },
       ];
       break;
 
