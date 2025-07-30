@@ -5,12 +5,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Calendar,
   Clock,
   CheckCircle,
   XCircle,
   AlertTriangle,
   User,
+  RotateCcw,
 } from "lucide-react";
 import { useAuth } from "@/providers/auth-provider";
 import {
@@ -18,6 +30,7 @@ import {
   useCancelDailyProcess,
 } from "@/hooks/use-daily-processes";
 import { useMedicationProcesses } from "@/hooks/use-medication-processes";
+import { useResetDailyProcesses } from "@/hooks/use-reset-daily-processes";
 import {
   DailyProcessStatus,
   MedicationProcessStep,
@@ -29,6 +42,7 @@ export function DailyProcessStatusCard() {
   const { profile } = useAuth();
   const { data: currentProcess, isLoading } = useCurrentDailyProcess();
   const cancelProcess = useCancelDailyProcess();
+  const resetProcesses = useResetDailyProcesses();
 
   // Fetch completed predespacho processes to determine if cancel is allowed
   const { data: completedPredespachoProcesses = [] } = useMedicationProcesses({
@@ -71,6 +85,14 @@ export function DailyProcessStatusCard() {
         description: "Error al cancelar el proceso diario",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleResetDailyProcesses = async () => {
+    try {
+      await resetProcesses.mutateAsync();
+    } catch (error) {
+      console.error("Error resetting daily processes:", error);
     }
   };
 
@@ -214,9 +236,9 @@ export function DailyProcessStatusCard() {
             </div>
           )}
 
-          {statusInfo.showActions &&
-            currentProcess?.status === DailyProcessStatus.ACTIVE && (
-              <div className="flex items-center gap-2">
+          {statusInfo.showActions && (
+            <div className="flex items-center gap-2">
+              {currentProcess?.status === DailyProcessStatus.ACTIVE && (
                 <Button
                   onClick={handleCancelDailyProcess}
                   disabled={
@@ -234,13 +256,46 @@ export function DailyProcessStatusCard() {
                   <XCircle className="h-4 w-4" />
                   {cancelProcess.isPending ? "Cancelando..." : "Cancelar"}
                 </Button>
+              )}
 
-                <div className="text-sm text-muted-foreground">
-                  <User className="h-4 w-4 inline mr-1" />
-                  Solo regentes farmacéuticos pueden gestionar el proceso
-                </div>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    disabled={resetProcesses.isPending}
+                    variant="outline"
+                    className="flex items-center gap-2 border-orange-500 text-orange-600 hover:bg-orange-50"
+                    title="Resetear todos los procesos diarios y de medicación"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    {resetProcesses.isPending ? "Reseteando..." : "Resetear Procesos"}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta acción eliminará TODOS los procesos diarios y de medicación.
+                      Esta operación no se puede deshacer y afectará a todos los pacientes.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleResetDailyProcesses}
+                      className="bg-orange-600 hover:bg-orange-700"
+                    >
+                      Sí, resetear procesos
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              <div className="text-sm text-muted-foreground">
+                <User className="h-4 w-4 inline mr-1" />
+                Solo regentes farmacéuticos pueden gestionar el proceso
               </div>
-            )}
+            </div>
+          )}
 
           {currentProcess?.notes && (
             <div className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
