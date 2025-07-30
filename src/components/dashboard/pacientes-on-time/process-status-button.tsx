@@ -24,6 +24,7 @@ import { useCurrentDailyProcess } from "@/hooks/use-daily-processes";
 import { useCreateDailyProcess } from "@/hooks/use-daily-processes";
 import { toast } from "@/components/ui/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { QRScanRecord } from "./patient-detail-view";
 
 interface ProcessStatusButtonProps {
   patient: PatientWithRelations;
@@ -31,7 +32,7 @@ interface ProcessStatusButtonProps {
   userRole: string;
   preloadedProcess?: MedicationProcess | null;
   preCalculatedState?: ProcessStatus | null;
-  qrScanRecords?: any[];
+  qrScanRecords?: QRScanRecord[];
 }
 
 export function ProcessStatusButton({

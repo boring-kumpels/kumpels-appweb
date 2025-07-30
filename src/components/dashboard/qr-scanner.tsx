@@ -19,11 +19,15 @@ import {
   AlertCircle,
   Smartphone,
 } from "lucide-react";
-import { parseQRData, QRCodeType } from "@/lib/qr-generator";
+import {
+  parseQRData,
+  QRCodeType,
+  ServiceArrivalQRData,
+} from "@/lib/qr-generator";
 import { useQRScanner } from "@/hooks/use-qr-scanner";
 import { toast } from "@/components/ui/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
-import { useCurrentDailyProcess } from "@/hooks/use-daily-processes";
+
+import { QRCheckInModal } from "./qr-checkin-modal";
 
 interface QRScannerProps {
   open: boolean;
@@ -41,12 +45,15 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [enableCamera, setEnableCamera] = useState(false);
   const [isSecureContext, setIsSecureContext] = useState<boolean | null>(null);
+  const [showCheckInModal, setShowCheckInModal] = useState(false);
+  const [scannedQRData, setScannedQRData] = useState<{
+    type: string;
+    id: string;
+    serviceId?: string;
+    serviceName?: string;
+  } | null>(null);
   const lastScannedRef = useRef<string | null>(null);
   const scanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Query client for cache invalidation
-  const queryClient = useQueryClient();
-  const { data: currentDailyProcess } = useCurrentDailyProcess();
 
   // QR Scanner hook
   const {
@@ -142,6 +149,16 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
     };
   }, [stopScanning]);
 
+  // Handle check-in modal success
+  const handleCheckInSuccess = () => {
+    setScanResult({
+      success: true,
+      message: "Transacción registrada exitosamente",
+    });
+    setScannedQRData(null);
+    setShowCheckInModal(false);
+  };
+
   const processQRData = async (qrString: string) => {
     setIsProcessing(true);
     setScanResult(null);
@@ -166,92 +183,20 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
         return;
       }
 
-      if (qrData.type === QRCodeType.PHARMACY_DISPATCH) {
-        const response = await fetch("/api/qr-scan/pharmacy-dispatch", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            qrId: qrData.id,
-          }),
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-          setScanResult({
-            success: true,
-            message: result.message,
-            data: result,
-          });
-
-          // Invalidate queries to trigger immediate UI updates
-          if (currentDailyProcess?.id) {
-            queryClient.invalidateQueries({
-              queryKey: ["all-medication-processes", currentDailyProcess.id],
-            });
-            queryClient.invalidateQueries({
-              queryKey: ["patients"],
-            });
-          }
-
-          toast({
-            title: "Salida de farmacia registrada",
-            description: result.message,
-          });
-        } else {
-          setScanResult({
-            success: false,
-            message: result.error || "Error procesando salida de farmacia",
-          });
-        }
-      } else if (qrData.type === QRCodeType.SERVICE_ARRIVAL) {
-        const response = await fetch("/api/qr-scan/service-arrival", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            qrId: qrData.id,
-          }),
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-          setScanResult({
-            success: true,
-            message: result.message,
-            data: result,
-          });
-
-          // Invalidate queries to trigger immediate UI updates
-          if (currentDailyProcess?.id) {
-            queryClient.invalidateQueries({
-              queryKey: ["all-medication-processes", currentDailyProcess.id],
-            });
-            queryClient.invalidateQueries({
-              queryKey: ["patients"],
-            });
-          }
-
-          toast({
-            title: "Llegada a servicio registrada",
-            description: result.message,
-          });
-        } else {
-          setScanResult({
-            success: false,
-            message: result.error || "Error procesando llegada a servicio",
-          });
-        }
-      } else {
-        setScanResult({
-          success: false,
-          message: "Tipo de código QR no reconocido",
-        });
-      }
+      // Set the scanned QR data and open check-in modal
+      setScannedQRData({
+        type: qrData.type,
+        id: qrData.id,
+        serviceId:
+          qrData.type === QRCodeType.SERVICE_ARRIVAL
+            ? (qrData as ServiceArrivalQRData).serviceId
+            : undefined,
+        serviceName:
+          qrData.type === QRCodeType.SERVICE_ARRIVAL
+            ? (qrData as ServiceArrivalQRData).serviceName
+            : undefined,
+      });
+      setShowCheckInModal(true);
     } catch (error) {
       console.error("Error processing QR:", error);
       setScanResult({
@@ -593,6 +538,14 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* QR Check-in Modal */}
+      <QRCheckInModal
+        open={showCheckInModal}
+        onOpenChange={setShowCheckInModal}
+        qrData={scannedQRData}
+        onSuccess={handleCheckInSuccess}
+      />
     </>
   );
 }

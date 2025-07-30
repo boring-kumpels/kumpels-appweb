@@ -80,6 +80,7 @@ model Line {
   // Relations
   services  Service[]
   beds      Bed[]
+  qrScanRecords QRScanRecord[]
   
   @@map("lines")
 }
@@ -306,16 +307,21 @@ model QRScanRecord {
   scannedBy       String    // User ID who scanned the QR
   scannedAt       DateTime  @default(now())
   dailyProcessId  String?   // Link to daily process session
+  temperature     Float?    // Temperature recorded during check-in
+  destinationLineId String? // Line selected for pharmacy dispatch
+  transactionType String?   // "ENTREGA" or "DEVOLUCION"
   
   // Relations
   patient         Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
   qrCode          QRCode    @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
   dailyProcess    DailyProcess? @relation(fields: [dailyProcessId], references: [id], onDelete: SetNull)
+  destinationLine Line?     @relation(fields: [destinationLineId], references: [id], onDelete: SetNull)
   
   @@unique([patientId, qrCodeId, dailyProcessId])
   @@index([patientId])
   @@index([qrCodeId])
   @@index([dailyProcessId])
   @@index([scannedAt])
+  @@index([destinationLineId])
   @@map("qr_scan_records")
 }

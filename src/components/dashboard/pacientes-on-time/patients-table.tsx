@@ -18,6 +18,7 @@ import {
   ProcessStatus,
 } from "@/types/patient";
 import { ProcessStatusButton } from "./process-status-button";
+import { QRScanRecord } from "./patient-detail-view";
 import { useAuth } from "@/providers/auth-provider";
 
 interface PatientsTableProps {
@@ -28,7 +29,7 @@ interface PatientsTableProps {
   currentDailyProcessId?: string;
   buttonStatesMap?: Map<string, Record<string, ProcessStatus | null>>;
   isButtonStatesReady?: boolean;
-  qrScanRecords?: any[];
+  qrScanRecords?: QRScanRecord[];
 }
 
 export function PatientsTable({

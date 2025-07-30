@@ -17,6 +17,7 @@ import {
   Truck,
   MapPin,
   UserCheck,
+  Loader2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -55,7 +56,7 @@ import {
   useApproveManualReturn,
   useRejectManualReturn,
 } from "@/hooks/use-manual-returns";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, QueryClient } from "@tanstack/react-query";
 import { ProcessStatusButton } from "./process-status-button";
 import { QRGenerator } from "../qr-generator";
 import { QRScanner } from "../qr-scanner";
@@ -65,6 +66,7 @@ import {
   PatientWithRelations,
   MedicationProcess,
   LogType,
+  DailyProcess,
 } from "@/types/patient";
 import { UserRole } from "@prisma/client";
 import { getLineDisplayName } from "@/lib/lines";
@@ -173,7 +175,7 @@ interface LogEntryDisplay {
   patientId: string;
 }
 
-interface QRScanRecord {
+export interface QRScanRecord {
   id: string;
   patientId: string;
   qrCodeId: string;
@@ -195,15 +197,28 @@ interface QRScanRecord {
 }
 
 // QR Step Button Component
+interface ProcessStep {
+  id: string;
+  name: string;
+  icon: React.ReactElement;
+  status: ProcessStatus | null;
+  step: MedicationProcessStep;
+}
+
+interface QRProcessStep extends ProcessStep {
+  isQRStep: true;
+  qrType: string;
+}
+
 interface QRStepButtonProps {
-  step: any;
+  step: QRProcessStep;
   qrScanRecords: QRScanRecord[];
   allMedicationProcesses: MedicationProcess[];
   patientId: string;
   onOpenQRScanner: () => void;
   userRole: string;
-  queryClient: any;
-  currentDailyProcess?: any;
+  queryClient: QueryClient;
+  currentDailyProcess?: DailyProcess | null;
   isNursePanel?: boolean;
 }
 
@@ -1045,9 +1060,9 @@ export default function PatientDetailView({
                           >
                             {/* Process Button */}
                             <div className="flex flex-col items-center space-y-2">
-                              {step.isQRStep ? (
+                              {"isQRStep" in step && step.isQRStep ? (
                                 <QRStepButton
-                                  step={step}
+                                  step={step as QRProcessStep}
                                   qrScanRecords={qrScanRecords}
                                   allMedicationProcesses={
                                     allMedicationProcesses

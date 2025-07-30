@@ -31,13 +31,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { qrId } = await request.json();
+    const { qrId, temperature, destinationLineId, transactionType } =
+      await request.json();
 
     if (!qrId) {
       return NextResponse.json({ error: "QR ID is required" }, { status: 400 });
     }
 
-    // Find the QR code
+    if (temperature === undefined || temperature === null) {
+      return NextResponse.json(
+        { error: "Temperatura es requerida" },
+        { status: 400 }
+      );
+    }
+
+    if (!transactionType) {
+      return NextResponse.json(
+        { error: "Tipo de transacción es requerido" },
+        { status: 400 }
+      );
+    }
+
+    // Find the QR code first to get service information
     const qrCode = await prisma.qRCode.findUnique({
       where: {
         qrId: qrId,
@@ -60,6 +75,36 @@ export async function POST(request: NextRequest) {
         },
         { status: 404 }
       );
+    }
+
+    // For service arrival, get the line from the service if not provided
+    let selectedLine;
+    if (destinationLineId) {
+      // If destinationLineId is provided, validate it matches the service's line
+      selectedLine = await prisma.line.findUnique({
+        where: { id: destinationLineId },
+      });
+
+      if (!selectedLine) {
+        return NextResponse.json(
+          { error: "Línea de destino no válida" },
+          { status: 400 }
+        );
+      }
+
+      // Verify the selected line matches the service's line
+      if (selectedLine.id !== qrCode.service!.lineId) {
+        return NextResponse.json(
+          {
+            error:
+              "La línea seleccionada no coincide con el servicio del código QR",
+          },
+          { status: 400 }
+        );
+      }
+    } else {
+      // If no destinationLineId provided, use the service's line
+      selectedLine = qrCode.service!.line;
     }
 
     // Get current active daily process
@@ -88,6 +133,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Find patients ready for service arrival (ALISTAMIENTO completed and pharmacy dispatch scanned)
+    // AND ensure they belong to the selected line
     const readyPatients = await prisma.patient.findMany({
       where: {
         serviceId: qrCode.serviceId,
@@ -107,10 +153,17 @@ export async function POST(request: NextRequest) {
             },
           },
         },
+        service: {
+          lineId: selectedLine.id, // Ensure patients belong to selected line
+        },
       },
       include: {
         bed: true,
-        service: true,
+        service: {
+          include: {
+            line: true,
+          },
+        },
         qrScanRecords: {
           where: {
             dailyProcessId: dailyProcess.id,
@@ -136,13 +189,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "No hay pacientes listos para llegada a este servicio o ya fueron registrados",
+            "No hay pacientes listos para llegada a este servicio en la línea seleccionada o ya fueron registrados",
         },
         { status: 400 }
       );
     }
 
-    // Create scan records for all eligible patients
+    // Create scan records for all eligible patients with check-in data
     await Promise.all(
       patientsToScan.map((patient) =>
         prisma.qRScanRecord.create({
@@ -151,6 +204,9 @@ export async function POST(request: NextRequest) {
             qrCodeId: qrCode.id,
             scannedBy: user.id,
             dailyProcessId: dailyProcess.id,
+            temperature: temperature,
+            destinationLineId: destinationLineId,
+            transactionType: transactionType,
           },
         })
       )
@@ -195,9 +251,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Llegada a servicio registrada para ${patientsToScan.length} paciente(s)`,
+      message: `Llegada a servicio registrada para ${patientsToScan.length} paciente(s) de la línea ${selectedLine.displayName}`,
       patientsCount: patientsToScan.length,
       serviceName: qrCode.service?.name,
+      selectedLine: selectedLine.displayName,
       scannedAt: new Date().toISOString(),
     });
   } catch (error) {

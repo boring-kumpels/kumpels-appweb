@@ -20,10 +20,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { qrId } = await request.json();
+    const { qrId, temperature, destinationLineId, transactionType } =
+      await request.json();
 
     if (!qrId) {
       return NextResponse.json({ error: "qrId es requerido" }, { status: 400 });
+    }
+
+    if (temperature === undefined || temperature === null) {
+      return NextResponse.json(
+        { error: "Temperatura es requerida" },
+        { status: 400 }
+      );
+    }
+
+    if (!destinationLineId) {
+      return NextResponse.json(
+        { error: "Línea de destino es requerida" },
+        { status: 400 }
+      );
+    }
+
+    if (!transactionType) {
+      return NextResponse.json(
+        { error: "Tipo de transacción es requerido" },
+        { status: 400 }
+      );
+    }
+
+    // Validate that the selected line exists
+    const selectedLine = await prisma.line.findUnique({
+      where: { id: destinationLineId },
+    });
+
+    if (!selectedLine) {
+      return NextResponse.json(
+        { error: "Línea de destino no válida" },
+        { status: 400 }
+      );
     }
 
     // Validate that the QR code is active and is a pharmacy dispatch QR
@@ -66,6 +100,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get all patients that have completed ALISTAMIENTO step (ready for QR scanning)
+    // AND belong to the selected line
     const eligiblePatients = await prisma.patient.findMany({
       where: {
         status: "ACTIVE",
@@ -75,6 +110,9 @@ export async function POST(request: NextRequest) {
             step: MedicationProcessStep.ALISTAMIENTO,
             status: ProcessStatus.COMPLETED,
           },
+        },
+        service: {
+          lineId: destinationLineId, // Filter by selected line
         },
       },
       include: {
@@ -103,20 +141,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "No hay pacientes elegibles para salida de farmacia o ya fueron registrados",
+            "No hay pacientes elegibles para salida de farmacia en la línea seleccionada o ya fueron registrados",
           debug: {
             totalEligiblePatients: eligiblePatients.length,
             dailyProcessId: dailyProcess.id,
             patientsAlreadyScanned: eligiblePatients.filter(
               (p) => p.qrScanRecords.length > 0
             ).length,
+            selectedLineId: destinationLineId,
           },
         },
         { status: 400 }
       );
     }
 
-    // Create scan records for all eligible patients
+    // Create scan records for all eligible patients with check-in data
     await Promise.all(
       patientsToDispatch.map((patient) =>
         prisma.qRScanRecord.create({
@@ -125,6 +164,9 @@ export async function POST(request: NextRequest) {
             qrCodeId: qrCode.id,
             scannedBy: user.id,
             dailyProcessId: dailyProcess.id,
+            temperature: temperature,
+            destinationLineId: destinationLineId,
+            transactionType: transactionType,
           },
         })
       )
@@ -170,8 +212,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Salida de farmacia registrada para ${patientsToDispatch.length} pacientes`,
+      message: `Salida de farmacia registrada para ${patientsToDispatch.length} pacientes de la línea ${selectedLine.displayName}`,
       patientsCount: patientsToDispatch.length,
+      selectedLine: selectedLine.displayName,
     });
   } catch (error) {
     console.error("Error processing pharmacy dispatch QR scan:", error);
