@@ -45,21 +45,37 @@ export function getStatusDisplayName(status: ProcessStatus): string {
 /**
  * Get the CSS color class for a process status
  */
-export function getStatusColorClass(status: ProcessStatus, isEnabled: boolean = true): string {
+export function getStatusColorClass(
+  status: ProcessStatus,
+  isEnabled: boolean = true,
+  step?: MedicationProcessStep
+): string {
   if (!isEnabled) {
     return "bg-transparent text-gray-900 border-2 border-black hover:bg-gray-50";
   }
-  
+
   switch (status) {
     case ProcessStatus.PENDING:
       return "bg-orange-500 text-white border-0 hover:bg-orange-600";
     case ProcessStatus.IN_PROGRESS:
+      // Special styling for entrega step - orange dashed line
+      if (step === MedicationProcessStep.ENTREGA) {
+        return "bg-transparent text-orange-500 border-2 border-dashed border-orange-500 hover:bg-orange-50";
+      }
       return "bg-transparent text-orange-500 border-2 border-dashed border-orange-500 hover:bg-orange-50";
     case ProcessStatus.COMPLETED:
       return "bg-green-500 text-white border-0 hover:bg-green-600";
     case ProcessStatus.DISPATCHED_FROM_PHARMACY:
+      // Special styling for entrega step - keep orange even when dispatched
+      if (step === MedicationProcessStep.ENTREGA) {
+        return "bg-transparent text-orange-500 border-2 border-dashed border-orange-500 hover:bg-orange-50";
+      }
       return "bg-transparent text-blue-500 border-2 border-dashed border-blue-500 hover:bg-blue-50";
     case ProcessStatus.DELIVERED_TO_SERVICE:
+      // Special styling for entrega step - keep orange even when delivered
+      if (step === MedicationProcessStep.ENTREGA) {
+        return "bg-transparent text-orange-500 border-2 border-dashed border-orange-500 hover:bg-orange-50";
+      }
       return "bg-blue-500 text-white border-0 hover:bg-blue-600";
     case ProcessStatus.ERROR:
       return "bg-red-500 text-white border-0 hover:bg-red-600";
@@ -137,7 +153,9 @@ export function isValidStatusTransition(
     [ProcessStatus.PENDING]: [ProcessStatus.IN_PROGRESS, ProcessStatus.ERROR],
     [ProcessStatus.IN_PROGRESS]: [ProcessStatus.COMPLETED, ProcessStatus.ERROR],
     [ProcessStatus.COMPLETED]: [ProcessStatus.DISPATCHED_FROM_PHARMACY], // For ENTREGA step: completed -> dispatched
-    [ProcessStatus.DISPATCHED_FROM_PHARMACY]: [ProcessStatus.DELIVERED_TO_SERVICE], // dispatched -> delivered
+    [ProcessStatus.DISPATCHED_FROM_PHARMACY]: [
+      ProcessStatus.DELIVERED_TO_SERVICE,
+    ], // dispatched -> delivered
     [ProcessStatus.DELIVERED_TO_SERVICE]: [], // Final state for delivery tracking
     [ProcessStatus.ERROR]: [ProcessStatus.IN_PROGRESS], // Can retry from error
   };
@@ -155,7 +173,9 @@ export function getValidStatusTransitions(
     [ProcessStatus.PENDING]: [ProcessStatus.IN_PROGRESS, ProcessStatus.ERROR],
     [ProcessStatus.IN_PROGRESS]: [ProcessStatus.COMPLETED, ProcessStatus.ERROR],
     [ProcessStatus.COMPLETED]: [ProcessStatus.DISPATCHED_FROM_PHARMACY],
-    [ProcessStatus.DISPATCHED_FROM_PHARMACY]: [ProcessStatus.DELIVERED_TO_SERVICE],
+    [ProcessStatus.DISPATCHED_FROM_PHARMACY]: [
+      ProcessStatus.DELIVERED_TO_SERVICE,
+    ],
     [ProcessStatus.DELIVERED_TO_SERVICE]: [],
     [ProcessStatus.ERROR]: [ProcessStatus.IN_PROGRESS],
   };

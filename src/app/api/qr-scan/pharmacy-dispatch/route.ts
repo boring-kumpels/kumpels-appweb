@@ -7,7 +7,10 @@ import { MedicationProcessStep, ProcessStatus } from "@/types/patient";
 export async function POST(request: NextRequest) {
   try {
     const supabase = createRouteHandlerClient({ cookies });
-    const { data: { session }, error } = await supabase.auth.getSession();
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
     const user = session?.user;
 
     if (error || !user) {
@@ -20,18 +23,15 @@ export async function POST(request: NextRequest) {
     const { qrId } = await request.json();
 
     if (!qrId) {
-      return NextResponse.json(
-        { error: "qrId es requerido" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "qrId es requerido" }, { status: 400 });
     }
 
     // Validate that the QR code is active and is a pharmacy dispatch QR
     const qrCode = await prisma.qRCode.findUnique({
-      where: { 
+      where: {
         qrId,
         isActive: true,
-        type: 'PHARMACY_DISPATCH'
+        type: "PHARMACY_DISPATCH",
       },
     });
 
@@ -47,14 +47,14 @@ export async function POST(request: NextRequest) {
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    
+
     const dailyProcess = await prisma.dailyProcess.findFirst({
       where: {
         date: {
           gte: today,
           lt: tomorrow,
         },
-        status: 'ACTIVE'
+        status: "ACTIVE",
       },
     });
 
@@ -74,8 +74,8 @@ export async function POST(request: NextRequest) {
             dailyProcessId: dailyProcess.id,
             step: MedicationProcessStep.ALISTAMIENTO,
             status: ProcessStatus.COMPLETED,
-          }
-        }
+          },
+        },
       },
       include: {
         service: {
@@ -87,10 +87,10 @@ export async function POST(request: NextRequest) {
           where: {
             dailyProcessId: dailyProcess.id,
             qrCode: {
-              type: 'PHARMACY_DISPATCH'
-            }
-          }
-        }
+              type: "PHARMACY_DISPATCH",
+            },
+          },
+        },
       },
     });
 
@@ -101,13 +101,16 @@ export async function POST(request: NextRequest) {
 
     if (patientsToDispatch.length === 0) {
       return NextResponse.json(
-        { 
-          error: "No hay pacientes elegibles para salida de farmacia o ya fueron registrados",
+        {
+          error:
+            "No hay pacientes elegibles para salida de farmacia o ya fueron registrados",
           debug: {
             totalEligiblePatients: eligiblePatients.length,
             dailyProcessId: dailyProcess.id,
-            patientsAlreadyScanned: eligiblePatients.filter(p => p.qrScanRecords.length > 0).length
-          }
+            patientsAlreadyScanned: eligiblePatients.filter(
+              (p) => p.qrScanRecords.length > 0
+            ).length,
+          },
         },
         { status: 400 }
       );
@@ -115,14 +118,14 @@ export async function POST(request: NextRequest) {
 
     // Create scan records for all eligible patients
     await Promise.all(
-      patientsToDispatch.map(patient =>
+      patientsToDispatch.map((patient) =>
         prisma.qRScanRecord.create({
           data: {
             patientId: patient.id,
             qrCodeId: qrCode.id,
             scannedBy: user.id,
-            dailyProcessId: dailyProcess.id
-          }
+            dailyProcessId: dailyProcess.id,
+          },
         })
       )
     );
@@ -170,7 +173,6 @@ export async function POST(request: NextRequest) {
       message: `Salida de farmacia registrada para ${patientsToDispatch.length} pacientes`,
       patientsCount: patientsToDispatch.length,
     });
-
   } catch (error) {
     console.error("Error processing pharmacy dispatch QR scan:", error);
     return NextResponse.json(

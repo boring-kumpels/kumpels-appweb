@@ -19,6 +19,7 @@ import { usePatients } from "@/hooks/use-patients";
 import { useLines, useServices } from "@/hooks/use-lines-beds";
 import { useCurrentDailyProcess } from "@/hooks/use-daily-processes";
 import { useAllMedicationProcesses } from "@/hooks/use-medication-processes";
+import { useQuery } from "@tanstack/react-query";
 import {
   PatientWithRelations,
   PatientStatus,
@@ -85,16 +86,15 @@ function calculateButtonState(
         p.patientId === patient.id &&
         p.step === MedicationProcessStep.ALISTAMIENTO
     );
-    
+
     // Check if ALISTAMIENTO is completed (prerequisite for QR scanning)
     if (alistamientoProcess?.status === ProcessStatus.COMPLETED) {
       // Check if patient has been through QR scan process
       const entregaProcess = allMedicationProcesses.find(
         (p) =>
-          p.patientId === patient.id &&
-          p.step === MedicationProcessStep.ENTREGA
+          p.patientId === patient.id && p.step === MedicationProcessStep.ENTREGA
       );
-      
+
       if (entregaProcess) {
         // If ENTREGA process exists, return its actual status
         return entregaProcess.status;
@@ -107,6 +107,28 @@ function calculateButtonState(
   }
 
   return null; // Default: disabled
+}
+
+// QR Scan Record interface
+interface QRScanRecord {
+  id: string;
+  patientId: string;
+  qrCodeId: string;
+  scannedBy: string;
+  scannedAt: string;
+  dailyProcessId: string;
+  qrCode: {
+    id: string;
+    type: "PHARMACY_DISPATCH" | "SERVICE_ARRIVAL";
+    service?: {
+      id: string;
+      name: string;
+      line: {
+        id: string;
+        displayName: string;
+      };
+    };
+  };
 }
 
 export default function PacientesOnTimeManagement() {
@@ -136,6 +158,20 @@ export default function PacientesOnTimeManagement() {
     filters: {
       status: PatientStatus.ACTIVE,
     },
+  });
+
+  // Fetch QR scan records for all patients
+  const { data: allQRScanRecords = [] } = useQuery<QRScanRecord[]>({
+    queryKey: ["all-qr-scan-records", currentDailyProcess?.id],
+    queryFn: async (): Promise<QRScanRecord[]> => {
+      if (!currentDailyProcess?.id) return [];
+      const response = await fetch(
+        `/api/qr-scan-records?dailyProcessId=${currentDailyProcess.id}`
+      );
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!currentDailyProcess?.id,
   });
 
   // Apply filters client-side
@@ -608,6 +644,7 @@ export default function PacientesOnTimeManagement() {
             currentDailyProcessId={currentDailyProcess?.id}
             buttonStatesMap={buttonStatesMap}
             isButtonStatesReady={isButtonStatesReady}
+            qrScanRecords={allQRScanRecords}
           />
         </CardContent>
       </Card>

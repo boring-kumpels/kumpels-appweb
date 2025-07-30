@@ -351,9 +351,9 @@ export default function EstadoGeneralByPatients() {
   const { data: currentDailyProcess } = useCurrentDailyProcess();
 
   // Fetch all medication processes for the current daily process
-  const {
-    isLoading: medicationProcessesLoading,
-  } = useAllMedicationProcesses(currentDailyProcess?.id);
+  const { isLoading: medicationProcessesLoading } = useAllMedicationProcesses(
+    currentDailyProcess?.id
+  );
 
   // Fetch all active patients
   const {
@@ -426,33 +426,30 @@ export default function EstadoGeneralByPatients() {
         }
 
         // Calculate metrics
-        const startTime =
-          stepProcesses
-            .find((p) => p?.startedAt)
-            ?.startedAt
-            ? new Date(stepProcesses.find((p) => p?.startedAt)!.startedAt!).toLocaleTimeString("es-ES", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })
-            : "";
+        const startTime = stepProcesses.find((p) => p?.startedAt)?.startedAt
+          ? new Date(
+              stepProcesses.find((p) => p?.startedAt)!.startedAt!
+            ).toLocaleTimeString("es-ES", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "";
 
-        const endTime =
-          stepProcesses
-            .find((p) => p?.completedAt)
-            ?.completedAt
-            ? new Date(stepProcesses.find((p) => p?.completedAt)!.completedAt!).toLocaleTimeString("es-ES", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })
-            : "";
+        const endTime = stepProcesses.find((p) => p?.completedAt)?.completedAt
+          ? new Date(
+              stepProcesses.find((p) => p?.completedAt)!.completedAt!
+            ).toLocaleTimeString("es-ES", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "";
 
         const hours = stepProcesses.reduce((total, p) => {
           if (p?.startedAt && p?.completedAt) {
             const startDate = new Date(p.startedAt);
             const endDate = new Date(p.completedAt);
             const duration =
-              (endDate.getTime() - startDate.getTime()) /
-              (1000 * 60 * 60);
+              (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
             return total + duration;
           }
           return total;

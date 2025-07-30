@@ -31,6 +31,7 @@ interface ProcessStatusButtonProps {
   userRole: string;
   preloadedProcess?: MedicationProcess | null;
   preCalculatedState?: ProcessStatus | null;
+  qrScanRecords?: any[];
 }
 
 export function ProcessStatusButton({
@@ -39,6 +40,7 @@ export function ProcessStatusButton({
   userRole,
   preloadedProcess,
   preCalculatedState,
+  qrScanRecords = [],
 }: ProcessStatusButtonProps) {
   const [isSyncing, setIsSyncing] = useState(false);
   const { user, profile } = useAuth();
@@ -62,8 +64,6 @@ export function ProcessStatusButton({
   const canComplete = canPerformAction(step, actualUserRole, "complete");
   const canView = canPerformAction(step, actualUserRole, "view");
 
-
-
   if (!canView) {
     return (
       <div className="flex items-center justify-center">
@@ -85,8 +85,7 @@ export function ProcessStatusButton({
           size="sm"
           className="px-3 py-1 h-8 w-8 rounded-full text-xs font-medium bg-transparent text-gray-900 border-2 border-black cursor-not-allowed"
           disabled
-        >
-        </Button>
+        ></Button>
       </div>
     );
   }
@@ -96,7 +95,8 @@ export function ProcessStatusButton({
     if (process?.status === ProcessStatus.ERROR) {
       toast({
         title: "Error",
-        description: "Este proceso tiene un error. Debe ser resuelto desde la página de detalles del paciente.",
+        description:
+          "Este proceso tiene un error. Debe ser resuelto desde la página de detalles del paciente.",
         variant: "destructive",
       });
       return;
@@ -118,7 +118,11 @@ export function ProcessStatusButton({
       let dailyProcess = currentDailyProcess;
 
       // If no daily process exists and this is a regent clicking predespacho, create daily process first
-      if (!dailyProcess && isRegent && step === MedicationProcessStep.PREDESPACHO) {
+      if (
+        !dailyProcess &&
+        isRegent &&
+        step === MedicationProcessStep.PREDESPACHO
+      ) {
         const today = new Date();
         const createdDailyProcess = await createDailyProcess.mutateAsync({
           date: today,
@@ -144,7 +148,7 @@ export function ProcessStatusButton({
 
       // Determine the expected final status for optimistic updates
       let expectedFinalStatus: ProcessStatus;
-      
+
       if (step === MedicationProcessStep.PREDESPACHO && isRegent) {
         expectedFinalStatus = ProcessStatus.COMPLETED; // Predespacho auto-completes
       } else if (step === MedicationProcessStep.ALISTAMIENTO && isRegent) {
@@ -155,7 +159,10 @@ export function ProcessStatusButton({
         } else {
           expectedFinalStatus = ProcessStatus.COMPLETED; // Complete it
         }
-      } else if (step === MedicationProcessStep.VALIDACION && actualUserRole === "PHARMACY_VALIDATOR") {
+      } else if (
+        step === MedicationProcessStep.VALIDACION &&
+        actualUserRole === "PHARMACY_VALIDATOR"
+      ) {
         expectedFinalStatus = ProcessStatus.COMPLETED; // Validacion auto-completes
       } else if (step === MedicationProcessStep.ENTREGA) {
         expectedFinalStatus = ProcessStatus.COMPLETED; // Entrega auto-completes
@@ -165,7 +172,10 @@ export function ProcessStatusButton({
           expectedFinalStatus = ProcessStatus.PENDING;
         } else if (process.status === ProcessStatus.PENDING && canStart) {
           expectedFinalStatus = ProcessStatus.IN_PROGRESS;
-        } else if (process.status === ProcessStatus.IN_PROGRESS && canComplete) {
+        } else if (
+          process.status === ProcessStatus.IN_PROGRESS &&
+          canComplete
+        ) {
           expectedFinalStatus = ProcessStatus.COMPLETED;
         } else {
           return; // No action needed
@@ -188,11 +198,12 @@ export function ProcessStatusButton({
         };
 
         // Update the cache optimistically
-        const currentProcesses = queryClient.getQueryData<MedicationProcess[]>([
-          "all-medication-processes",
-          dailyProcess.id,
-        ]) || [];
-        
+        const currentProcesses =
+          queryClient.getQueryData<MedicationProcess[]>([
+            "all-medication-processes",
+            dailyProcess.id,
+          ]) || [];
+
         queryClient.setQueryData(
           ["all-medication-processes", dailyProcess.id],
           [...currentProcesses, optimisticProcess]
@@ -216,12 +227,13 @@ export function ProcessStatusButton({
           }
 
           // Update the optimistic process with the real data once all operations complete
-          const finalCurrentProcesses = queryClient.getQueryData<MedicationProcess[]>([
-            "all-medication-processes",
-            dailyProcess.id,
-          ]) || [];
-          
-          const finalProcesses = finalCurrentProcesses.map(p => 
+          const finalCurrentProcesses =
+            queryClient.getQueryData<MedicationProcess[]>([
+              "all-medication-processes",
+              dailyProcess.id,
+            ]) || [];
+
+          const finalProcesses = finalCurrentProcesses.map((p) =>
             p.id === optimisticId ? finalProcess : p
           );
           queryClient.setQueryData(
@@ -230,12 +242,15 @@ export function ProcessStatusButton({
           );
         } catch (error) {
           // Remove the optimistic process on error
-          const revertProcesses = queryClient.getQueryData<MedicationProcess[]>([
-            "all-medication-processes",
-            dailyProcess.id,
-          ]) || [];
-          
-          const filteredProcesses = revertProcesses.filter(p => p.id !== optimisticId);
+          const revertProcesses =
+            queryClient.getQueryData<MedicationProcess[]>([
+              "all-medication-processes",
+              dailyProcess.id,
+            ]) || [];
+
+          const filteredProcesses = revertProcesses.filter(
+            (p) => p.id !== optimisticId
+          );
           queryClient.setQueryData(
             ["all-medication-processes", dailyProcess.id],
             filteredProcesses
@@ -244,14 +259,17 @@ export function ProcessStatusButton({
         }
       } else {
         // Update existing process optimistically
-        const currentProcesses = queryClient.getQueryData<MedicationProcess[]>([
-          "all-medication-processes",
-          dailyProcess.id,
-        ]) || [];
-        
-        const originalProcess = currentProcesses.find(p => p.id === process.id);
-        const updatedProcesses = currentProcesses.map(p => 
-          p.id === process.id 
+        const currentProcesses =
+          queryClient.getQueryData<MedicationProcess[]>([
+            "all-medication-processes",
+            dailyProcess.id,
+          ]) || [];
+
+        const originalProcess = currentProcesses.find(
+          (p) => p.id === process.id
+        );
+        const updatedProcesses = currentProcesses.map((p) =>
+          p.id === process.id
             ? { ...p, status: expectedFinalStatus, updatedAt: new Date() }
             : p
         );
@@ -273,12 +291,13 @@ export function ProcessStatusButton({
           }
 
           // Update the cache with the real data once operations complete
-          const finalUpdatedProcesses = queryClient.getQueryData<MedicationProcess[]>([
-            "all-medication-processes",
-            dailyProcess.id,
-          ]) || [];
-          
-          const completedProcesses = finalUpdatedProcesses.map(p => 
+          const finalUpdatedProcesses =
+            queryClient.getQueryData<MedicationProcess[]>([
+              "all-medication-processes",
+              dailyProcess.id,
+            ]) || [];
+
+          const completedProcesses = finalUpdatedProcesses.map((p) =>
             p.id === process.id ? finalProcess : p
           );
           queryClient.setQueryData(
@@ -288,12 +307,13 @@ export function ProcessStatusButton({
         } catch (error) {
           // Revert the optimistic update on error
           if (originalProcess) {
-            const revertProcesses = queryClient.getQueryData<MedicationProcess[]>([
-              "all-medication-processes",
-              dailyProcess.id,
-            ]) || [];
-            
-            const revertedProcesses = revertProcesses.map(p => 
+            const revertProcesses =
+              queryClient.getQueryData<MedicationProcess[]>([
+                "all-medication-processes",
+                dailyProcess.id,
+              ]) || [];
+
+            const revertedProcesses = revertProcesses.map((p) =>
               p.id === process.id ? originalProcess : p
             );
             queryClient.setQueryData(
@@ -304,33 +324,42 @@ export function ProcessStatusButton({
           throw error; // Re-throw to be caught by outer error handler
         }
       }
-      
+
       // Only invalidate daily process queries if a new one was created
-      if (!currentDailyProcess && step === MedicationProcessStep.PREDESPACHO && dailyProcess) {
+      if (
+        !currentDailyProcess &&
+        step === MedicationProcessStep.PREDESPACHO &&
+        dailyProcess
+      ) {
         queryClient.invalidateQueries({ queryKey: ["daily-processes"] });
         queryClient.invalidateQueries({ queryKey: ["current-daily-process"] });
       }
-      
+
       toast({
         title: "Proceso actualizado",
         description: `${stepName} procesado correctamente`,
       });
     } catch (error) {
       console.error("Error handling process:", error);
-      
+
       // Get error message
-      const errorMessage = error instanceof Error ? error.message : "Error desconocido";
-      
+      const errorMessage =
+        error instanceof Error ? error.message : "Error desconocido";
+
       // For conflict errors (409), invalidate and refetch to get latest state
-      if (errorMessage.includes("Ya existe un proceso") || errorMessage.includes("Process not found")) {
-        queryClient.invalidateQueries({ 
+      if (
+        errorMessage.includes("Ya existe un proceso") ||
+        errorMessage.includes("Process not found")
+      ) {
+        queryClient.invalidateQueries({
           queryKey: ["all-medication-processes", currentDailyProcess?.id],
-          refetchType: "active"
+          refetchType: "active",
         });
-        
+
         toast({
           title: "Estado actualizado",
-          description: "Se ha detectado un cambio. La vista se ha actualizada con el estado más reciente.",
+          description:
+            "Se ha detectado un cambio. La vista se ha actualizada con el estado más reciente.",
           variant: "default",
         });
       } else {
@@ -347,20 +376,17 @@ export function ProcessStatusButton({
     }
   };
 
-
-
   const stepName = getStepDisplayName(step);
-  
+
   // CRITICAL: Only use pre-calculated state to ensure all buttons update simultaneously
   // Never fall back to individual calculations as this causes gradual button enabling
   const buttonStatus = preCalculatedState;
-  
+
   const isStepEnabledByWorkflow = buttonStatus !== null;
-  
-  
-  const colorClass = buttonStatus 
-    ? getStatusColorClass(buttonStatus, isStepEnabledByWorkflow)
-    : getStatusColorClass(ProcessStatus.PENDING, false); // Use false for disabled state
+
+  const colorClass = buttonStatus
+    ? getStatusColorClass(buttonStatus, isStepEnabledByWorkflow, step)
+    : getStatusColorClass(ProcessStatus.PENDING, false, step); // Use false for disabled state
 
   // Determine if button should be clickable
   const isClickable = (() => {
@@ -368,25 +394,42 @@ export function ProcessStatusButton({
     if (isSyncing) {
       return false;
     }
-    
+
     // If preCalculatedState is undefined, button states are still being computed
     // Don't allow clicks during this phase to prevent inconsistent behavior
     if (preCalculatedState === undefined) {
       return false;
     }
-    
+
     // Special case for predespacho: always clickable for regents when empty or in progress
     if (step === MedicationProcessStep.PREDESPACHO && isRegent) {
-      return buttonStatus === null || buttonStatus === ProcessStatus.IN_PROGRESS;
+      return (
+        buttonStatus === null || buttonStatus === ProcessStatus.IN_PROGRESS
+      );
     }
-    
+
+    // Special case for entrega: only clickable if both QR codes are scanned
+    if (step === MedicationProcessStep.ENTREGA) {
+      const bothQRCodesScanned =
+        qrScanRecords.some(
+          (record) => record.qrCode.type === "PHARMACY_DISPATCH"
+        ) &&
+        qrScanRecords.some(
+          (record) => record.qrCode.type === "SERVICE_ARRIVAL"
+        );
+
+      if (!bothQRCodesScanned) {
+        return false; // Disable until both QR codes are scanned
+      }
+    }
+
     if (!isStepEnabledByWorkflow) {
       return false; // Step not enabled due to workflow
     }
-    
+
     // Check role permissions
     if (!canStart && !canComplete) return false;
-    
+
     switch (buttonStatus) {
       case ProcessStatus.PENDING:
         return canStart;
@@ -407,12 +450,12 @@ export function ProcessStatusButton({
     if (isSyncing) {
       return "Sync...";
     }
-    
+
     // If states are being computed, show loading indicator
     if (preCalculatedState === undefined) {
       return "...";
     }
-    
+
     return stepName;
   };
 
@@ -423,18 +466,15 @@ export function ProcessStatusButton({
       <Button
         variant="ghost"
         size="sm"
-        className={`px-3 py-1 h-8 min-w-[80px] rounded-full text-xs font-medium ${colorClass} ${!isClickable ? 'cursor-not-allowed' : 'cursor-pointer'} ${isSyncing ? 'opacity-75' : ''}`}
+        className={`px-3 py-1 h-8 min-w-[80px] rounded-full text-xs font-medium ${colorClass} ${!isClickable ? "cursor-not-allowed" : "cursor-pointer"} ${isSyncing ? "opacity-75" : ""}`}
         onClick={isClickable ? handleButtonClick : undefined}
         disabled={!isClickable || preCalculatedState === undefined || isSyncing}
       >
         <div className="flex items-center gap-1">
-          {isSyncing && (
-            <Loader2 className="h-3 w-3 animate-spin" />
-          )}
+          {isSyncing && <Loader2 className="h-3 w-3 animate-spin" />}
           <span>{buttonText}</span>
         </div>
       </Button>
-
     </div>
   );
 }

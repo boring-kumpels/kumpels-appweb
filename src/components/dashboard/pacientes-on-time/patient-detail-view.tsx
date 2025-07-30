@@ -14,6 +14,9 @@ import {
   AlertTriangle,
   Send,
   Camera,
+  Truck,
+  MapPin,
+  UserCheck,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -38,16 +41,34 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { usePatient } from "@/hooks/use-patients";
 import { useCurrentDailyProcess } from "@/hooks/use-daily-processes";
-import { useAllMedicationProcesses, useUpdateMedicationProcess } from "@/hooks/use-medication-processes";
-import { useProcessErrorLogs, useCreateProcessErrorLog } from "@/hooks/use-process-error-logs";
-import { useManualReturns, useCreateManualReturn, useApproveManualReturn, useRejectManualReturn } from "@/hooks/use-manual-returns";
-import { useQuery } from "@tanstack/react-query";
+import {
+  useAllMedicationProcesses,
+  useUpdateMedicationProcess,
+} from "@/hooks/use-medication-processes";
+import {
+  useProcessErrorLogs,
+  useCreateProcessErrorLog,
+} from "@/hooks/use-process-error-logs";
+import {
+  useManualReturns,
+  useCreateManualReturn,
+  useApproveManualReturn,
+  useRejectManualReturn,
+} from "@/hooks/use-manual-returns";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ProcessStatusButton } from "./process-status-button";
 import { QRGenerator } from "../qr-generator";
 import { QRScanner } from "../qr-scanner";
-import { MedicationProcessStep, ProcessStatus, PatientWithRelations, MedicationProcess, LogType } from "@/types/patient";
+import {
+  MedicationProcessStep,
+  ProcessStatus,
+  PatientWithRelations,
+  MedicationProcess,
+  LogType,
+} from "@/types/patient";
 import { UserRole } from "@prisma/client";
 import { getLineDisplayName } from "@/lib/lines";
+import { toast } from "@/components/ui/use-toast";
 
 // Helper function to calculate button state (same as in management component)
 function calculateButtonState(
@@ -60,34 +81,40 @@ function calculateButtonState(
   if (process) {
     return process.status;
   }
-  
+
   // No process exists for this patient/step - determine what state to show
   if (step === MedicationProcessStep.PREDESPACHO) {
     // Check if any predespacho has started in the daily process
     const anyPredespachoStarted = allMedicationProcesses.some(
-      p => p.step === MedicationProcessStep.PREDESPACHO && 
-      (p.status === ProcessStatus.IN_PROGRESS || p.status === ProcessStatus.COMPLETED)
+      (p) =>
+        p.step === MedicationProcessStep.PREDESPACHO &&
+        (p.status === ProcessStatus.IN_PROGRESS ||
+          p.status === ProcessStatus.COMPLETED)
     );
-    
+
     if (anyPredespachoStarted) {
       return ProcessStatus.IN_PROGRESS; // Show as in progress (orange dotted)
     }
     return null; // Show as empty (black border) - not started yet
   }
-  
+
   if (step === MedicationProcessStep.ALISTAMIENTO) {
     const predespachoProcess = allMedicationProcesses.find(
-      p => p.patientId === patient.id && p.step === MedicationProcessStep.PREDESPACHO
+      (p) =>
+        p.patientId === patient.id &&
+        p.step === MedicationProcessStep.PREDESPACHO
     );
     if (predespachoProcess?.status === ProcessStatus.COMPLETED) {
       return ProcessStatus.PENDING; // Show as pending (orange filled)
     }
     return null; // Show as disabled (black border)
   }
-  
+
   if (step === MedicationProcessStep.VALIDACION) {
     const alistamientoProcess = allMedicationProcesses.find(
-      p => p.patientId === patient.id && p.step === MedicationProcessStep.ALISTAMIENTO
+      (p) =>
+        p.patientId === patient.id &&
+        p.step === MedicationProcessStep.ALISTAMIENTO
     );
     if (alistamientoProcess?.status === ProcessStatus.COMPLETED) {
       return ProcessStatus.PENDING; // Show as pending (orange filled)
@@ -97,16 +124,19 @@ function calculateButtonState(
 
   if (step === MedicationProcessStep.ENTREGA) {
     const alistamientoProcess = allMedicationProcesses.find(
-      p => p.patientId === patient.id && p.step === MedicationProcessStep.ALISTAMIENTO
+      (p) =>
+        p.patientId === patient.id &&
+        p.step === MedicationProcessStep.ALISTAMIENTO
     );
-    
+
     // Check if ALISTAMIENTO is completed (prerequisite for QR scanning)
     if (alistamientoProcess?.status === ProcessStatus.COMPLETED) {
       // Check if patient has been through QR scan process
       const entregaProcess = allMedicationProcesses.find(
-        p => p.patientId === patient.id && p.step === MedicationProcessStep.ENTREGA
+        (p) =>
+          p.patientId === patient.id && p.step === MedicationProcessStep.ENTREGA
       );
-      
+
       if (entregaProcess) {
         // If ENTREGA process exists, return its actual status
         return entregaProcess.status;
@@ -117,12 +147,13 @@ function calculateButtonState(
     }
     return null; // Show as disabled (black border) - ALISTAMIENTO not completed
   }
-  
+
   return null; // Default: disabled
 }
 
 interface PatientDetailViewProps {
   patientId: string;
+  isNursePanel?: boolean;
 }
 
 type ProcessTab =
@@ -151,7 +182,7 @@ interface QRScanRecord {
   dailyProcessId: string;
   qrCode: {
     id: string;
-    type: 'PHARMACY_DISPATCH' | 'SERVICE_ARRIVAL';
+    type: "PHARMACY_DISPATCH" | "SERVICE_ARRIVAL";
     service?: {
       id: string;
       name: string;
@@ -163,9 +194,256 @@ interface QRScanRecord {
   };
 }
 
-export default function PatientDetailView({ patientId }: PatientDetailViewProps) {
+// QR Step Button Component
+interface QRStepButtonProps {
+  step: any;
+  qrScanRecords: QRScanRecord[];
+  allMedicationProcesses: MedicationProcess[];
+  patientId: string;
+  onOpenQRScanner: () => void;
+  userRole: string;
+  queryClient: any;
+  currentDailyProcess?: any;
+  isNursePanel?: boolean;
+}
+
+function QRStepButton({
+  step,
+  qrScanRecords,
+  allMedicationProcesses,
+  patientId,
+  onOpenQRScanner,
+  userRole,
+  queryClient,
+  currentDailyProcess,
+  isNursePanel = false,
+}: QRStepButtonProps) {
+  const [isProcessing, setIsProcessing] = useState(false);
+  const isCompleted = step.status === ProcessStatus.COMPLETED;
+  const isRegent = userRole === "PHARMACY_REGENT" || userRole === "SUPERADMIN";
+  const isNurse = userRole === "NURSE" || userRole === "SUPERADMIN";
+
+  // Debug logging for nursing reception button
+  if (step.qrType === "NURSING_RECEPTION") {
+    console.log("Nursing Reception Button Debug:", {
+      step,
+      qrScanRecords,
+      isCompleted,
+      isNurse,
+      pharmacyDispatchScanned: qrScanRecords.some(
+        (record) => record.qrCode.type === "PHARMACY_DISPATCH"
+      ),
+      serviceArrivalScanned: qrScanRecords.some(
+        (record) => record.qrCode.type === "SERVICE_ARRIVAL"
+      ),
+      canInteract:
+        isNurse &&
+        isNursePanel &&
+        qrScanRecords.some(
+          (record) => record.qrCode.type === "PHARMACY_DISPATCH"
+        ) &&
+        qrScanRecords.some(
+          (record) => record.qrCode.type === "SERVICE_ARRIVAL"
+        ),
+    });
+  }
+
+  // Determine if this step can be interacted with
+  const canInteract = () => {
+    if (isCompleted || isProcessing) return false;
+
+    if (step.qrType === "NURSING_RECEPTION") {
+      // Nursing reception can only be completed by nurses in the nurse panel, and only if both QR codes are scanned
+      return (
+        isNurse &&
+        isNursePanel &&
+        qrScanRecords.some(
+          (record) => record.qrCode.type === "PHARMACY_DISPATCH"
+        ) &&
+        qrScanRecords.some((record) => record.qrCode.type === "SERVICE_ARRIVAL")
+      );
+    }
+
+    // QR scan steps can only be done by regents
+    return isRegent;
+  };
+
+  // Get button styling based on status
+  const getButtonStyle = () => {
+    if (isCompleted) {
+      return "bg-green-500 text-white border-0 hover:bg-green-600";
+    }
+
+    // For nursing reception, check if both QR codes are scanned
+    if (step.qrType === "NURSING_RECEPTION") {
+      const bothQRCodesScanned =
+        qrScanRecords.some(
+          (record) => record.qrCode.type === "PHARMACY_DISPATCH"
+        ) &&
+        qrScanRecords.some(
+          (record) => record.qrCode.type === "SERVICE_ARRIVAL"
+        );
+
+      if (bothQRCodesScanned) {
+        if (isNursePanel) {
+          return "bg-transparent text-orange-500 border-2 border-dashed border-orange-500 hover:bg-orange-50";
+        } else {
+          // In dashboard panel - show as ready but not clickable
+          return "bg-transparent text-blue-500 border-2 border-dashed border-blue-500";
+        }
+      } else {
+        return "bg-transparent text-gray-500 border-2 border-gray-300 hover:bg-gray-50";
+      }
+    }
+
+    return "bg-transparent text-orange-500 border-2 border-dashed border-orange-500 hover:bg-orange-50";
+  };
+
+  const getButtonText = () => {
+    if (isCompleted) {
+      return "Completado";
+    }
+    if (step.qrType === "NURSING_RECEPTION") {
+      if (isProcessing) return "Confirmando...";
+
+      const bothQRCodesScanned =
+        qrScanRecords.some(
+          (record) => record.qrCode.type === "PHARMACY_DISPATCH"
+        ) &&
+        qrScanRecords.some(
+          (record) => record.qrCode.type === "SERVICE_ARRIVAL"
+        );
+
+      if (bothQRCodesScanned) {
+        return isNursePanel ? "Confirmar" : "Listo para Confirmar";
+      }
+      return "Pendiente";
+    }
+    return "Escanear";
+  };
+
+  const getButtonIcon = () => {
+    if (isCompleted) {
+      return <Check className="h-3 w-3" />;
+    }
+    if (step.qrType === "NURSING_RECEPTION") {
+      return isProcessing ? (
+        <Loader2 className="h-3 w-3 animate-spin" />
+      ) : (
+        <UserCheck className="h-3 w-3" />
+      );
+    }
+    return <Camera className="h-3 w-3" />;
+  };
+
+  const handleButtonClick = async () => {
+    if (step.qrType === "NURSING_RECEPTION") {
+      // Handle nursing reception confirmation
+      setIsProcessing(true);
+      try {
+        // Find the entrega process for this patient
+        const entregaProcess = allMedicationProcesses.find(
+          (mp) => mp.patientId === patientId && mp.step === "ENTREGA"
+        );
+
+        if (entregaProcess) {
+          // Update the entrega process to COMPLETED
+          const response = await fetch(
+            `/api/medication-processes/${entregaProcess.id}`,
+            {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                status: "COMPLETED",
+              }),
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error("Failed to update medication process");
+          }
+        } else {
+          // Create a new entrega process with COMPLETED status
+          if (!currentDailyProcess?.id) {
+            throw new Error("No active daily process found");
+          }
+
+          const response = await fetch("/api/medication-processes", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              patientId: patientId,
+              step: "ENTREGA",
+              status: "COMPLETED",
+              dailyProcessId: currentDailyProcess.id,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to create medication process");
+          }
+        }
+
+        // Invalidate queries to refresh the UI
+        if (queryClient) {
+          queryClient.invalidateQueries({
+            queryKey: ["all-medication-processes"],
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["patients"],
+          });
+        }
+
+        // Show success toast
+        toast({
+          title: "Recepción confirmada",
+          description:
+            "Se ha confirmado la recepción de medicamentos por enfermería",
+        });
+      } catch (error) {
+        console.error("Error confirming nursing reception:", error);
+        // Show error toast
+        toast({
+          title: "Error",
+          description: "No se pudo confirmar la recepción de medicamentos",
+          variant: "destructive",
+        });
+      } finally {
+        setIsProcessing(false);
+      }
+    } else {
+      // Open QR scanner for QR scan steps
+      onOpenQRScanner();
+    }
+  };
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className={`px-3 py-1 h-8 min-w-[80px] rounded-full text-xs font-medium ${getButtonStyle()} ${!canInteract() ? "cursor-not-allowed" : "cursor-pointer"}`}
+      onClick={canInteract() ? handleButtonClick : undefined}
+      disabled={!canInteract()}
+    >
+      <div className="flex items-center gap-1">
+        {getButtonIcon()}
+        <span>{getButtonText()}</span>
+      </div>
+    </Button>
+  );
+}
+
+export default function PatientDetailView({
+  patientId,
+  isNursePanel = false,
+}: PatientDetailViewProps) {
   const router = useRouter();
   const { profile } = useAuth();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<ProcessTab>("dispensacion");
   const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
   const [isManualReturnModalOpen, setIsManualReturnModalOpen] = useState(false);
@@ -173,8 +451,10 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
   const [isQRGeneratorOpen, setIsQRGeneratorOpen] = useState(false);
   const [isQRScannerOpen, setIsQRScannerOpen] = useState(false);
   const [newMessage, setNewMessage] = useState("");
-  const [selectedErrorStep, setSelectedErrorStep] = useState<MedicationProcessStep | "">("");
-  
+  const [selectedErrorStep, setSelectedErrorStep] = useState<
+    MedicationProcessStep | ""
+  >("");
+
   // Manual Returns state
   const [selectedSupply, setSelectedSupply] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -186,11 +466,14 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
   const [endDate, setEndDate] = useState("");
   const [selectedMedications, setSelectedMedications] = useState<string[]>([]);
   const [selectedUser, setSelectedUser] = useState("Todos los usuarios");
-  const [selectedExportCause, setSelectedExportCause] = useState("Todas las causas");
-  
+  const [selectedExportCause, setSelectedExportCause] =
+    useState("Todas las causas");
+
   // Fetch patient data
-  const { data: patient, isLoading: patientLoading } = usePatient({ id: patientId });
-  
+  const { data: patient, isLoading: patientLoading } = usePatient({
+    id: patientId,
+  });
+
   // Fetch current daily process and medication processes
   const { data: currentDailyProcess } = useCurrentDailyProcess();
   const { data: allMedicationProcesses = [] } = useAllMedicationProcesses(
@@ -202,7 +485,9 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
     queryKey: ["qr-scan-records", patientId, currentDailyProcess?.id],
     queryFn: async (): Promise<QRScanRecord[]> => {
       if (!currentDailyProcess?.id) return [];
-      const response = await fetch(`/api/patients/${patientId}/qr-scan-records?dailyProcessId=${currentDailyProcess.id}`);
+      const response = await fetch(
+        `/api/patients/${patientId}/qr-scan-records?dailyProcessId=${currentDailyProcess.id}`
+      );
       if (!response.ok) return [];
       return response.json();
     },
@@ -215,7 +500,7 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
     includeResolved: true, // Include all logs to show complete timeline
   });
 
-  // Fetch real manual returns for this patient  
+  // Fetch real manual returns for this patient
   const { data: manualReturns = [] } = useManualReturns({
     filters: { patientId },
   });
@@ -226,54 +511,55 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
   const createManualReturn = useCreateManualReturn();
   const approveManualReturn = useApproveManualReturn();
   const rejectManualReturn = useRejectManualReturn();
-  
+
   // Filter processes for this patient
   const patientProcesses = allMedicationProcesses.filter(
-    p => p.patientId === patientId
+    (p) => p.patientId === patientId
   );
 
   // Calculate button states for optimistic updates
   const buttonStates = useMemo(() => {
     if (!patient) return {};
-    
+
     const states: Record<string, ProcessStatus | null> = {};
-    
+
     [
       MedicationProcessStep.PREDESPACHO,
-      MedicationProcessStep.ALISTAMIENTO, 
+      MedicationProcessStep.ALISTAMIENTO,
       MedicationProcessStep.VALIDACION,
       MedicationProcessStep.ENTREGA,
-      MedicationProcessStep.DEVOLUCION
-    ].forEach(step => {
-      const process = patientProcesses.find(p => p.step === step);
+      MedicationProcessStep.DEVOLUCION,
+    ].forEach((step) => {
+      const process = patientProcesses.find((p) => p.step === step);
       states[step] = calculateButtonState(
-        patient, 
-        step, 
-        process, 
+        patient,
+        step,
+        process,
         allMedicationProcesses
       );
     });
-    
+
     return states;
   }, [patient, patientProcesses, allMedicationProcesses]);
-  
+
   if (patientLoading || !patient) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <p className="text-muted-foreground">Cargando datos del paciente...</p>
+          <p className="text-muted-foreground">
+            Cargando datos del paciente...
+          </p>
         </div>
       </div>
     );
   }
 
-
   // Get process status for display
   const getProcessStatus = (step: MedicationProcessStep) => {
-    const process = patientProcesses.find(p => p.step === step);
+    const process = patientProcesses.find((p) => p.step === step);
     return process?.status || ProcessStatus.PENDING;
   };
-  
+
   const processSteps = {
     dispensacion: [
       {
@@ -300,11 +586,60 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
     ],
     entrega: [
       {
-        id: "entrega",
-        name: "Entrega",
-        icon: <ShoppingCart className="h-4 w-4" />,
-        status: getProcessStatus(MedicationProcessStep.ENTREGA),
+        id: "salida-farmacia",
+        name: "Salida de Farmacia",
+        icon: <Truck className="h-4 w-4" />,
+        status: qrScanRecords.some(
+          (record) => record.qrCode.type === "PHARMACY_DISPATCH"
+        )
+          ? ProcessStatus.COMPLETED
+          : ProcessStatus.PENDING,
         step: MedicationProcessStep.ENTREGA,
+        isQRStep: true,
+        qrType: "PHARMACY_DISPATCH",
+      },
+      {
+        id: "llegada-servicio",
+        name: "Llegada a Servicio",
+        icon: <MapPin className="h-4 w-4" />,
+        status: qrScanRecords.some(
+          (record) => record.qrCode.type === "SERVICE_ARRIVAL"
+        )
+          ? ProcessStatus.COMPLETED
+          : ProcessStatus.PENDING,
+        step: MedicationProcessStep.ENTREGA,
+        isQRStep: true,
+        qrType: "SERVICE_ARRIVAL",
+      },
+      {
+        id: "recepcion-enfermeria",
+        name: "Recepción Enfermería",
+        icon: <UserCheck className="h-4 w-4" />,
+        status:
+          qrScanRecords.some(
+            (record) => record.qrCode.type === "PHARMACY_DISPATCH"
+          ) &&
+          qrScanRecords.some(
+            (record) => record.qrCode.type === "SERVICE_ARRIVAL"
+          ) &&
+          allMedicationProcesses.some(
+            (mp) =>
+              mp.patientId === patientId &&
+              mp.step === "ENTREGA" &&
+              mp.status === "COMPLETED"
+          )
+            ? ProcessStatus.COMPLETED
+            : qrScanRecords.some(
+                  (record) => record.qrCode.type === "PHARMACY_DISPATCH"
+                ) &&
+                qrScanRecords.some(
+                  (record) => record.qrCode.type === "SERVICE_ARRIVAL"
+                )
+              ? ProcessStatus.IN_PROGRESS
+              : ProcessStatus.PENDING,
+        step: MedicationProcessStep.ENTREGA,
+        isQRStep: true,
+        qrType: "NURSING_RECEPTION",
       },
     ],
     devoluciones: [
@@ -340,7 +675,7 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
       try {
         // Find the medication process for this patient and step
         const medicationProcess = patientProcesses.find(
-          p => p.step === selectedErrorStep && p.patientId === patient.id
+          (p) => p.step === selectedErrorStep && p.patientId === patient.id
         );
 
         // Create the error log
@@ -374,7 +709,7 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
   };
 
   // Convert error logs to display format
-  const logEntries: LogEntryDisplay[] = errorLogs.map(log => ({
+  const logEntries: LogEntryDisplay[] = errorLogs.map((log) => ({
     id: log.id,
     timestamp: new Date(log.createdAt).toLocaleString(),
     role: log.reportedByRole,
@@ -585,21 +920,25 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
                                     <div className="flex items-center space-x-2">
                                       <span className="text-xs text-muted-foreground bg-gray-100 px-2 py-1 rounded-full">
                                         Cantidad:{" "}
-                                        {manualReturn.supplies?.[0]?.quantityReturned || 0}
+                                        {manualReturn.supplies?.[0]
+                                          ?.quantityReturned || 0}
                                       </span>
                                     </div>
                                   </div>
 
                                   <div className="space-y-2 mb-4">
                                     <p className="text-sm">
-                                      <span className="font-medium">Causas:</span>{" "}
+                                      <span className="font-medium">
+                                        Causas:
+                                      </span>{" "}
                                       {manualReturn.cause}
                                     </p>
                                     <p className="text-sm">
                                       <span className="font-medium">
                                         Comentario:
                                       </span>{" "}
-                                      {manualReturn.comments || "Sin comentarios"}
+                                      {manualReturn.comments ||
+                                        "Sin comentarios"}
                                     </p>
                                   </div>
 
@@ -619,30 +958,43 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
                                         />
                                       </svg>
                                       <span>
-                                        {new Date(manualReturn.createdAt).toLocaleString()}
+                                        {new Date(
+                                          manualReturn.createdAt
+                                        ).toLocaleString()}
                                       </span>
                                     </div>
 
                                     <div className="flex items-center space-x-2">
-                                      <span className={`text-xs px-2 py-1 rounded-full ${
-                                        manualReturn.status === "PENDING" 
-                                          ? "bg-orange-100 text-orange-800"
-                                          : manualReturn.status === "APPROVED"
-                                          ? "bg-green-100 text-green-800" 
-                                          : "bg-red-100 text-red-800"
-                                      }`}>
-                                        {manualReturn.status === "PENDING" && "En espera de revisión"}
-                                        {manualReturn.status === "APPROVED" && "Aprobado"}
-                                        {manualReturn.status === "REJECTED" && "Rechazado"}
+                                      <span
+                                        className={`text-xs px-2 py-1 rounded-full ${
+                                          manualReturn.status === "PENDING"
+                                            ? "bg-orange-100 text-orange-800"
+                                            : manualReturn.status === "APPROVED"
+                                              ? "bg-green-100 text-green-800"
+                                              : "bg-red-100 text-red-800"
+                                        }`}
+                                      >
+                                        {manualReturn.status === "PENDING" &&
+                                          "En espera de revisión"}
+                                        {manualReturn.status === "APPROVED" &&
+                                          "Aprobado"}
+                                        {manualReturn.status === "REJECTED" &&
+                                          "Rechazado"}
                                       </span>
-                                      
+
                                       {manualReturn.status === "PENDING" && (
                                         <>
                                           <Button
                                             size="sm"
                                             className="bg-green-500 hover:bg-green-600"
-                                            onClick={() => approveManualReturn.mutate(manualReturn.id)}
-                                            disabled={approveManualReturn.isPending}
+                                            onClick={() =>
+                                              approveManualReturn.mutate(
+                                                manualReturn.id
+                                              )
+                                            }
+                                            disabled={
+                                              approveManualReturn.isPending
+                                            }
                                           >
                                             <Check className="h-4 w-4 mr-1" />
                                             Aprobar
@@ -651,8 +1003,14 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
                                             size="sm"
                                             variant="outline"
                                             className="border-red-500 text-red-500 hover:bg-red-50"
-                                            onClick={() => rejectManualReturn.mutate(manualReturn.id)}
-                                            disabled={rejectManualReturn.isPending}
+                                            onClick={() =>
+                                              rejectManualReturn.mutate(
+                                                manualReturn.id
+                                              )
+                                            }
+                                            disabled={
+                                              rejectManualReturn.isPending
+                                            }
                                           >
                                             <AlertTriangle className="h-4 w-4 mr-1" />
                                             Rechazar
@@ -681,33 +1039,61 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
                     <div className="grid grid-cols-3 gap-6">
                       {processSteps[activeTab]?.map((step) => {
                         return (
-                          <div key={step.id} className="flex flex-col items-center space-y-3">
+                          <div
+                            key={step.id}
+                            className="flex flex-col items-center space-y-3"
+                          >
                             {/* Process Button */}
                             <div className="flex flex-col items-center space-y-2">
-                              <ProcessStatusButton
-                                patient={patient}
-                                step={step.step}
-                                userRole={profile?.role || ""}
-                                preloadedProcess={patientProcesses.find(
-                                  p => p.step === step.step
-                                )}
-                                preCalculatedState={buttonStates[step.step]}
-                              />
+                              {step.isQRStep ? (
+                                <QRStepButton
+                                  step={step}
+                                  qrScanRecords={qrScanRecords}
+                                  allMedicationProcesses={
+                                    allMedicationProcesses
+                                  }
+                                  patientId={patientId}
+                                  onOpenQRScanner={() =>
+                                    setIsQRScannerOpen(true)
+                                  }
+                                  userRole={profile?.role || ""}
+                                  queryClient={queryClient}
+                                  currentDailyProcess={currentDailyProcess}
+                                  isNursePanel={isNursePanel}
+                                />
+                              ) : (
+                                <ProcessStatusButton
+                                  patient={patient}
+                                  step={step.step}
+                                  userRole={profile?.role || ""}
+                                  preloadedProcess={patientProcesses.find(
+                                    (p) => p.step === step.step
+                                  )}
+                                  preCalculatedState={buttonStates[step.step]}
+                                />
+                              )}
                               {/* Step Label Below Button */}
                               <div className="text-sm font-medium text-muted-foreground text-center">
                                 {step.name}
                               </div>
                             </div>
-                            
+
                             {/* Step Icon and Status */}
                             <div className="flex items-center space-x-2 text-xs text-muted-foreground">
                               {step.icon}
                               <span className="capitalize">
-                                {step.status === ProcessStatus.COMPLETED && "Completado"}
-                                {step.status === ProcessStatus.DISPATCHED_FROM_PHARMACY && "Salió de Farmacia"}
-                                {step.status === ProcessStatus.DELIVERED_TO_SERVICE && "Entregado en Servicio"}
-                                {step.status === ProcessStatus.IN_PROGRESS && "En Progreso"}
-                                {step.status === ProcessStatus.PENDING && "Pendiente"}
+                                {step.status === ProcessStatus.COMPLETED &&
+                                  "Completado"}
+                                {step.status ===
+                                  ProcessStatus.DISPATCHED_FROM_PHARMACY &&
+                                  "Salió de Farmacia"}
+                                {step.status ===
+                                  ProcessStatus.DELIVERED_TO_SERVICE &&
+                                  "Entregado en Servicio"}
+                                {step.status === ProcessStatus.IN_PROGRESS &&
+                                  "En Progreso"}
+                                {step.status === ProcessStatus.PENDING &&
+                                  "Pendiente"}
                                 {step.status === ProcessStatus.ERROR && "Error"}
                                 {!step.status && "Sin Iniciar"}
                               </span>
@@ -717,166 +1103,23 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
                       })}
                     </div>
 
-                    {/* QR Tracking Progress for Entrega Tab */}
-                    {activeTab === "entrega" && (
-                      <div className="border-t pt-6">
-                        <h3 className="text-lg font-semibold mb-4 text-center">
-                          Progreso de Entrega con QR
-                        </h3>
-                        
-                        {/* QR Progress Steps */}
-                        <div className="space-y-4">
-                          {/* Step 1: Salida de Farmacia */}
-                          <div className={cn(
-                            "p-4 rounded-lg border-2 transition-all duration-200",
-                            qrScanRecords.some(record => record.qrCode.type === 'PHARMACY_DISPATCH')
-                              ? "bg-green-50 border-green-300 shadow-sm"
-                              : "bg-gray-50 border-gray-300"
-                          )}>
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <div className={cn(
-                                  "w-8 h-8 rounded-full flex items-center justify-center",
-                                  qrScanRecords.some(record => record.qrCode.type === 'PHARMACY_DISPATCH')
-                                    ? "bg-green-500 text-white"
-                                    : "bg-gray-400 text-white"
-                                )}>
-                                  {qrScanRecords.some(record => record.qrCode.type === 'PHARMACY_DISPATCH') ? (
-                                    <Check className="h-5 w-5" />
-                                  ) : (
-                                    <span className="text-sm font-bold">1</span>
-                                  )}
-                                </div>
-                                <div>
-                                  <h4 className="font-medium">Salida de Farmacia</h4>
-                                  <p className="text-sm text-muted-foreground">
-                                    Medicamentos salen de farmacia
-                                  </p>
-                                </div>
-                              </div>
-                              {qrScanRecords.some(record => record.qrCode.type === 'PHARMACY_DISPATCH') && (
-                                <div className="text-sm text-green-600 font-medium">
-                                  Completado
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Step 2: Llegada a Servicio */}
-                          <div className={cn(
-                            "p-4 rounded-lg border-2 transition-all duration-200",
-                            qrScanRecords.some(record => record.qrCode.type === 'SERVICE_ARRIVAL')
-                              ? "bg-green-50 border-green-300 shadow-sm"
-                              : "bg-gray-50 border-gray-300"
-                          )}>
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <div className={cn(
-                                  "w-8 h-8 rounded-full flex items-center justify-center",
-                                  qrScanRecords.some(record => record.qrCode.type === 'SERVICE_ARRIVAL')
-                                    ? "bg-green-500 text-white"
-                                    : "bg-gray-400 text-white"
-                                )}>
-                                  {qrScanRecords.some(record => record.qrCode.type === 'SERVICE_ARRIVAL') ? (
-                                    <Check className="h-5 w-5" />
-                                  ) : (
-                                    <span className="text-sm font-bold">2</span>
-                                  )}
-                                </div>
-                                <div>
-                                  <h4 className="font-medium">Llegada a Servicio</h4>
-                                  <p className="text-sm text-muted-foreground">
-                                    Medicamentos llegan al servicio
-                                  </p>
-                                </div>
-                              </div>
-                              {qrScanRecords.some(record => record.qrCode.type === 'SERVICE_ARRIVAL') && (
-                                <div className="text-sm text-green-600 font-medium">
-                                  Completado
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Step 3: Recepción Enfermería */}
-                          <div className={cn(
-                            "p-4 rounded-lg border-2 transition-all duration-200",
-                            // Only enabled if both QR codes scanned and ENTREGA process is COMPLETED
-                            qrScanRecords.some(record => record.qrCode.type === 'PHARMACY_DISPATCH') &&
-                            qrScanRecords.some(record => record.qrCode.type === 'SERVICE_ARRIVAL') &&
-                            allMedicationProcesses.some(mp => 
-                              mp.patientId === patientId && 
-                              mp.step === 'ENTREGA' && 
-                              mp.status === 'COMPLETED'
-                            )
-                              ? "bg-green-50 border-green-300 shadow-sm"
-                              : "bg-gray-50 border-gray-300"
-                          )}>
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <div className={cn(
-                                  "w-8 h-8 rounded-full flex items-center justify-center",
-                                  qrScanRecords.some(record => record.qrCode.type === 'PHARMACY_DISPATCH') &&
-                                  qrScanRecords.some(record => record.qrCode.type === 'SERVICE_ARRIVAL') &&
-                                  allMedicationProcesses.some(mp => 
-                                    mp.patientId === patientId && 
-                                    mp.step === 'ENTREGA' && 
-                                    mp.status === 'COMPLETED'
-                                  )
-                                    ? "bg-green-500 text-white"
-                                    : "bg-gray-400 text-white"
-                                )}>
-                                  {qrScanRecords.some(record => record.qrCode.type === 'PHARMACY_DISPATCH') &&
-                                   qrScanRecords.some(record => record.qrCode.type === 'SERVICE_ARRIVAL') &&
-                                   allMedicationProcesses.some(mp => 
-                                     mp.patientId === patientId && 
-                                     mp.step === 'ENTREGA' && 
-                                     mp.status === 'COMPLETED'
-                                   ) ? (
-                                    <Check className="h-5 w-5" />
-                                  ) : (
-                                    <span className="text-sm font-bold">3</span>
-                                  )}
-                                </div>
-                                <div>
-                                  <h4 className="font-medium">Recepción Enfermería</h4>
-                                  <p className="text-sm text-muted-foreground">
-                                    Enfermería recibe los medicamentos
-                                  </p>
-                                </div>
-                              </div>
-                              {qrScanRecords.some(record => record.qrCode.type === 'PHARMACY_DISPATCH') &&
-                               qrScanRecords.some(record => record.qrCode.type === 'SERVICE_ARRIVAL') &&
-                               allMedicationProcesses.some(mp => 
-                                 mp.patientId === patientId && 
-                                 mp.step === 'ENTREGA' && 
-                                 mp.status === 'COMPLETED'
-                               ) && (
-                                <div className="text-sm text-green-600 font-medium">
-                                  Completado
-                                </div>
-                              )}
-                            </div>
-                          </div>
+                    {/* QR Scanner Button for Entrega Tab */}
+                    {activeTab === "entrega" &&
+                      profile?.role === "PHARMACY_REGENT" && (
+                        <div className="mt-6 text-center">
+                          <Button
+                            onClick={() => setIsQRScannerOpen(true)}
+                            className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transition-all duration-200"
+                          >
+                            <Camera className="h-5 w-5" />
+                            Escanear Código QR
+                          </Button>
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            Escanea los códigos QR para registrar la salida de
+                            farmacia y llegada al servicio
+                          </p>
                         </div>
-
-                        {/* QR Scanner Button for PHARMACY_REGENT */}
-                        {profile?.role === "PHARMACY_REGENT" && (
-                          <div className="mt-6 text-center">
-                            <Button
-                              onClick={() => setIsQRScannerOpen(true)}
-                              className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transition-all duration-200"
-                            >
-                              <Camera className="h-5 w-5" />
-                              Escanear Código QR
-                            </Button>
-                            <p className="mt-2 text-xs text-muted-foreground">
-                              Escanea los códigos QR para registrar la salida de farmacia y llegada al servicio
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                      )}
 
                     {/* Messages Display */}
                     <div className="border border-border rounded-lg p-4 min-h-[120px]">
@@ -987,9 +1230,7 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
                   <h4 className="text-xs font-medium text-foreground mb-1">
                     Identificación
                   </h4>
-                  <p className="text-xs text-blue-600">
-                    {patient.externalId}
-                  </p>
+                  <p className="text-xs text-blue-600">{patient.externalId}</p>
                 </div>
                 <div>
                   <h4 className="text-xs font-medium text-foreground mb-1">
@@ -998,7 +1239,8 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
                   <p className="text-xs text-muted-foreground">
                     {patient.dateOfBirth
                       ? Math.floor(
-                          (new Date().getTime() - new Date(patient.dateOfBirth).getTime()) /
+                          (new Date().getTime() -
+                            new Date(patient.dateOfBirth).getTime()) /
                             (365.25 * 24 * 60 * 60 * 1000)
                         )
                       : "N/A"}
@@ -1051,16 +1293,31 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
               <label className="text-sm font-medium text-foreground">
                 Etapa con error
               </label>
-              <Select value={selectedErrorStep} onValueChange={(value) => setSelectedErrorStep(value as MedicationProcessStep | "")}>
+              <Select
+                value={selectedErrorStep}
+                onValueChange={(value) =>
+                  setSelectedErrorStep(value as MedicationProcessStep | "")
+                }
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar etapa" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={MedicationProcessStep.PREDESPACHO}>Predespacho</SelectItem>
-                  <SelectItem value={MedicationProcessStep.ALISTAMIENTO}>Alistamiento</SelectItem>
-                  <SelectItem value={MedicationProcessStep.VALIDACION}>Validación</SelectItem>
-                  <SelectItem value={MedicationProcessStep.ENTREGA}>Entrega</SelectItem>
-                  <SelectItem value={MedicationProcessStep.DEVOLUCION}>Devolución</SelectItem>
+                  <SelectItem value={MedicationProcessStep.PREDESPACHO}>
+                    Predespacho
+                  </SelectItem>
+                  <SelectItem value={MedicationProcessStep.ALISTAMIENTO}>
+                    Alistamiento
+                  </SelectItem>
+                  <SelectItem value={MedicationProcessStep.VALIDACION}>
+                    Validación
+                  </SelectItem>
+                  <SelectItem value={MedicationProcessStep.ENTREGA}>
+                    Entrega
+                  </SelectItem>
+                  <SelectItem value={MedicationProcessStep.DEVOLUCION}>
+                    Devolución
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1092,7 +1349,11 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
             <Button
               className="bg-red-600 hover:bg-red-700"
               onClick={handleReportError}
-              disabled={!selectedErrorStep || !newMessage.trim() || createErrorLog.isPending}
+              disabled={
+                !selectedErrorStep ||
+                !newMessage.trim() ||
+                createErrorLog.isPending
+              }
             >
               {createErrorLog.isPending ? "Reportando..." : "Reportar Error"}
             </Button>
@@ -1195,8 +1456,14 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
             <Button
               className="bg-blue-600 hover:bg-blue-700"
               onClick={async () => {
-                if (!patient || !selectedSupply || !quantity || selectedCauses.length === 0) return;
-                
+                if (
+                  !patient ||
+                  !selectedSupply ||
+                  !quantity ||
+                  selectedCauses.length === 0
+                )
+                  return;
+
                 try {
                   await createManualReturn.mutateAsync({
                     patientId: patient.id,
@@ -1210,7 +1477,7 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
                       },
                     ],
                   });
-                  
+
                   setIsManualReturnModalOpen(false);
                   // Reset form
                   setSelectedSupply("");
@@ -1221,7 +1488,12 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
                   console.error("Error creating manual return:", error);
                 }
               }}
-              disabled={!selectedSupply || !quantity || selectedCauses.length === 0 || createManualReturn.isPending}
+              disabled={
+                !selectedSupply ||
+                !quantity ||
+                selectedCauses.length === 0 ||
+                createManualReturn.isPending
+              }
             >
               {createManualReturn.isPending ? "Creando..." : "Crear Devolución"}
             </Button>
@@ -1454,16 +1726,13 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
       </Dialog>
 
       {/* QR Generator Modal */}
-      <QRGenerator 
-        open={isQRGeneratorOpen} 
+      <QRGenerator
+        open={isQRGeneratorOpen}
         onOpenChange={setIsQRGeneratorOpen}
       />
 
       {/* QR Scanner Modal */}
-      <QRScanner 
-        open={isQRScannerOpen} 
-        onOpenChange={setIsQRScannerOpen}
-      />
+      <QRScanner open={isQRScannerOpen} onOpenChange={setIsQRScannerOpen} />
     </div>
   );
 }

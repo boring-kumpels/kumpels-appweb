@@ -22,6 +22,8 @@ import {
 import { parseQRData, QRCodeType } from "@/lib/qr-generator";
 import { useQRScanner } from "@/hooks/use-qr-scanner";
 import { toast } from "@/components/ui/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCurrentDailyProcess } from "@/hooks/use-daily-processes";
 
 interface QRScannerProps {
   open: boolean;
@@ -42,6 +44,9 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
   const lastScannedRef = useRef<string | null>(null);
   const scanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Query client for cache invalidation
+  const queryClient = useQueryClient();
+  const { data: currentDailyProcess } = useCurrentDailyProcess();
 
   // QR Scanner hook
   const {
@@ -86,7 +91,7 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
 
   // Check secure context on client side
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       setIsSecureContext(window.isSecureContext);
     }
   }, []);
@@ -181,6 +186,16 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
             data: result,
           });
 
+          // Invalidate queries to trigger immediate UI updates
+          if (currentDailyProcess?.id) {
+            queryClient.invalidateQueries({
+              queryKey: ["all-medication-processes", currentDailyProcess.id],
+            });
+            queryClient.invalidateQueries({
+              queryKey: ["patients"],
+            });
+          }
+
           toast({
             title: "Salida de farmacia registrada",
             description: result.message,
@@ -210,6 +225,16 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
             message: result.message,
             data: result,
           });
+
+          // Invalidate queries to trigger immediate UI updates
+          if (currentDailyProcess?.id) {
+            queryClient.invalidateQueries({
+              queryKey: ["all-medication-processes", currentDailyProcess.id],
+            });
+            queryClient.invalidateQueries({
+              queryKey: ["patients"],
+            });
+          }
 
           toast({
             title: "Llegada a servicio registrada",
@@ -253,7 +278,7 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
   const handleSimulateServiceArrival = async () => {
     try {
       // Fetch a real service from the database for simulation
-      const response = await fetch('/api/services');
+      const response = await fetch("/api/services");
       if (response.ok) {
         const services = await response.json();
         if (services.length > 0) {
@@ -266,7 +291,7 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
             timestamp: new Date().toISOString(),
             isActive: true,
           });
-          
+
           processQRData(simulatedQRData);
         } else {
           toast({
@@ -291,7 +316,6 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
       });
     }
   };
-
 
   return (
     <>
@@ -562,13 +586,13 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
               </div>
               <p>
                 Posiciona el código QR dentro del marco de escaneo. El sistema
-                procesará automáticamente todos los pacientes elegibles para salida de farmacia.
+                procesará automáticamente todos los pacientes elegibles para
+                salida de farmacia.
               </p>
             </div>
           </div>
         </DialogContent>
       </Dialog>
-
     </>
   );
 }

@@ -28,6 +28,7 @@ interface PatientsTableProps {
   currentDailyProcessId?: string;
   buttonStatesMap?: Map<string, Record<string, ProcessStatus | null>>;
   isButtonStatesReady?: boolean;
+  qrScanRecords?: any[];
 }
 
 export function PatientsTable({
@@ -38,6 +39,7 @@ export function PatientsTable({
   currentDailyProcessId,
   buttonStatesMap,
   isButtonStatesReady = false,
+  qrScanRecords = [],
 }: PatientsTableProps) {
   const pathname = usePathname();
   const { profile } = useAuth();
@@ -79,6 +81,10 @@ export function PatientsTable({
         process.step === step &&
         process.dailyProcessId === currentDailyProcessId
     );
+  };
+
+  const getPatientQRScanRecords = (patientId: string) => {
+    return qrScanRecords.filter((record) => record.patientId === patientId);
   };
 
   return (
@@ -192,6 +198,7 @@ export function PatientsTable({
                       ]
                     : undefined
                 }
+                qrScanRecords={getPatientQRScanRecords(patient.id)}
               />
             </TableCell>
             <TableCell className="text-center">

@@ -29,5 +29,5 @@ export default async function NursePatientDetailPage({
     redirect("/sign-in");
   }
 
-  return <PatientDetailView patientId={patientId} />;
+  return <PatientDetailView patientId={patientId} isNursePanel={true} />;
 }
