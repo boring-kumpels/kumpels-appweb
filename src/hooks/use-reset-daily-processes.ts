@@ -23,13 +23,26 @@ export const useResetDailyProcesses = () => {
     onSuccess: (data) => {
       // Invalidate and refetch all related queries
       queryClient.invalidateQueries({ queryKey: ["daily-processes"] });
-      queryClient.invalidateQueries({ queryKey: ["medication-processes"] });
-      queryClient.invalidateQueries({ queryKey: ["patients"] });
-      
+      queryClient.invalidateQueries({ queryKey: ["current-daily-process"] });
+      queryClient.invalidateQueries({ queryKey: ["all-medication-processes"] });
+      queryClient.invalidateQueries({ queryKey: ["patient-process-status"] });
+      queryClient.invalidateQueries({ queryKey: ["all-qr-scan-records"] });
+      queryClient.invalidateQueries({ queryKey: ["qr-scan-records"] });
+
+      // Force refetch all queries
+      queryClient.refetchQueries({ queryKey: ["daily-processes"] });
+      queryClient.refetchQueries({ queryKey: ["current-daily-process"] });
+      queryClient.refetchQueries({ queryKey: ["all-medication-processes"] });
+
       toast({
         title: "Procesos reseteados",
         description: `Se han eliminado ${data.deleted.medicationProcesses} procesos de medicación y ${data.deleted.dailyProcesses} procesos diarios`,
       });
+
+      // Force a page refresh after a short delay to ensure all data is updated
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     },
     onError: (error: Error) => {
       toast({
@@ -39,4 +52,4 @@ export const useResetDailyProcesses = () => {
       });
     },
   });
-}; 
+};

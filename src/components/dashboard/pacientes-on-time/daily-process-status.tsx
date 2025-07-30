@@ -282,7 +282,7 @@ export function DailyProcessStatusCard() {
                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
                     <AlertDialogAction
                       onClick={handleResetDailyProcesses}
-                      className="bg-orange-600 hover:bg-orange-700"
+                      className="bg-red-600 hover:bg-red-700"
                     >
                       Sí, resetear procesos
                     </AlertDialogAction>
