@@ -67,10 +67,7 @@ function calculateButtonState(
     return null; // Show as disabled (black border)
   }
 
-  if (
-    step === MedicationProcessStep.VALIDACION ||
-    step === MedicationProcessStep.ENTREGA
-  ) {
+  if (step === MedicationProcessStep.VALIDACION) {
     const alistamientoProcess = allMedicationProcesses.find(
       (p) =>
         p.patientId === patient.id &&
@@ -80,6 +77,33 @@ function calculateButtonState(
       return ProcessStatus.PENDING; // Show as pending (orange filled)
     }
     return null; // Show as disabled (black border)
+  }
+
+  if (step === MedicationProcessStep.ENTREGA) {
+    const alistamientoProcess = allMedicationProcesses.find(
+      (p) =>
+        p.patientId === patient.id &&
+        p.step === MedicationProcessStep.ALISTAMIENTO
+    );
+    
+    // Check if ALISTAMIENTO is completed (prerequisite for QR scanning)
+    if (alistamientoProcess?.status === ProcessStatus.COMPLETED) {
+      // Check if patient has been through QR scan process
+      const entregaProcess = allMedicationProcesses.find(
+        (p) =>
+          p.patientId === patient.id &&
+          p.step === MedicationProcessStep.ENTREGA
+      );
+      
+      if (entregaProcess) {
+        // If ENTREGA process exists, return its actual status
+        return entregaProcess.status;
+      } else {
+        // No ENTREGA process yet - show as pending (orange) for QR scanning
+        return ProcessStatus.PENDING;
+      }
+    }
+    return null; // Show as disabled (black border) - ALISTAMIENTO not completed
   }
 
   return null; // Default: disabled

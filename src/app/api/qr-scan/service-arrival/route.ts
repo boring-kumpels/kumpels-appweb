@@ -55,10 +55,15 @@ export async function POST(request: NextRequest) {
     // Get current active daily process
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
     
     const dailyProcess = await prisma.dailyProcess.findFirst({
       where: {
-        date: today,
+        date: {
+          gte: today,
+          lt: tomorrow,
+        },
         status: 'ACTIVE'
       }
     });
@@ -69,14 +74,14 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Find patients ready for service arrival (ENTREGA completed and pharmacy dispatch scanned)
+    // Find patients ready for service arrival (ALISTAMIENTO completed and pharmacy dispatch scanned)
     const readyPatients = await prisma.patient.findMany({
       where: {
         serviceId: qrCode.serviceId,
         status: 'ACTIVE',
         medicationProcesses: {
           some: {
-            step: 'ENTREGA',
+            step: 'ALISTAMIENTO',
             status: 'COMPLETED',
             dailyProcessId: dailyProcess.id
           }
@@ -132,6 +137,43 @@ export async function POST(request: NextRequest) {
         })
       )
     );
+
+    // Update ENTREGA processes to mark service arrival (both QR codes scanned)
+    const entregaUpdatePromises = patientsToScan.map(async (patient) => {
+      // Find or create ENTREGA process
+      const existingEntrega = await prisma.medicationProcess.findFirst({
+        where: {
+          patientId: patient.id,
+          dailyProcessId: dailyProcess.id,
+          step: 'ENTREGA',
+        },
+      });
+
+      if (existingEntrega) {
+        // Update existing ENTREGA process to DELIVERED_TO_SERVICE
+        return prisma.medicationProcess.update({
+          where: { id: existingEntrega.id },
+          data: {
+            status: "DELIVERED_TO_SERVICE",
+            updatedAt: new Date(),
+          },
+        });
+      } else {
+        // Create new ENTREGA process with DELIVERED_TO_SERVICE status
+        return prisma.medicationProcess.create({
+          data: {
+            patientId: patient.id,
+            dailyProcessId: dailyProcess.id,
+            step: 'ENTREGA',
+            status: "DELIVERED_TO_SERVICE",
+            startedAt: new Date(),
+            startedBy: user.id,
+          },
+        });
+      }
+    });
+
+    await Promise.all(entregaUpdatePromises);
 
     return NextResponse.json({
       success: true,

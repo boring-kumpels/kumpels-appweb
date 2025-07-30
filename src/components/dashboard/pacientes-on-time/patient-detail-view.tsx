@@ -13,7 +13,6 @@ import {
   Check,
   AlertTriangle,
   Send,
-  QrCode,
   Camera,
 } from "lucide-react";
 
@@ -42,6 +41,7 @@ import { useCurrentDailyProcess } from "@/hooks/use-daily-processes";
 import { useAllMedicationProcesses, useUpdateMedicationProcess } from "@/hooks/use-medication-processes";
 import { useProcessErrorLogs, useCreateProcessErrorLog } from "@/hooks/use-process-error-logs";
 import { useManualReturns, useCreateManualReturn, useApproveManualReturn, useRejectManualReturn } from "@/hooks/use-manual-returns";
+import { useQuery } from "@tanstack/react-query";
 import { ProcessStatusButton } from "./process-status-button";
 import { QRGenerator } from "../qr-generator";
 import { QRScanner } from "../qr-scanner";
@@ -85,7 +85,7 @@ function calculateButtonState(
     return null; // Show as disabled (black border)
   }
   
-  if (step === MedicationProcessStep.VALIDACION || step === MedicationProcessStep.ENTREGA) {
+  if (step === MedicationProcessStep.VALIDACION) {
     const alistamientoProcess = allMedicationProcesses.find(
       p => p.patientId === patient.id && p.step === MedicationProcessStep.ALISTAMIENTO
     );
@@ -93,6 +93,29 @@ function calculateButtonState(
       return ProcessStatus.PENDING; // Show as pending (orange filled)
     }
     return null; // Show as disabled (black border)
+  }
+
+  if (step === MedicationProcessStep.ENTREGA) {
+    const alistamientoProcess = allMedicationProcesses.find(
+      p => p.patientId === patient.id && p.step === MedicationProcessStep.ALISTAMIENTO
+    );
+    
+    // Check if ALISTAMIENTO is completed (prerequisite for QR scanning)
+    if (alistamientoProcess?.status === ProcessStatus.COMPLETED) {
+      // Check if patient has been through QR scan process
+      const entregaProcess = allMedicationProcesses.find(
+        p => p.patientId === patient.id && p.step === MedicationProcessStep.ENTREGA
+      );
+      
+      if (entregaProcess) {
+        // If ENTREGA process exists, return its actual status
+        return entregaProcess.status;
+      } else {
+        // No ENTREGA process yet - show as pending (orange) for QR scanning
+        return ProcessStatus.PENDING;
+      }
+    }
+    return null; // Show as disabled (black border) - ALISTAMIENTO not completed
   }
   
   return null; // Default: disabled
@@ -117,6 +140,27 @@ interface LogEntryDisplay {
   type: "error" | "info" | "warning";
   patientName: string;
   patientId: string;
+}
+
+interface QRScanRecord {
+  id: string;
+  patientId: string;
+  qrCodeId: string;
+  scannedBy: string;
+  scannedAt: string;
+  dailyProcessId: string;
+  qrCode: {
+    id: string;
+    type: 'PHARMACY_DISPATCH' | 'SERVICE_ARRIVAL';
+    service?: {
+      id: string;
+      name: string;
+      line: {
+        id: string;
+        displayName: string;
+      };
+    };
+  };
 }
 
 export default function PatientDetailView({ patientId }: PatientDetailViewProps) {
@@ -152,6 +196,18 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
   const { data: allMedicationProcesses = [] } = useAllMedicationProcesses(
     currentDailyProcess?.id
   );
+
+  // Fetch QR scan records for this patient
+  const { data: qrScanRecords = [] } = useQuery<QRScanRecord[]>({
+    queryKey: ["qr-scan-records", patientId, currentDailyProcess?.id],
+    queryFn: async (): Promise<QRScanRecord[]> => {
+      if (!currentDailyProcess?.id) return [];
+      const response = await fetch(`/api/patients/${patientId}/qr-scan-records?dailyProcessId=${currentDailyProcess.id}`);
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!patientId && !!currentDailyProcess?.id,
+  });
 
   // Fetch all logs for this patient (including resolved status change logs)
   const { data: errorLogs = [] } = useProcessErrorLogs({
@@ -661,34 +717,164 @@ export default function PatientDetailView({ patientId }: PatientDetailViewProps)
                       })}
                     </div>
 
-                    {/* QR Tracking Buttons for Entrega Tab */}
-                    {activeTab === "entrega" && profile?.role === "PHARMACY_REGENT" && (
+                    {/* QR Tracking Progress for Entrega Tab */}
+                    {activeTab === "entrega" && (
                       <div className="border-t pt-6">
                         <h3 className="text-lg font-semibold mb-4 text-center">
-                          Seguimiento con Códigos QR
+                          Progreso de Entrega con QR
                         </h3>
-                        <div className="grid grid-cols-2 gap-4">
-                          <Button
-                            onClick={() => setIsQRGeneratorOpen(true)}
-                            className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transition-all duration-200"
-                          >
-                            <QrCode className="h-5 w-5" />
-                            Generar Código QR
-                          </Button>
-                          <Button
-                            onClick={() => setIsQRScannerOpen(true)}
-                            className="w-full h-14 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transition-all duration-200"
-                          >
-                            <Camera className="h-5 w-5" />
-                            Escanear Código QR
-                          </Button>
+                        
+                        {/* QR Progress Steps */}
+                        <div className="space-y-4">
+                          {/* Step 1: Salida de Farmacia */}
+                          <div className={cn(
+                            "p-4 rounded-lg border-2 transition-all duration-200",
+                            qrScanRecords.some(record => record.qrCode.type === 'PHARMACY_DISPATCH')
+                              ? "bg-green-50 border-green-300 shadow-sm"
+                              : "bg-gray-50 border-gray-300"
+                          )}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className={cn(
+                                  "w-8 h-8 rounded-full flex items-center justify-center",
+                                  qrScanRecords.some(record => record.qrCode.type === 'PHARMACY_DISPATCH')
+                                    ? "bg-green-500 text-white"
+                                    : "bg-gray-400 text-white"
+                                )}>
+                                  {qrScanRecords.some(record => record.qrCode.type === 'PHARMACY_DISPATCH') ? (
+                                    <Check className="h-5 w-5" />
+                                  ) : (
+                                    <span className="text-sm font-bold">1</span>
+                                  )}
+                                </div>
+                                <div>
+                                  <h4 className="font-medium">Salida de Farmacia</h4>
+                                  <p className="text-sm text-muted-foreground">
+                                    Medicamentos salen de farmacia
+                                  </p>
+                                </div>
+                              </div>
+                              {qrScanRecords.some(record => record.qrCode.type === 'PHARMACY_DISPATCH') && (
+                                <div className="text-sm text-green-600 font-medium">
+                                  Completado
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Step 2: Llegada a Servicio */}
+                          <div className={cn(
+                            "p-4 rounded-lg border-2 transition-all duration-200",
+                            qrScanRecords.some(record => record.qrCode.type === 'SERVICE_ARRIVAL')
+                              ? "bg-green-50 border-green-300 shadow-sm"
+                              : "bg-gray-50 border-gray-300"
+                          )}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className={cn(
+                                  "w-8 h-8 rounded-full flex items-center justify-center",
+                                  qrScanRecords.some(record => record.qrCode.type === 'SERVICE_ARRIVAL')
+                                    ? "bg-green-500 text-white"
+                                    : "bg-gray-400 text-white"
+                                )}>
+                                  {qrScanRecords.some(record => record.qrCode.type === 'SERVICE_ARRIVAL') ? (
+                                    <Check className="h-5 w-5" />
+                                  ) : (
+                                    <span className="text-sm font-bold">2</span>
+                                  )}
+                                </div>
+                                <div>
+                                  <h4 className="font-medium">Llegada a Servicio</h4>
+                                  <p className="text-sm text-muted-foreground">
+                                    Medicamentos llegan al servicio
+                                  </p>
+                                </div>
+                              </div>
+                              {qrScanRecords.some(record => record.qrCode.type === 'SERVICE_ARRIVAL') && (
+                                <div className="text-sm text-green-600 font-medium">
+                                  Completado
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Step 3: Recepción Enfermería */}
+                          <div className={cn(
+                            "p-4 rounded-lg border-2 transition-all duration-200",
+                            // Only enabled if both QR codes scanned and ENTREGA process is COMPLETED
+                            qrScanRecords.some(record => record.qrCode.type === 'PHARMACY_DISPATCH') &&
+                            qrScanRecords.some(record => record.qrCode.type === 'SERVICE_ARRIVAL') &&
+                            allMedicationProcesses.some(mp => 
+                              mp.patientId === patientId && 
+                              mp.step === 'ENTREGA' && 
+                              mp.status === 'COMPLETED'
+                            )
+                              ? "bg-green-50 border-green-300 shadow-sm"
+                              : "bg-gray-50 border-gray-300"
+                          )}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className={cn(
+                                  "w-8 h-8 rounded-full flex items-center justify-center",
+                                  qrScanRecords.some(record => record.qrCode.type === 'PHARMACY_DISPATCH') &&
+                                  qrScanRecords.some(record => record.qrCode.type === 'SERVICE_ARRIVAL') &&
+                                  allMedicationProcesses.some(mp => 
+                                    mp.patientId === patientId && 
+                                    mp.step === 'ENTREGA' && 
+                                    mp.status === 'COMPLETED'
+                                  )
+                                    ? "bg-green-500 text-white"
+                                    : "bg-gray-400 text-white"
+                                )}>
+                                  {qrScanRecords.some(record => record.qrCode.type === 'PHARMACY_DISPATCH') &&
+                                   qrScanRecords.some(record => record.qrCode.type === 'SERVICE_ARRIVAL') &&
+                                   allMedicationProcesses.some(mp => 
+                                     mp.patientId === patientId && 
+                                     mp.step === 'ENTREGA' && 
+                                     mp.status === 'COMPLETED'
+                                   ) ? (
+                                    <Check className="h-5 w-5" />
+                                  ) : (
+                                    <span className="text-sm font-bold">3</span>
+                                  )}
+                                </div>
+                                <div>
+                                  <h4 className="font-medium">Recepción Enfermería</h4>
+                                  <p className="text-sm text-muted-foreground">
+                                    Enfermería recibe los medicamentos
+                                  </p>
+                                </div>
+                              </div>
+                              {qrScanRecords.some(record => record.qrCode.type === 'PHARMACY_DISPATCH') &&
+                               qrScanRecords.some(record => record.qrCode.type === 'SERVICE_ARRIVAL') &&
+                               allMedicationProcesses.some(mp => 
+                                 mp.patientId === patientId && 
+                                 mp.step === 'ENTREGA' && 
+                                 mp.status === 'COMPLETED'
+                               ) && (
+                                <div className="text-sm text-green-600 font-medium">
+                                  Completado
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <div className="mt-4 text-center text-sm text-muted-foreground bg-muted/50 rounded-lg p-3">
-                          <p>
-                            <strong>Generar:</strong> Crear códigos QR para salida de farmacia o llegada a servicio<br/>
-                            <strong>Escanear:</strong> Procesar códigos QR para registrar el estado de entrega
-                          </p>
-                        </div>
+
+                        {/* QR Scanner Button for PHARMACY_REGENT */}
+                        {profile?.role === "PHARMACY_REGENT" && (
+                          <div className="mt-6 text-center">
+                            <Button
+                              onClick={() => setIsQRScannerOpen(true)}
+                              className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transition-all duration-200"
+                            >
+                              <Camera className="h-5 w-5" />
+                              Escanear Código QR
+                            </Button>
+                            <p className="mt-2 text-xs text-muted-foreground">
+                              Escanea los códigos QR para registrar la salida de farmacia y llegada al servicio
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
 

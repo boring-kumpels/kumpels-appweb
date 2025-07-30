@@ -250,18 +250,46 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
     processQRData(simulatedQRData);
   };
 
-  const handleSimulateServiceArrival = () => {
-    // Simulate scanning a service arrival QR
-    const simulatedQRData = JSON.stringify({
-      type: QRCodeType.SERVICE_ARRIVAL,
-      id: `simulated_service_qr_${Date.now()}`,
-      serviceId: "test_service_id",
-      serviceName: "Servicio de Prueba",
-      timestamp: new Date().toISOString(),
-      isActive: true,
-    });
-
-    processQRData(simulatedQRData);
+  const handleSimulateServiceArrival = async () => {
+    try {
+      // Fetch a real service from the database for simulation
+      const response = await fetch('/api/services');
+      if (response.ok) {
+        const services = await response.json();
+        if (services.length > 0) {
+          const firstService = services[0];
+          const simulatedQRData = JSON.stringify({
+            type: QRCodeType.SERVICE_ARRIVAL,
+            id: `simulated_service_qr_${Date.now()}`,
+            serviceId: firstService.id,
+            serviceName: firstService.name,
+            timestamp: new Date().toISOString(),
+            isActive: true,
+          });
+          
+          processQRData(simulatedQRData);
+        } else {
+          toast({
+            title: "Error",
+            description: "No hay servicios disponibles para simular",
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar los servicios",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching services for simulation:", error);
+      toast({
+        title: "Error",
+        description: "Error al obtener servicios para simulación",
+        variant: "destructive",
+      });
+    }
   };
 
 

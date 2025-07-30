@@ -44,12 +44,17 @@ export async function POST(request: NextRequest) {
 
     // Get the daily process for today
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
     const dailyProcess = await prisma.dailyProcess.findFirst({
       where: {
         date: {
-          gte: new Date(today.toISOString().split('T')[0]),
-          lt: new Date(new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]),
+          gte: today,
+          lt: tomorrow,
         },
+        status: 'ACTIVE'
       },
     });
 
@@ -60,14 +65,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get all patients that have completed ENTREGA step (across all services)
+    // Get all patients that have completed ALISTAMIENTO step (ready for QR scanning)
     const eligiblePatients = await prisma.patient.findMany({
       where: {
         status: "ACTIVE",
         medicationProcesses: {
           some: {
             dailyProcessId: dailyProcess.id,
-            step: MedicationProcessStep.ENTREGA,
+            step: MedicationProcessStep.ALISTAMIENTO,
             status: ProcessStatus.COMPLETED,
           }
         }
@@ -96,7 +101,14 @@ export async function POST(request: NextRequest) {
 
     if (patientsToDispatch.length === 0) {
       return NextResponse.json(
-        { error: "No hay pacientes elegibles para salida de farmacia o ya fueron registrados" },
+        { 
+          error: "No hay pacientes elegibles para salida de farmacia o ya fueron registrados",
+          debug: {
+            totalEligiblePatients: eligiblePatients.length,
+            dailyProcessId: dailyProcess.id,
+            patientsAlreadyScanned: eligiblePatients.filter(p => p.qrScanRecords.length > 0).length
+          }
+        },
         { status: 400 }
       );
     }
@@ -115,20 +127,40 @@ export async function POST(request: NextRequest) {
       )
     );
 
-    // Update the medication processes to mark pharmacy dispatch
+    // Create or update ENTREGA processes to mark pharmacy dispatch
     const updatePromises = patientsToDispatch.map(async (patient) => {
-      return prisma.medicationProcess.updateMany({
+      // Try to find existing ENTREGA process
+      const existingEntrega = await prisma.medicationProcess.findFirst({
         where: {
           patientId: patient.id,
           dailyProcessId: dailyProcess.id,
           step: MedicationProcessStep.ENTREGA,
-          status: ProcessStatus.COMPLETED,
-        },
-        data: {
-          status: "DISPATCHED_FROM_PHARMACY",
-          updatedAt: new Date(),
         },
       });
+
+      if (existingEntrega) {
+        // Update existing ENTREGA process
+        return prisma.medicationProcess.update({
+          where: { id: existingEntrega.id },
+          data: {
+            status: "DISPATCHED_FROM_PHARMACY",
+            startedAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+      } else {
+        // Create new ENTREGA process with DISPATCHED_FROM_PHARMACY status
+        return prisma.medicationProcess.create({
+          data: {
+            patientId: patient.id,
+            dailyProcessId: dailyProcess.id,
+            step: MedicationProcessStep.ENTREGA,
+            status: "DISPATCHED_FROM_PHARMACY",
+            startedAt: new Date(),
+            startedBy: user.id,
+          },
+        });
+      }
     });
 
     await Promise.all(updatePromises);
