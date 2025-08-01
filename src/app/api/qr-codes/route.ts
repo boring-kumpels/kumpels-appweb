@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import prisma from "@/lib/prisma";
-import { generatePharmacyDispatchQR, generateServiceArrivalQR } from "@/lib/qr-generator";
+import { generatePharmacyDispatchQR, generatePharmacyDispatchDevolutionQR, generateServiceArrivalQR } from "@/lib/qr-generator";
 
 export async function GET() {
   try {
@@ -38,10 +38,12 @@ export async function GET() {
 
     // Group QRs by type
     const pharmacyDispatchQR = activeQRs.find(qr => qr.type === 'PHARMACY_DISPATCH');
+    const pharmacyDispatchDevolutionQR = activeQRs.find(qr => qr.type === 'PHARMACY_DISPATCH_DEVOLUTION');
     const serviceArrivalQRs = activeQRs.filter(qr => qr.type === 'SERVICE_ARRIVAL');
 
     return NextResponse.json({
       pharmacyDispatchQR,
+      pharmacyDispatchDevolutionQR,
       serviceArrivalQRs,
       hasActiveQRs: activeQRs.length > 0
     });
@@ -104,6 +106,36 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({
           message: "Pharmacy dispatch QR code generated successfully",
+          qrCode: newQR
+        });
+
+      } else if (type === 'PHARMACY_DISPATCH_DEVOLUTION') {
+        // Deactivate existing pharmacy dispatch devolution QR code
+        await prisma.qRCode.updateMany({
+          where: { 
+            isActive: true,
+            type: 'PHARMACY_DISPATCH_DEVOLUTION'
+          },
+          data: { isActive: false }
+        });
+
+        // Generate new pharmacy dispatch devolution QR code
+        const qrId = `pdd_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+        const qrDataURL = await generatePharmacyDispatchDevolutionQR(qrId);
+
+        // Save new QR code to database
+        const newQR = await prisma.qRCode.create({
+          data: {
+            qrId,
+            type: 'PHARMACY_DISPATCH_DEVOLUTION',
+            qrDataURL,
+            createdBy: user.id,
+            isActive: true
+          }
+        });
+
+        return NextResponse.json({
+          message: "Pharmacy dispatch devolution QR code generated successfully",
           qrCode: newQR
         });
 

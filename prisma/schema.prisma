@@ -51,6 +51,7 @@ enum ProcessStatus {
   ERROR
   DISPATCHED_FROM_PHARMACY  // When regent leaves pharmacy with medications
   DELIVERED_TO_SERVICE      // When regent arrives at service/floor
+  PICKED_UP_FROM_SERVICE    // When devolution is picked up from service
 }
 
 model Profile {
@@ -275,7 +276,10 @@ model ManualReturnSupply {
 
 enum QRType {
   PHARMACY_DISPATCH
+  PHARMACY_DISPATCH_DEVOLUTION
   SERVICE_ARRIVAL
+  DEVOLUTION_PICKUP
+  DEVOLUTION_RETURN
 }
 
 model QRCode {

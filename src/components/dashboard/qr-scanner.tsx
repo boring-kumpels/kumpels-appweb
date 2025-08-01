@@ -23,6 +23,7 @@ import {
   parseQRData,
   QRCodeType,
   ServiceArrivalQRData,
+  DevolutionPickupQRData,
 } from "@/lib/qr-generator";
 import { useQRScanner } from "@/hooks/use-qr-scanner";
 import { toast } from "@/components/ui/use-toast";
@@ -32,9 +33,10 @@ import { QRCheckInModal } from "./qr-checkin-modal";
 interface QRScannerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  currentTab?: string; // Add current tab prop
 }
 
-export function QRScanner({ open, onOpenChange }: QRScannerProps) {
+export function QRScanner({ open, onOpenChange, currentTab }: QRScannerProps) {
   const [scanResult, setScanResult] = useState<{
     success: boolean;
     message: string;
@@ -190,10 +192,14 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
         serviceId:
           qrData.type === QRCodeType.SERVICE_ARRIVAL
             ? (qrData as ServiceArrivalQRData).serviceId
+            : qrData.type === QRCodeType.DEVOLUTION_PICKUP
+            ? (qrData as DevolutionPickupQRData).serviceId
             : undefined,
         serviceName:
           qrData.type === QRCodeType.SERVICE_ARRIVAL
             ? (qrData as ServiceArrivalQRData).serviceName
+            : qrData.type === QRCodeType.DEVOLUTION_PICKUP
+            ? (qrData as DevolutionPickupQRData).serviceName
             : undefined,
       });
       setShowCheckInModal(true);
@@ -213,6 +219,18 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
     const simulatedQRData = JSON.stringify({
       type: QRCodeType.PHARMACY_DISPATCH,
       id: `simulated_qr_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      isActive: true,
+    });
+
+    processQRData(simulatedQRData);
+  };
+
+  const handleSimulatePharmacyDispatchDevolution = () => {
+    // Simulate scanning a pharmacy dispatch devolution QR
+    const simulatedQRData = JSON.stringify({
+      type: QRCodeType.PHARMACY_DISPATCH_DEVOLUTION,
+      id: `simulated_devolution_qr_${Date.now()}`,
       timestamp: new Date().toISOString(),
       isActive: true,
     });
@@ -260,6 +278,60 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
         variant: "destructive",
       });
     }
+  };
+
+  const handleSimulateDevolutionPickup = async () => {
+    try {
+      // Fetch a real service from the database for simulation
+      const response = await fetch("/api/services");
+      if (response.ok) {
+        const services = await response.json();
+        if (services.length > 0) {
+          const firstService = services[0];
+          const simulatedQRData = JSON.stringify({
+            type: QRCodeType.DEVOLUTION_PICKUP,
+            id: `simulated_devolution_pickup_qr_${Date.now()}`,
+            serviceId: firstService.id,
+            serviceName: firstService.name,
+            timestamp: new Date().toISOString(),
+            isActive: true,
+          });
+
+          processQRData(simulatedQRData);
+        } else {
+          toast({
+            title: "Error",
+            description: "No hay servicios disponibles para simular",
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar los servicios",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching services for devolution pickup simulation:", error);
+      toast({
+        title: "Error",
+        description: "Error al obtener servicios para simulación",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSimulateDevolutionReturn = () => {
+    // Simulate scanning a devolution return QR
+    const simulatedQRData = JSON.stringify({
+      type: QRCodeType.DEVOLUTION_RETURN,
+      id: `simulated_devolution_return_qr_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      isActive: true,
+    });
+
+    processQRData(simulatedQRData);
   };
 
   return (
@@ -502,24 +574,78 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
                 <p className="text-xs text-muted-foreground text-center mb-3">
                   Botones de simulación para desarrollo:
                 </p>
-                <Button
-                  onClick={handleSimulatePharmacyDispatch}
-                  disabled={isProcessing}
-                  variant="outline"
-                  className="w-full h-12 flex items-center justify-center gap-2"
-                >
-                  <ArrowRight className="h-4 w-4" />
-                  Simular Salida de Farmacia
-                </Button>
-                <Button
-                  onClick={handleSimulateServiceArrival}
-                  disabled={isProcessing}
-                  variant="outline"
-                  className="w-full h-12 flex items-center justify-center gap-2"
-                >
-                  <QrCode className="h-4 w-4" />
-                  Simular Llegada a Servicio
-                </Button>
+                
+                {/* Delivery QR buttons */}
+                {(!currentTab || currentTab === "entrega") && (
+                  <>
+                    <Button
+                      onClick={handleSimulatePharmacyDispatch}
+                      disabled={isProcessing}
+                      variant="outline"
+                      className="w-full h-12 flex items-center justify-center gap-2"
+                    >
+                      <ArrowRight className="h-4 w-4" />
+                      Simular Salida de Farmacia
+                    </Button>
+                    <Button
+                      onClick={handleSimulateServiceArrival}
+                      disabled={isProcessing}
+                      variant="outline"
+                      className="w-full h-12 flex items-center justify-center gap-2"
+                    >
+                      <QrCode className="h-4 w-4" />
+                      Simular Llegada a Servicio
+                    </Button>
+                  </>
+                )}
+                
+                {/* Devolution QR buttons */}
+                {currentTab === "devoluciones" && (
+                  <>
+                    <Button
+                      onClick={handleSimulatePharmacyDispatchDevolution}
+                      disabled={isProcessing}
+                      variant="outline"
+                      className="w-full h-12 flex items-center justify-center gap-2 border-red-300 text-red-600 hover:bg-red-50"
+                    >
+                      <ArrowRight className="h-4 w-4" />
+                      Simular Salida Farmacia (Devolución)
+                    </Button>
+                    <Button
+                      onClick={handleSimulatePharmacyDispatch}
+                      disabled={isProcessing}
+                      variant="outline"
+                      className="w-full h-12 flex items-center justify-center gap-2 border-orange-300 text-orange-600 hover:bg-orange-50"
+                    >
+                      <ArrowRight className="h-4 w-4" />
+                      Simular Salida Farmacia (Entrega)
+                    </Button>
+                  </>
+                )}
+                
+                {/* Show all buttons if no specific tab */}
+                {!currentTab && (
+                  <>
+                    <Button
+                      onClick={handleSimulateDevolutionPickup}
+                      disabled={isProcessing}
+                      variant="outline"
+                      className="w-full h-12 flex items-center justify-center gap-2 border-red-300 text-red-600 hover:bg-red-50"
+                    >
+                      <ArrowRight className="h-4 w-4" />
+                      Simular Recogida de Devolución
+                    </Button>
+                    <Button
+                      onClick={handleSimulateDevolutionReturn}
+                      disabled={isProcessing}
+                      variant="outline"
+                      className="w-full h-12 flex items-center justify-center gap-2 border-red-300 text-red-600 hover:bg-red-50"
+                    >
+                      <QrCode className="h-4 w-4" />
+                      Simular Recepción en Farmacia
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
 
@@ -530,9 +656,9 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
                 <span className="font-medium">Instrucciones de uso</span>
               </div>
               <p>
-                Posiciona el código QR dentro del marco de escaneo. El sistema
-                procesará automáticamente todos los pacientes elegibles para
-                salida de farmacia.
+                {currentTab === "devoluciones" 
+                  ? "Posiciona el código QR dentro del marco de escaneo. El sistema procesará automáticamente todos los pacientes elegibles para el proceso de devolución."
+                  : "Posiciona el código QR dentro del marco de escaneo. El sistema procesará automáticamente todos los pacientes elegibles para salida de farmacia."}
               </p>
             </div>
           </div>
@@ -545,6 +671,7 @@ export function QRScanner({ open, onOpenChange }: QRScannerProps) {
         onOpenChange={setShowCheckInModal}
         qrData={scannedQRData}
         onSuccess={handleCheckInSuccess}
+        currentTab={currentTab}
       />
     </>
   );

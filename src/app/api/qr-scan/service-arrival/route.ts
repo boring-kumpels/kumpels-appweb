@@ -132,58 +132,124 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find patients ready for service arrival (ALISTAMIENTO completed and pharmacy dispatch scanned)
-    // AND ensure they belong to the selected line
-    const readyPatients = await prisma.patient.findMany({
-      where: {
-        serviceId: qrCode.serviceId,
-        status: "ACTIVE",
-        medicationProcesses: {
-          some: {
-            step: "ALISTAMIENTO",
-            status: "COMPLETED",
-            dailyProcessId: dailyProcess.id,
+    // Find patients ready for service arrival based on transaction type
+    let readyPatients;
+    let patientsToScan;
+
+    if (transactionType === "ENTREGA") {
+      // For delivery: patients with ALISTAMIENTO completed and pharmacy dispatch scanned
+      readyPatients = await prisma.patient.findMany({
+        where: {
+          serviceId: qrCode.serviceId,
+          status: "ACTIVE",
+          medicationProcesses: {
+            some: {
+              step: "ALISTAMIENTO",
+              status: "COMPLETED",
+              dailyProcessId: dailyProcess.id,
+            },
+          },
+          qrScanRecords: {
+            some: {
+              dailyProcessId: dailyProcess.id,
+              qrCode: {
+                type: "PHARMACY_DISPATCH",
+              },
+              transactionType: "ENTREGA",
+            },
+          },
+          service: {
+            lineId: selectedLine.id, // Ensure patients belong to selected line
           },
         },
-        qrScanRecords: {
-          some: {
-            dailyProcessId: dailyProcess.id,
-            qrCode: {
-              type: "PHARMACY_DISPATCH",
+        include: {
+          bed: true,
+          service: {
+            include: {
+              line: true,
+            },
+          },
+          qrScanRecords: {
+            where: {
+              dailyProcessId: dailyProcess.id,
+            },
+            include: {
+              qrCode: true,
             },
           },
         },
-        service: {
-          lineId: selectedLine.id, // Ensure patients belong to selected line
-        },
-      },
-      include: {
-        bed: true,
-        service: {
-          include: {
-            line: true,
-          },
-        },
-        qrScanRecords: {
-          where: {
-            dailyProcessId: dailyProcess.id,
-          },
-          include: {
-            qrCode: true,
-          },
-        },
-      },
-    });
+      });
 
-    // Filter patients who haven't been scanned for this service yet
-    const patientsToScan = readyPatients.filter((patient) => {
-      const hasServiceArrivalScan = patient.qrScanRecords.some(
-        (record) =>
-          record.qrCode.type === "SERVICE_ARRIVAL" &&
-          record.qrCode.serviceId === qrCode.serviceId
+      // Filter patients who haven't been scanned for this service yet
+      patientsToScan = readyPatients.filter((patient) => {
+        const hasServiceArrivalScan = patient.qrScanRecords.some(
+          (record) =>
+            record.qrCode.type === "SERVICE_ARRIVAL" &&
+            record.qrCode.serviceId === qrCode.serviceId &&
+            record.transactionType === "ENTREGA"
+        );
+        return !hasServiceArrivalScan;
+      });
+    } else if (transactionType === "DEVOLUCION") {
+      // For returns: patients with ENTREGA completed and DEVOLUCION process started
+      readyPatients = await prisma.patient.findMany({
+        where: {
+          serviceId: qrCode.serviceId,
+          status: "ACTIVE",
+          medicationProcesses: {
+            some: {
+              step: "ENTREGA",
+              status: "COMPLETED",
+              dailyProcessId: dailyProcess.id,
+            },
+          },
+          AND: {
+            medicationProcesses: {
+              some: {
+                dailyProcessId: dailyProcess.id,
+                step: "DEVOLUCION",
+                status: "IN_PROGRESS",
+              },
+            },
+          },
+          service: {
+            lineId: selectedLine.id, // Ensure patients belong to selected line
+          },
+        },
+        include: {
+          bed: true,
+          service: {
+            include: {
+              line: true,
+            },
+          },
+          qrScanRecords: {
+            where: {
+              dailyProcessId: dailyProcess.id,
+            },
+            include: {
+              qrCode: true,
+            },
+          },
+        },
+      });
+
+      // Filter patients who haven't been scanned for this service yet
+      patientsToScan = readyPatients.filter((patient) => {
+        const hasServiceArrivalScan = patient.qrScanRecords.some(
+          (record) =>
+            record.qrCode.type === "SERVICE_ARRIVAL" &&
+            record.qrCode.serviceId === qrCode.serviceId &&
+            record.transactionType === "DEVOLUCION"
+        );
+        return !hasServiceArrivalScan;
+      });
+    } else {
+      return NextResponse.json(
+        { error: "Tipo de transacción no válido" },
+        { status: 400 }
       );
-      return !hasServiceArrivalScan;
-    });
+    }
 
     if (patientsToScan.length === 0) {
       return NextResponse.json(
@@ -212,46 +278,57 @@ export async function POST(request: NextRequest) {
       )
     );
 
-    // Update ENTREGA processes to mark service arrival (both QR codes scanned)
-    const entregaUpdatePromises = patientsToScan.map(async (patient) => {
-      // Find or create ENTREGA process
-      const existingEntrega = await prisma.medicationProcess.findFirst({
-        where: {
-          patientId: patient.id,
-          dailyProcessId: dailyProcess.id,
-          step: "ENTREGA",
-        },
-      });
-
-      if (existingEntrega) {
-        // Update existing ENTREGA process to DELIVERED_TO_SERVICE
-        return prisma.medicationProcess.update({
-          where: { id: existingEntrega.id },
-          data: {
-            status: "DELIVERED_TO_SERVICE",
-            updatedAt: new Date(),
-          },
-        });
-      } else {
-        // Create new ENTREGA process with DELIVERED_TO_SERVICE status
-        return prisma.medicationProcess.create({
-          data: {
+    // Update medication processes based on transaction type
+    const updatePromises = patientsToScan.map(async (patient) => {
+      if (transactionType === "ENTREGA") {
+        // Update ENTREGA processes to mark service arrival (both QR codes scanned)
+        const existingEntrega = await prisma.medicationProcess.findFirst({
+          where: {
             patientId: patient.id,
             dailyProcessId: dailyProcess.id,
             step: "ENTREGA",
-            status: "DELIVERED_TO_SERVICE",
-            startedAt: new Date(),
-            startedBy: user.id,
           },
         });
+
+        if (existingEntrega) {
+          // Update existing ENTREGA process to DELIVERED_TO_SERVICE
+          return prisma.medicationProcess.update({
+            where: { id: existingEntrega.id },
+            data: {
+              status: "DELIVERED_TO_SERVICE",
+              updatedAt: new Date(),
+            },
+          });
+        } else {
+          // Create new ENTREGA process with DELIVERED_TO_SERVICE status
+          return prisma.medicationProcess.create({
+            data: {
+              patientId: patient.id,
+              dailyProcessId: dailyProcess.id,
+              step: "ENTREGA",
+              status: "DELIVERED_TO_SERVICE",
+              startedAt: new Date(),
+              startedBy: user.id,
+            },
+          });
+        }
+      } else if (transactionType === "DEVOLUCION") {
+        // For returns, we don't update the DEVOLUCION process here
+        // The DEVOLUCION process will be completed when pharmacy reception is scanned
+        return Promise.resolve();
       }
     });
 
-    await Promise.all(entregaUpdatePromises);
+    await Promise.all(updatePromises);
+
+    const actionMessage =
+      transactionType === "ENTREGA"
+        ? `Llegada a servicio registrada para ${patientsToScan.length} paciente(s) de la línea ${selectedLine.displayName}`
+        : `Llegada a piso para devolución registrada para ${patientsToScan.length} paciente(s) de la línea ${selectedLine.displayName}`;
 
     return NextResponse.json({
       success: true,
-      message: `Llegada a servicio registrada para ${patientsToScan.length} paciente(s) de la línea ${selectedLine.displayName}`,
+      message: actionMessage,
       patientsCount: patientsToScan.length,
       serviceName: qrCode.service?.name,
       selectedLine: selectedLine.displayName,

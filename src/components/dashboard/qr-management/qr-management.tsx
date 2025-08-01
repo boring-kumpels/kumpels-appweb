@@ -17,7 +17,7 @@ import { toast } from "@/components/ui/use-toast";
 interface QRCodeData {
   id: string;
   qrId: string;
-  type: 'PHARMACY_DISPATCH' | 'SERVICE_ARRIVAL';
+  type: 'PHARMACY_DISPATCH' | 'PHARMACY_DISPATCH_DEVOLUTION' | 'SERVICE_ARRIVAL';
   isActive: boolean;
   qrDataURL: string;
   serviceId?: string;
@@ -37,8 +37,10 @@ interface QRCodeData {
 
 export function QRManagement() {
   const [pharmacyDispatchQR, setPharmacyDispatchQR] = useState<QRCodeData | null>(null);
+  const [pharmacyDispatchDevolutionQR, setPharmacyDispatchDevolutionQR] = useState<QRCodeData | null>(null);
   const [serviceArrivalQRs, setServiceArrivalQRs] = useState<QRCodeData[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingDevolution, setIsGeneratingDevolution] = useState(false);
   const [isGeneratingAll, setIsGeneratingAll] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -49,6 +51,7 @@ export function QRManagement() {
       if (response.ok) {
         const data = await response.json();
         setPharmacyDispatchQR(data.pharmacyDispatchQR || null);
+        setPharmacyDispatchDevolutionQR(data.pharmacyDispatchDevolutionQR || null);
         setServiceArrivalQRs(data.serviceArrivalQRs || []);
       } else {
         console.error('Failed to load QR codes');
@@ -88,7 +91,7 @@ export function QRManagement() {
         setPharmacyDispatchQR(data.qrCode);
         toast({
           title: "Éxito",
-          description: "Código QR de Salida de Farmacia generado correctamente",
+          description: "Código QR de Salida de Farmacia (Entregas) generado correctamente",
         });
       } else {
         const error = await response.json();
@@ -107,6 +110,47 @@ export function QRManagement() {
       });
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const generatePharmacyDispatchDevolutionQR = async () => {
+    setIsGeneratingDevolution(true);
+    try {
+      const response = await fetch('/api/qr-codes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          action: 'generate',
+          type: 'PHARMACY_DISPATCH_DEVOLUTION'
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPharmacyDispatchDevolutionQR(data.qrCode);
+        toast({
+          title: "Éxito",
+          description: "Código QR de Salida de Farmacia (Devoluciones) generado correctamente",
+        });
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.error || "No se pudo generar el código QR",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error generating pharmacy dispatch devolution QR:', error);
+      toast({
+        title: "Error",
+        description: "Error al generar el código QR de farmacia para devoluciones",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingDevolution(false);
     }
   };
 
@@ -153,7 +197,9 @@ export function QRManagement() {
   const handleDownloadQR = (qrData: QRCodeData, customName?: string) => {
     const fileName = customName || 
       (qrData.type === 'PHARMACY_DISPATCH' 
-        ? `Salida_Farmacia_QR_${new Date().toISOString().split('T')[0]}.png`
+        ? `Salida_Farmacia_Entregas_QR_${new Date().toISOString().split('T')[0]}.png`
+        : qrData.type === 'PHARMACY_DISPATCH_DEVOLUTION'
+        ? `Salida_Farmacia_Devoluciones_QR_${new Date().toISOString().split('T')[0]}.png`
         : `Llegada_Servicio_${qrData.service?.name}_QR_${new Date().toISOString().split('T')[0]}.png`);
     
     const link = document.createElement("a");
@@ -168,11 +214,15 @@ export function QRManagement() {
     const printWindow = window.open("", "_blank");
     if (printWindow) {
       const title = qrData.type === 'PHARMACY_DISPATCH' 
-        ? 'Código QR - Salida de Farmacia'
+        ? 'Código QR - Salida de Farmacia (Entregas)'
+        : qrData.type === 'PHARMACY_DISPATCH_DEVOLUTION'
+        ? 'Código QR - Salida de Farmacia (Devoluciones)'
         : `Código QR - Llegada a Servicio - ${qrData.service?.name}`;
       
       const description = qrData.type === 'PHARMACY_DISPATCH'
-        ? 'Código QR general para registrar la salida de medicamentos desde farmacia.<br>Válido para todos los pacientes con proceso ENTREGA completado.'
+        ? 'Código QR para registrar la salida de medicamentos desde farmacia para entregas.<br>Válido para todos los pacientes con proceso ENTREGA completado.'
+        : qrData.type === 'PHARMACY_DISPATCH_DEVOLUTION'
+        ? 'Código QR para registrar la salida de medicamentos desde farmacia para devoluciones.<br>Primer paso del proceso de devolución.'
         : `Código QR para registrar la llegada de medicamentos al servicio.<br>Específico para el servicio: ${qrData.service?.name} (${qrData.service?.line.displayName}).`;
 
       printWindow.document.write(`
@@ -274,7 +324,15 @@ export function QRManagement() {
             variant="outline"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
-            {isGenerating ? 'Generando...' : pharmacyDispatchQR ? 'Regenerar Farmacia' : 'Generar Salida Farmacia'}
+            {isGenerating ? 'Generando...' : pharmacyDispatchQR ? 'Regenerar Entregas' : 'Generar Salida Entregas'}
+          </Button>
+          <Button
+            onClick={generatePharmacyDispatchDevolutionQR}
+            disabled={isGeneratingDevolution}
+            variant="outline"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isGeneratingDevolution ? 'animate-spin' : ''}`} />
+            {isGeneratingDevolution ? 'Generando...' : pharmacyDispatchDevolutionQR ? 'Regenerar Devoluciones' : 'Generar Salida Devoluciones'}
           </Button>
           <Button
             onClick={generateAllServiceArrivalQRs}
@@ -289,13 +347,13 @@ export function QRManagement() {
 
       {/* Pharmacy Dispatch QR Section */}
       <div className="space-y-4">
-        <h2 className="text-2xl font-bold text-foreground">Salida de Farmacia</h2>
+        <h2 className="text-2xl font-bold text-foreground">Salida de Farmacia - Entregas</h2>
         {pharmacyDispatchQR ? (
           <Card className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <QrCode className="h-5 w-5 text-blue-600" />
-                Código QR - Salida de Farmacia
+                Código QR - Salida de Farmacia (Entregas)
                 {pharmacyDispatchQR.isActive && (
                   <span className="flex items-center gap-1 text-sm text-green-600 font-normal">
                     <CheckCircle className="h-3 w-3" />
@@ -310,7 +368,7 @@ export function QRManagement() {
                 <div className="bg-white p-4 rounded-lg border-2 border-gray-200 flex justify-center">
                   <Image
                     src={pharmacyDispatchQR.qrDataURL}
-                    alt="Código QR - Salida de Farmacia"
+                    alt="Código QR - Salida de Farmacia (Entregas)"
                     width={250}
                     height={250}
                     className="w-auto h-auto max-w-[250px]"
@@ -336,8 +394,9 @@ export function QRManagement() {
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <h4 className="text-sm font-medium text-blue-800 mb-2">Funcionamiento:</h4>
                     <ul className="text-xs text-blue-700 space-y-1">
-                      <li>• QR general para toda la salida de farmacia</li>
+                      <li>• QR para salida de farmacia en procesos de ENTREGA</li>
                       <li>• Procesa todos los pacientes con ENTREGA completada</li>
+                      <li>• Primer paso del proceso de entrega de medicamentos</li>
                       <li>• Solo hay un QR activo a la vez</li>
                     </ul>
                   </div>
@@ -379,6 +438,106 @@ export function QRManagement() {
                 <Button onClick={generatePharmacyDispatchQR} disabled={isGenerating}>
                   <QrCode className="h-4 w-4 mr-2" />
                   {isGenerating ? 'Generando...' : 'Generar Código QR'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Pharmacy Dispatch Devolution QR Section */}
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold text-foreground">Salida de Farmacia - Devoluciones</h2>
+        {pharmacyDispatchDevolutionQR ? (
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <QrCode className="h-5 w-5 text-red-600" />
+                Código QR - Salida de Farmacia (Devoluciones)
+                {pharmacyDispatchDevolutionQR.isActive && (
+                  <span className="flex items-center gap-1 text-sm text-green-600 font-normal">
+                    <CheckCircle className="h-3 w-3" />
+                    Activo
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* QR Code Image */}
+                <div className="bg-white p-4 rounded-lg border-2 border-gray-200 flex justify-center">
+                  <Image
+                    src={pharmacyDispatchDevolutionQR.qrDataURL}
+                    alt="Código QR - Salida de Farmacia (Devoluciones)"
+                    width={250}
+                    height={250}
+                    className="w-auto h-auto max-w-[250px]"
+                  />
+                </div>
+
+                {/* Information */}
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">ID del QR:</label>
+                    <p className="text-sm font-mono bg-gray-100 p-2 rounded border break-all">
+                      {pharmacyDispatchDevolutionQR.qrId}
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Fecha de creación:</label>
+                    <p className="text-sm">
+                      {new Date(pharmacyDispatchDevolutionQR.createdAt).toLocaleString('es-ES')}
+                    </p>
+                  </div>
+
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <h4 className="text-sm font-medium text-red-800 mb-2">Funcionamiento:</h4>
+                    <ul className="text-xs text-red-700 space-y-1">
+                      <li>• QR para salida de farmacia en procesos de DEVOLUCIÓN</li>
+                      <li>• Primer paso del proceso de devolución de medicamentos</li>
+                      <li>• Se escanea antes del QR de entrega regular</li>
+                      <li>• Solo hay un QR activo a la vez</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => handleDownloadQR(pharmacyDispatchDevolutionQR)}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Descargar
+                </Button>
+                <Button
+                  onClick={() => handlePrintQR(pharmacyDispatchDevolutionQR)}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  <Printer className="h-4 w-4 mr-2" />
+                  Imprimir
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="py-12">
+              <div className="text-center">
+                <QrCode className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                  No hay código QR de Salida de Farmacia (Devoluciones)
+                </h3>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Genera un código QR para registrar salidas de farmacia en procesos de devolución
+                </p>
+                <Button onClick={generatePharmacyDispatchDevolutionQR} disabled={isGeneratingDevolution}>
+                  <QrCode className="h-4 w-4 mr-2" />
+                  {isGeneratingDevolution ? 'Generando...' : 'Generar Código QR'}
                 </Button>
               </div>
             </CardContent>

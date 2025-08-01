@@ -37,6 +37,7 @@ interface QRCheckInModalProps {
     serviceName?: string;
   } | null;
   onSuccess: () => void;
+  currentTab?: string;
 }
 
 type TransactionType = "ENTREGA" | "DEVOLUCION";
@@ -52,6 +53,7 @@ export function QRCheckInModal({
   onOpenChange,
   qrData,
   onSuccess,
+  currentTab,
 }: QRCheckInModalProps) {
   const [transactionType, setTransactionType] =
     useState<TransactionType>("ENTREGA");
@@ -61,8 +63,8 @@ export function QRCheckInModal({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Determine if this is a service arrival (second QR code)
-  const isServiceArrival = qrData?.type === "SERVICE_ARRIVAL";
+  // Determine if this is a service arrival (second QR code) or devolution pickup
+  const isServiceArrival = qrData?.type === "SERVICE_ARRIVAL" || qrData?.type === "DEVOLUTION_PICKUP";
 
   const queryClient = useQueryClient();
   const { data: currentDailyProcess } = useCurrentDailyProcess();
@@ -88,11 +90,16 @@ export function QRCheckInModal({
   // Reset form when modal opens
   useEffect(() => {
     if (open) {
-      setTransactionType("ENTREGA");
+      // Set transaction type based on current tab
+      if (currentTab === "devoluciones") {
+        setTransactionType("DEVOLUCION");
+      } else {
+        setTransactionType("ENTREGA");
+      }
       setTemperature("");
       setSelectedLineId("");
     }
-  }, [open]);
+  }, [open, currentTab]);
 
   const fetchLines = async () => {
     try {
@@ -156,10 +163,27 @@ export function QRCheckInModal({
     setIsSubmitting(true);
 
     try {
-      const endpoint =
-        qrData.type === "PHARMACY_DISPATCH"
-          ? "/api/qr-scan/pharmacy-dispatch"
-          : "/api/qr-scan/service-arrival";
+      let endpoint = "";
+      
+      switch (qrData.type) {
+        case "PHARMACY_DISPATCH":
+          endpoint = "/api/qr-scan/pharmacy-dispatch";
+          break;
+        case "PHARMACY_DISPATCH_DEVOLUTION":
+          endpoint = "/api/qr-scan/pharmacy-dispatch-devolution";
+          break;
+        case "SERVICE_ARRIVAL":
+          endpoint = "/api/qr-scan/service-arrival";
+          break;
+        case "DEVOLUTION_PICKUP":
+          endpoint = "/api/qr-scan/devolution-pickup";
+          break;
+        case "DEVOLUTION_RETURN":
+          endpoint = "/api/qr-scan/devolution-return";
+          break;
+        default:
+          throw new Error(`Unsupported QR type: ${qrData.type}`);
+      }
 
       const response = await fetch(endpoint, {
         method: "POST",
@@ -260,7 +284,15 @@ export function QRCheckInModal({
                 <div className="flex items-center gap-2">
                   <List className="h-4 w-4 text-muted-foreground" />
                   <span className="text-muted-foreground">
-                    {isServiceArrival ? "Llegada a Piso" : "Salida de Farmacia"}
+                    {qrData.type === "SERVICE_ARRIVAL"
+                      ? "Llegada a Piso"
+                      : qrData.type === "DEVOLUTION_PICKUP"
+                      ? "Recogida de Devolución"
+                      : qrData.type === "DEVOLUTION_RETURN"
+                      ? "Recepción en Farmacia"
+                      : qrData.type === "PHARMACY_DISPATCH_DEVOLUTION"
+                      ? "Salida de Farmacia (Devolución)"
+                      : "Salida de Farmacia (Entrega)"}
                   </span>
                 </div>
               </div>
@@ -375,8 +407,8 @@ export function QRCheckInModal({
             </div>
           )}
 
-          {/* Service Information - Only for Service Arrival */}
-          {isServiceArrival && qrData.serviceName && (
+          {/* Service Information - Only for Service Arrival and Devolution Pickup */}
+          {(qrData.type === "SERVICE_ARRIVAL" || qrData.type === "DEVOLUTION_PICKUP") && qrData.serviceName && (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <MapPin className="h-5 w-5 text-foreground" />
@@ -387,15 +419,21 @@ export function QRCheckInModal({
               <Card className="border-gray-200 bg-gray-50">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 bg-blue-200 rounded flex items-center justify-center">
-                      <span className="text-xs font-medium">🏥</span>
+                    <div className={`w-6 h-6 rounded flex items-center justify-center ${
+                      qrData.type === "DEVOLUTION_PICKUP" ? "bg-red-200" : "bg-blue-200"
+                    }`}>
+                      <span className="text-xs font-medium">
+                        {qrData.type === "DEVOLUTION_PICKUP" ? "↩️" : "🏥"}
+                      </span>
                     </div>
                     <div>
                       <p className="text-sm font-medium text-foreground">
                         {qrData.serviceName}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Servicio de destino
+                        {qrData.type === "DEVOLUTION_PICKUP" 
+                          ? "Servicio de origen (devolución)" 
+                          : "Servicio de destino"}
                       </p>
                     </div>
                   </div>

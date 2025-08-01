@@ -106,6 +106,32 @@ function calculateButtonState(
     return null; // Show as disabled (black border) - ALISTAMIENTO not completed
   }
 
+  if (step === MedicationProcessStep.DEVOLUCION) {
+    const entregaProcess = allMedicationProcesses.find(
+      (p) =>
+        p.patientId === patient.id &&
+        p.step === MedicationProcessStep.ENTREGA
+    );
+
+    // Check if ENTREGA is completed (prerequisite for devolution)
+    if (entregaProcess?.status === ProcessStatus.COMPLETED) {
+      // Check if patient has a devolution process
+      const devolucionProcess = allMedicationProcesses.find(
+        (p) =>
+          p.patientId === patient.id && p.step === MedicationProcessStep.DEVOLUCION
+      );
+
+      if (devolucionProcess) {
+        // If DEVOLUCION process exists, return its actual status
+        return devolucionProcess.status;
+      } else {
+        // No DEVOLUCION process yet - show as pending (orange) for nurses to start
+        return ProcessStatus.PENDING;
+      }
+    }
+    return null; // Show as disabled (black border) - ENTREGA not completed
+  }
+
   return null; // Default: disabled
 }
 
@@ -117,9 +143,10 @@ interface QRScanRecord {
   scannedBy: string;
   scannedAt: string;
   dailyProcessId: string;
+  transactionType?: string; // "ENTREGA" or "DEVOLUCION"
   qrCode: {
     id: string;
-    type: "PHARMACY_DISPATCH" | "SERVICE_ARRIVAL";
+    type: "PHARMACY_DISPATCH" | "PHARMACY_DISPATCH_DEVOLUTION" | "SERVICE_ARRIVAL" | "DEVOLUTION_PICKUP" | "DEVOLUTION_RETURN";
     service?: {
       id: string;
       name: string;

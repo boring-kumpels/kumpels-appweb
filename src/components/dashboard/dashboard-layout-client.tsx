@@ -56,7 +56,11 @@ export function DashboardLayoutClient({ children }: DashboardLayoutProps) {
           </Header>
           {children}
         </div>
-        <QRScanner open={qrScannerOpen} onOpenChange={setQrScannerOpen} />
+        <QRScanner
+          open={qrScannerOpen}
+          onOpenChange={setQrScannerOpen}
+          currentTab="entrega"
+        />
       </SidebarProvider>
     </SearchProvider>
   );

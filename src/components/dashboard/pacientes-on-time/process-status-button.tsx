@@ -167,6 +167,14 @@ export function ProcessStatusButton({
         expectedFinalStatus = ProcessStatus.COMPLETED; // Validacion auto-completes
       } else if (step === MedicationProcessStep.ENTREGA) {
         expectedFinalStatus = ProcessStatus.COMPLETED; // Entrega auto-completes
+      } else if (step === MedicationProcessStep.DEVOLUCION && actualUserRole === "NURSE") {
+        if (!process) {
+          expectedFinalStatus = ProcessStatus.IN_PROGRESS; // First click starts devolution
+        } else if (process.status === ProcessStatus.PENDING) {
+          expectedFinalStatus = ProcessStatus.IN_PROGRESS; // Start it
+        } else {
+          return; // No further action needed for nurses on devolution
+        }
       } else {
         // Default behavior
         if (!process) {
@@ -424,6 +432,22 @@ export function ProcessStatusButton({
       }
     }
 
+    // Special case for devolution: nurses can only start if entrega is completed
+    if (step === MedicationProcessStep.DEVOLUCION && actualUserRole === "NURSE") {
+      // Must have completed entrega first
+      if (buttonStatus === null) {
+        return false; // Step not enabled due to workflow (entrega not completed)
+      }
+      
+      // Only allow starting the devolution process, not completing it
+      // (Completion happens through QR scanning process)
+      if (buttonStatus === ProcessStatus.PENDING || buttonStatus === ProcessStatus.IN_PROGRESS) {
+        return buttonStatus === ProcessStatus.PENDING; // Only clickable if pending (to start)
+      }
+      
+      return false; // Already in progress or completed
+    }
+
     if (!isStepEnabledByWorkflow) {
       return false; // Step not enabled due to workflow
     }
@@ -449,12 +473,28 @@ export function ProcessStatusButton({
   const getButtonText = () => {
     // If syncing is in progress, show syncing text
     if (isSyncing) {
+      if (step === MedicationProcessStep.DEVOLUCION && actualUserRole === "NURSE") {
+        return "Iniciando...";
+      }
       return "Sync...";
     }
 
     // If states are being computed, show loading indicator
     if (preCalculatedState === undefined) {
       return "...";
+    }
+
+    // Special text for devolution step based on status and role
+    if (step === MedicationProcessStep.DEVOLUCION) {
+      if (actualUserRole === "NURSE") {
+        if (buttonStatus === ProcessStatus.PENDING) {
+          return "Iniciar Devolución";
+        } else if (buttonStatus === ProcessStatus.IN_PROGRESS) {
+          return "En Proceso";
+        } else if (buttonStatus === ProcessStatus.COMPLETED) {
+          return "Completada";
+        }
+      }
     }
 
     return stepName;

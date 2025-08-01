@@ -99,43 +99,93 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get all patients that have completed ALISTAMIENTO step (ready for QR scanning)
-    // AND belong to the selected line
-    const eligiblePatients = await prisma.patient.findMany({
-      where: {
-        status: "ACTIVE",
-        medicationProcesses: {
-          some: {
-            dailyProcessId: dailyProcess.id,
-            step: MedicationProcessStep.ALISTAMIENTO,
-            status: ProcessStatus.COMPLETED,
+    // Get eligible patients based on transaction type
+    let eligiblePatients;
+    let patientsToDispatch;
+
+    if (transactionType === "ENTREGA") {
+      // For delivery: patients that have completed ALISTAMIENTO step
+      eligiblePatients = await prisma.patient.findMany({
+        where: {
+          status: "ACTIVE",
+          medicationProcesses: {
+            some: {
+              dailyProcessId: dailyProcess.id,
+              step: MedicationProcessStep.ALISTAMIENTO,
+              status: ProcessStatus.COMPLETED,
+            },
+          },
+          service: {
+            lineId: destinationLineId, // Filter by selected line
           },
         },
-        service: {
-          lineId: destinationLineId, // Filter by selected line
-        },
-      },
-      include: {
-        service: {
-          include: {
-            line: true,
+        include: {
+          service: {
+            include: {
+              line: true,
+            },
           },
-        },
-        qrScanRecords: {
-          where: {
-            dailyProcessId: dailyProcess.id,
-            qrCode: {
-              type: "PHARMACY_DISPATCH",
+          qrScanRecords: {
+            where: {
+              dailyProcessId: dailyProcess.id,
+              qrCode: {
+                type: "PHARMACY_DISPATCH",
+              },
+              transactionType: "ENTREGA",
             },
           },
         },
-      },
-    });
+      });
 
-    // Filter patients that haven't been scanned yet for pharmacy dispatch
-    const patientsToDispatch = eligiblePatients.filter(
-      (patient) => patient.qrScanRecords.length === 0
-    );
+      // Filter patients that haven't been scanned yet for pharmacy dispatch
+      patientsToDispatch = eligiblePatients.filter(
+        (patient) => patient.qrScanRecords.length === 0
+      );
+    } else if (transactionType === "DEVOLUCION") {
+      // For devolution: patients that have DEVOLUCION process with DISPATCHED_FROM_PHARMACY status
+      // (they should have been scanned with PHARMACY_DISPATCH_DEVOLUTION first)
+      eligiblePatients = await prisma.patient.findMany({
+        where: {
+          status: "ACTIVE",
+          medicationProcesses: {
+            some: {
+              dailyProcessId: dailyProcess.id,
+              step: "DEVOLUCION",
+              status: ProcessStatus.DISPATCHED_FROM_PHARMACY, // Already scanned with devolution pharmacy dispatch
+            },
+          },
+          service: {
+            lineId: destinationLineId, // Filter by selected line
+          },
+        },
+        include: {
+          service: {
+            include: {
+              line: true,
+            },
+          },
+          qrScanRecords: {
+            where: {
+              dailyProcessId: dailyProcess.id,
+              qrCode: {
+                type: "PHARMACY_DISPATCH",
+              },
+              transactionType: "DEVOLUCION",
+            },
+          },
+        },
+      });
+
+      // Filter patients that haven't been scanned yet for regular pharmacy dispatch
+      patientsToDispatch = eligiblePatients.filter(
+        (patient) => patient.qrScanRecords.length === 0
+      );
+    } else {
+      return NextResponse.json(
+        { error: "Tipo de transacción no válido" },
+        { status: 400 }
+      );
+    }
 
     if (patientsToDispatch.length === 0) {
       return NextResponse.json(
@@ -172,47 +222,87 @@ export async function POST(request: NextRequest) {
       )
     );
 
-    // Create or update ENTREGA processes to mark pharmacy dispatch
+    // Create or update medication processes based on transaction type
     const updatePromises = patientsToDispatch.map(async (patient) => {
-      // Try to find existing ENTREGA process
-      const existingEntrega = await prisma.medicationProcess.findFirst({
-        where: {
-          patientId: patient.id,
-          dailyProcessId: dailyProcess.id,
-          step: MedicationProcessStep.ENTREGA,
-        },
-      });
-
-      if (existingEntrega) {
-        // Update existing ENTREGA process
-        return prisma.medicationProcess.update({
-          where: { id: existingEntrega.id },
-          data: {
-            status: "DISPATCHED_FROM_PHARMACY",
-            startedAt: new Date(),
-            updatedAt: new Date(),
-          },
-        });
-      } else {
-        // Create new ENTREGA process with DISPATCHED_FROM_PHARMACY status
-        return prisma.medicationProcess.create({
-          data: {
+      if (transactionType === "ENTREGA") {
+        // Handle delivery process
+        const existingEntrega = await prisma.medicationProcess.findFirst({
+          where: {
             patientId: patient.id,
             dailyProcessId: dailyProcess.id,
             step: MedicationProcessStep.ENTREGA,
-            status: "DISPATCHED_FROM_PHARMACY",
-            startedAt: new Date(),
-            startedBy: user.id,
           },
         });
+
+        if (existingEntrega) {
+          // Update existing ENTREGA process
+          return prisma.medicationProcess.update({
+            where: { id: existingEntrega.id },
+            data: {
+              status: "DISPATCHED_FROM_PHARMACY",
+              startedAt: new Date(),
+              updatedAt: new Date(),
+            },
+          });
+        } else {
+          // Create new ENTREGA process with DISPATCHED_FROM_PHARMACY status
+          return prisma.medicationProcess.create({
+            data: {
+              patientId: patient.id,
+              dailyProcessId: dailyProcess.id,
+              step: MedicationProcessStep.ENTREGA,
+              status: "DISPATCHED_FROM_PHARMACY",
+              startedAt: new Date(),
+              startedBy: user.id,
+            },
+          });
+        }
+      } else if (transactionType === "DEVOLUCION") {
+        // Handle devolution process - move from DISPATCHED_FROM_PHARMACY to DELIVERED_TO_SERVICE
+        // (This is the second QR scan in devolution workflow)
+        const existingDevolucion = await prisma.medicationProcess.findFirst({
+          where: {
+            patientId: patient.id,
+            dailyProcessId: dailyProcess.id,
+            step: "DEVOLUCION",
+          },
+        });
+
+        if (existingDevolucion) {
+          // Update existing DEVOLUCION process to delivered to service
+          return prisma.medicationProcess.update({
+            where: { id: existingDevolucion.id },
+            data: {
+              status: ProcessStatus.DELIVERED_TO_SERVICE,
+              updatedAt: new Date(),
+            },
+          });
+        } else {
+          // This shouldn't happen in the new workflow, but handle it gracefully
+          return prisma.medicationProcess.create({
+            data: {
+              patientId: patient.id,
+              dailyProcessId: dailyProcess.id,
+              step: "DEVOLUCION",
+              status: ProcessStatus.DELIVERED_TO_SERVICE,
+              startedAt: new Date(),
+              startedBy: user.id,
+            },
+          });
+        }
       }
     });
 
     await Promise.all(updatePromises);
 
+    const actionMessage =
+      transactionType === "ENTREGA"
+        ? `Salida de farmacia registrada para ${patientsToDispatch.length} pacientes de la línea ${selectedLine.displayName}`
+        : `Recepción de devolución registrada para ${patientsToDispatch.length} pacientes de la línea ${selectedLine.displayName}`;
+
     return NextResponse.json({
       success: true,
-      message: `Salida de farmacia registrada para ${patientsToDispatch.length} pacientes de la línea ${selectedLine.displayName}`,
+      message: actionMessage,
       patientsCount: patientsToDispatch.length,
       selectedLine: selectedLine.displayName,
     });

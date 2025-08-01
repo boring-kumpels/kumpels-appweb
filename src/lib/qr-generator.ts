@@ -2,7 +2,10 @@ import QRCode from "qrcode";
 
 export enum QRCodeType {
   PHARMACY_DISPATCH = "PHARMACY_DISPATCH",
+  PHARMACY_DISPATCH_DEVOLUTION = "PHARMACY_DISPATCH_DEVOLUTION",
   SERVICE_ARRIVAL = "SERVICE_ARRIVAL",
+  DEVOLUTION_PICKUP = "DEVOLUTION_PICKUP",
+  DEVOLUTION_RETURN = "DEVOLUTION_RETURN",
 }
 
 export interface QRDataPayload {
@@ -17,11 +20,28 @@ export interface PharmacyDispatchQRData extends QRDataPayload {
   id: string;
 }
 
+export interface PharmacyDispatchDevolutionQRData extends QRDataPayload {
+  type: QRCodeType.PHARMACY_DISPATCH_DEVOLUTION;
+  id: string;
+}
+
 export interface ServiceArrivalQRData extends QRDataPayload {
   type: QRCodeType.SERVICE_ARRIVAL;
   id: string;
   serviceId: string;
   serviceName: string;
+}
+
+export interface DevolutionPickupQRData extends QRDataPayload {
+  type: QRCodeType.DEVOLUTION_PICKUP;
+  id: string;
+  serviceId: string;
+  serviceName: string;
+}
+
+export interface DevolutionReturnQRData extends QRDataPayload {
+  type: QRCodeType.DEVOLUTION_RETURN;
+  id: string;
 }
 
 /**
@@ -32,6 +52,22 @@ export async function generatePharmacyDispatchQR(
 ): Promise<string> {
   const data: PharmacyDispatchQRData = {
     type: QRCodeType.PHARMACY_DISPATCH,
+    id: qrId,
+    timestamp: new Date().toISOString(),
+    isActive: true,
+  };
+
+  return generateQRCode(data);
+}
+
+/**
+ * Generate QR code for pharmacy dispatch specific to devolutions
+ */
+export async function generatePharmacyDispatchDevolutionQR(
+  qrId: string = generateQRId()
+): Promise<string> {
+  const data: PharmacyDispatchDevolutionQRData = {
+    type: QRCodeType.PHARMACY_DISPATCH_DEVOLUTION,
     id: qrId,
     timestamp: new Date().toISOString(),
     isActive: true,
@@ -53,6 +89,42 @@ export async function generateServiceArrivalQR(
     id: qrId,
     serviceId,
     serviceName,
+    timestamp: new Date().toISOString(),
+    isActive: true,
+  };
+
+  return generateQRCode(data);
+}
+
+/**
+ * Generate QR code for devolution pickup (nursing initiates return)
+ */
+export async function generateDevolutionPickupQR(
+  serviceId: string,
+  serviceName: string,
+  qrId: string = generateQRId()
+): Promise<string> {
+  const data: DevolutionPickupQRData = {
+    type: QRCodeType.DEVOLUTION_PICKUP,
+    id: qrId,
+    serviceId,
+    serviceName,
+    timestamp: new Date().toISOString(),
+    isActive: true,
+  };
+
+  return generateQRCode(data);
+}
+
+/**
+ * Generate QR code for devolution return (pharmacy receives back)
+ */
+export async function generateDevolutionReturnQR(
+  qrId: string = generateQRId()
+): Promise<string> {
+  const data: DevolutionReturnQRData = {
+    type: QRCodeType.DEVOLUTION_RETURN,
+    id: qrId,
     timestamp: new Date().toISOString(),
     isActive: true,
   };
@@ -124,8 +196,23 @@ export function parseQRData(qrString: string): QRDataPayload | null {
       return null;
     }
 
+    if (data.type === QRCodeType.PHARMACY_DISPATCH_DEVOLUTION && !data.id) {
+      console.warn("Pharmacy dispatch devolution QR missing id:", data);
+      return null;
+    }
+
     if (data.type === QRCodeType.SERVICE_ARRIVAL && (!data.id || !data.serviceId || !data.serviceName)) {
       console.warn("Service arrival QR missing required fields:", data);
+      return null;
+    }
+
+    if (data.type === QRCodeType.DEVOLUTION_PICKUP && (!data.id || !data.serviceId || !data.serviceName)) {
+      console.warn("Devolution pickup QR missing required fields:", data);
+      return null;
+    }
+
+    if (data.type === QRCodeType.DEVOLUTION_RETURN && !data.id) {
+      console.warn("Devolution return QR missing id:", data);
       return null;
     }
 
@@ -146,9 +233,16 @@ export function getQRDisplayText(data: QRDataPayload): string {
   switch (data.type) {
     case QRCodeType.PHARMACY_DISPATCH:
       return `Salida de Farmacia - ${date}`;
+    case QRCodeType.PHARMACY_DISPATCH_DEVOLUTION:
+      return `Salida de Farmacia (Devolución) - ${date}`;
     case QRCodeType.SERVICE_ARRIVAL:
       const serviceData = data as ServiceArrivalQRData;
       return `Llegada a Servicio - ${serviceData.serviceName} - ${date}`;
+    case QRCodeType.DEVOLUTION_PICKUP:
+      const pickupData = data as DevolutionPickupQRData;
+      return `Recogida de Devolución - ${pickupData.serviceName} - ${date}`;
+    case QRCodeType.DEVOLUTION_RETURN:
+      return `Recepción de Devolución - ${date}`;
     default:
       return `QR Code - ${date}`;
   }
