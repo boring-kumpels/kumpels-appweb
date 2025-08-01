@@ -167,18 +167,50 @@ if [ ! -f .env ]; then
     exit 1
 fi
 
+# Check Docker permissions
+echo "🔍 Checking Docker permissions..."
+if ! docker ps > /dev/null 2>&1; then
+    echo "⚠️  Docker permission issue detected. Fixing..."
+    sudo usermod -aG docker $USER
+    echo "✅ Added user to docker group. You may need to log out and log back in."
+    echo "   Alternatively, run: newgrp docker"
+    echo ""
+    echo "🔄 Attempting to continue with sudo for Docker commands..."
+    DOCKER_CMD="sudo docker"
+    DOCKER_COMPOSE_CMD="sudo docker-compose"
+else
+    echo "✅ Docker permissions OK"
+    DOCKER_CMD="docker"
+    DOCKER_COMPOSE_CMD="docker-compose"
+fi
+
+# Load environment variables
+echo "🔍 Checking environment variables..."
+if [ -f .env ]; then
+    echo "✅ .env file found"
+    # Check if required variables are set
+    if grep -q "NEXT_PUBLIC_SUPABASE_URL=" .env && grep -q "DATABASE_URL=" .env; then
+        echo "✅ Environment variables appear to be configured"
+    else
+        echo "⚠️  Some environment variables may be missing. Please check your .env file."
+    fi
+else
+    echo "❌ .env file not found!"
+    exit 1
+fi
+
 # Build and start the application
 echo "🔨 Building and starting the application..."
-if [ "$(docker-compose -f docker-compose.prod.yml ps -q | wc -l)" -gt 0 ]; then
+if [ "$($DOCKER_COMPOSE_CMD -f docker-compose.prod.yml ps -q 2>/dev/null | wc -l)" -gt 0 ]; then
     echo "Containers are already running. Stopping and rebuilding..."
-    docker-compose -f docker-compose.prod.yml down
+    $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml down
 fi
 
 echo "Building Docker images..."
-docker-compose -f docker-compose.prod.yml build
+$DOCKER_COMPOSE_CMD -f docker-compose.prod.yml build
 
 echo "Starting containers..."
-docker-compose -f docker-compose.prod.yml up -d
+$DOCKER_COMPOSE_CMD -f docker-compose.prod.yml up -d
 
 # Wait for services to be ready
 echo "⏳ Waiting for services to be ready..."
