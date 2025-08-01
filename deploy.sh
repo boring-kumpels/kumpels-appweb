@@ -12,6 +12,18 @@ echo "📦 Updating system packages..."
 sudo apt-get update
 sudo apt-get upgrade -y
 
+# Install essential tools
+echo "🔧 Installing essential tools..."
+if ! command -v rsync &> /dev/null; then
+    echo "Installing rsync..."
+    sudo apt-get install -y rsync
+fi
+
+if ! command -v git &> /dev/null; then
+    echo "Installing git..."
+    sudo apt-get install -y git
+fi
+
 # Check and install Docker
 echo "🐳 Checking Docker installation..."
 if ! command -v docker &> /dev/null; then
@@ -66,14 +78,66 @@ else
     echo "Application directory already exists at /opt/kumpels-app"
 fi
 
-# Copy application files (assuming they're in the current directory)
-echo "📋 Copying application files..."
+# Deploy application files
+echo "📋 Deploying application files..."
 if [ "$PWD" != "/opt/kumpels-app" ]; then
-    cp -r . /opt/kumpels-app/
+    # Check if this is a git repository
+    if [ -d ".git" ]; then
+        echo "Detected Git repository. Using Git deployment method..."
+        # Get the current branch or commit
+        CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+        REPO_URL=$(git config --get remote.origin.url 2>/dev/null)
+        
+        if [ -d "/opt/kumpels-app/.git" ]; then
+            echo "Updating existing Git repository..."
+            cd /opt/kumpels-app
+            git fetch origin
+            git reset --hard origin/$CURRENT_BRANCH
+            git clean -fd
+        else
+            echo "Cloning repository to /opt/kumpels-app..."
+            if [ -n "$REPO_URL" ]; then
+                sudo rm -rf /opt/kumpels-app/*
+                git clone "$REPO_URL" /tmp/kumpels-app-deploy
+                sudo cp -r /tmp/kumpels-app-deploy/* /opt/kumpels-app/
+                sudo rm -rf /tmp/kumpels-app-deploy
+            else
+                echo "No remote repository found. Using file copy method..."
+                # Use rsync to exclude unnecessary files
+                if command -v rsync &> /dev/null; then
+                    rsync -av --exclude='.git' --exclude='node_modules' --exclude='.next' --exclude='*.log' . /opt/kumpels-app/
+                else
+                    # Fallback to cp with manual exclusion
+                    find . -maxdepth 1 -not -name '.git' -not -name 'node_modules' -not -name '.next' -not -name '.' -exec sudo cp -r {} /opt/kumpels-app/ \;
+                fi
+            fi
+        fi
+    else
+        echo "Not a Git repository. Using direct file copy..."
+        # Use rsync to exclude unnecessary files
+        if command -v rsync &> /dev/null; then
+            rsync -av --exclude='node_modules' --exclude='.next' --exclude='*.log' . /opt/kumpels-app/
+        else
+            # Fallback to cp with manual exclusion
+            find . -maxdepth 1 -not -name 'node_modules' -not -name '.next' -not -name '.' -exec sudo cp -r {} /opt/kumpels-app/ \;
+        fi
+    fi
+    
+    # Fix ownership of all files
+    sudo chown -R $USER:$USER /opt/kumpels-app/
     cd /opt/kumpels-app
-    echo "Application files copied to /opt/kumpels-app"
+    echo "Application files deployed to /opt/kumpels-app"
 else
     echo "Already in application directory"
+    # If we're already in the app directory, pull latest changes if it's a git repo
+    if [ -d ".git" ]; then
+        echo "Pulling latest changes..."
+        git fetch origin
+        CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+        git reset --hard origin/$CURRENT_BRANCH
+        git clean -fd
+        echo "Repository updated!"
+    fi
 fi
 
 # Generate SSL certificate for development
