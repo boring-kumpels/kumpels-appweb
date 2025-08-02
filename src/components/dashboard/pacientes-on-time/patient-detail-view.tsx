@@ -81,6 +81,19 @@ function calculateButtonState(
   process: MedicationProcess | undefined,
   allMedicationProcesses: MedicationProcess[]
 ) {
+  // Special handling for DEVOLUCION step - override process status for "Solicitud Enfermería" button
+  if (step === MedicationProcessStep.DEVOLUCION && process) {
+    if (
+      process.status === ProcessStatus.IN_PROGRESS ||
+      process.status === ProcessStatus.DISPATCHED_FROM_PHARMACY ||
+      process.status === ProcessStatus.DELIVERED_TO_SERVICE ||
+      process.status === ProcessStatus.COMPLETED
+    ) {
+      return ProcessStatus.COMPLETED; // Show as green - nurse action completed
+    }
+    // For other statuses, fall through to normal logic
+  }
+
   // If there's an actual process for this patient/step, return its status
   if (process) {
     return process.status;
@@ -152,6 +165,19 @@ function calculateButtonState(
     return null; // Show as disabled (black border) - ALISTAMIENTO not completed
   }
 
+  if (step === MedicationProcessStep.DEVOLUCION) {
+    // Check if delivery is completed (prerequisite for devolution)
+    const entregaProcess = allMedicationProcesses.find(
+      (p) =>
+        p.patientId === patient.id && p.step === MedicationProcessStep.ENTREGA
+    );
+    if (entregaProcess?.status === ProcessStatus.COMPLETED) {
+      // If we reach here, no devolution process exists yet (handled above if it exists)
+      return ProcessStatus.PENDING; // Ready to start devolution
+    }
+    return null; // Delivery not completed yet, show as disabled
+  }
+
   return null; // Default: disabled
 }
 
@@ -187,7 +213,12 @@ export interface QRScanRecord {
   transactionType?: string; // "ENTREGA" or "DEVOLUCION"
   qrCode: {
     id: string;
-    type: "PHARMACY_DISPATCH" | "PHARMACY_DISPATCH_DEVOLUTION" | "SERVICE_ARRIVAL" | "DEVOLUTION_PICKUP" | "DEVOLUTION_RETURN";
+    type:
+      | "PHARMACY_DISPATCH"
+      | "PHARMACY_DISPATCH_DEVOLUTION"
+      | "SERVICE_ARRIVAL"
+      | "DEVOLUTION_PICKUP"
+      | "DEVOLUTION_RETURN";
     service?: {
       id: string;
       name: string;
@@ -440,7 +471,7 @@ function QRStepButton({
     // Devolutions text
     if (step.qrType === "NURSING_REQUEST") {
       if (isProcessing) return "Iniciando...";
-      
+
       // Check if first QR has been scanned (means nursing request is completed)
       const firstQRScanned = qrScanRecords.some(
         (record) =>
@@ -448,16 +479,16 @@ function QRStepButton({
           record.transactionType === "DEVOLUCION"
       );
       if (firstQRScanned) return "Completado";
-      
+
       // Check if devolution process exists (means nursing request is in progress)
       const devolucionInProgress = allMedicationProcesses.some(
-        (mp) => 
-          mp.patientId === patientId && 
-          mp.step === "DEVOLUCION" && 
+        (mp) =>
+          mp.patientId === patientId &&
+          mp.step === "DEVOLUCION" &&
           mp.status === "IN_PROGRESS"
       );
       if (devolucionInProgress) return "En Proceso";
-      
+
       return "Iniciar Devolución";
     }
 
@@ -495,7 +526,7 @@ function QRStepButton({
     // Devolutions icons
     if (step.qrType === "NURSING_REQUEST") {
       if (isProcessing) return <Loader2 className="h-3 w-3 animate-spin" />;
-      
+
       // Check if first QR has been scanned (means nursing request is completed)
       const firstQRScanned = qrScanRecords.some(
         (record) =>
@@ -503,16 +534,16 @@ function QRStepButton({
           record.transactionType === "DEVOLUCION"
       );
       if (firstQRScanned) return <Check className="h-3 w-3" />;
-      
+
       // Check if devolution process exists (means nursing request is in progress)
       const devolucionInProgress = allMedicationProcesses.some(
-        (mp) => 
-          mp.patientId === patientId && 
-          mp.step === "DEVOLUCION" && 
+        (mp) =>
+          mp.patientId === patientId &&
+          mp.step === "DEVOLUCION" &&
           mp.status === "IN_PROGRESS"
       );
       if (devolucionInProgress) return <Clock className="h-3 w-3" />;
-      
+
       return <User className="h-3 w-3" />;
     }
 
@@ -631,16 +662,19 @@ function QRStepButton({
         if (existingDevolucion) {
           // Update existing process to IN_PROGRESS if it's not already
           if (existingDevolucion.status !== "IN_PROGRESS") {
-            response = await fetch(`/api/medication-processes/${existingDevolucion.id}`, {
-              method: "PATCH",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                status: "IN_PROGRESS",
-                startedAt: new Date().toISOString(),
-              }),
-            });
+            response = await fetch(
+              `/api/medication-processes/${existingDevolucion.id}`,
+              {
+                method: "PATCH",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  status: "IN_PROGRESS",
+                  startedAt: new Date().toISOString(),
+                }),
+              }
+            );
           } else {
             // Process is already in progress, just return success
             response = { ok: true };
@@ -923,27 +957,28 @@ export default function PatientDetailView({
         id: "solicitud-enfermeria",
         name: "Solicitud Enfermería",
         icon: <User className="h-4 w-4" />,
-        status: qrScanRecords.some(
-          (record) =>
-            record.qrCode.type === "PHARMACY_DISPATCH_DEVOLUTION" &&
-            record.transactionType === "DEVOLUCION"
+        status: allMedicationProcesses.some(
+          (mp) =>
+            mp.patientId === patientId &&
+            mp.step === "DEVOLUCION" &&
+            (mp.status === "IN_PROGRESS" ||
+              mp.status === "DISPATCHED_FROM_PHARMACY" ||
+              mp.status === "DELIVERED_TO_SERVICE" ||
+              mp.status === "COMPLETED")
         )
           ? ProcessStatus.COMPLETED
           : allMedicationProcesses.some(
-                (mp) => 
-                  mp.patientId === patientId && 
-                  mp.step === "DEVOLUCION" && 
-                  mp.status === "IN_PROGRESS"
+                (mp) =>
+                  mp.patientId === patientId &&
+                  mp.step === "ENTREGA" &&
+                  mp.status === "COMPLETED"
               )
-            ? ProcessStatus.IN_PROGRESS
-            : allMedicationProcesses.some(
-                  (mp) => mp.patientId === patientId && mp.step === "ENTREGA" && mp.status === "COMPLETED"
-                )
-              ? ProcessStatus.PENDING
-              : ProcessStatus.PENDING,
+            ? ProcessStatus.PENDING
+            : ProcessStatus.PENDING,
         step: MedicationProcessStep.DEVOLUCION,
         isQRStep: false,
-        description: "Enfermería inicia el proceso de devolución desde la gestión de pacientes",
+        description:
+          "Enfermería inicia el proceso de devolución desde la gestión de pacientes",
       },
       {
         id: "salida-farmacia-devolucion",
@@ -988,7 +1023,8 @@ export default function PatientDetailView({
         step: MedicationProcessStep.DEVOLUCION,
         isQRStep: true,
         qrType: "PHARMACY_DISPATCH",
-        description: "Segundo QR: Completa el proceso de salida para devolución",
+        description:
+          "Segundo QR: Completa el proceso de salida para devolución",
       },
     ],
     devoluciones_manuales: [],

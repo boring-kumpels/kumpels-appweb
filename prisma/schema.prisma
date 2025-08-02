@@ -321,7 +321,7 @@ model QRScanRecord {
   dailyProcess    DailyProcess? @relation(fields: [dailyProcessId], references: [id], onDelete: SetNull)
   destinationLine Line?     @relation(fields: [destinationLineId], references: [id], onDelete: SetNull)
   
-  @@unique([patientId, qrCodeId, dailyProcessId])
+  @@unique([patientId, qrCodeId, dailyProcessId, transactionType])
   @@index([patientId])
   @@index([qrCodeId])
   @@index([dailyProcessId])

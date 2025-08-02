@@ -13,6 +13,7 @@
     "db:studio": "prisma studio",
     "db:populate-lines-beds": "tsx scripts/populate-lines-beds.ts",
     "db:populate-patients": "tsx scripts/populate-patients.ts",
+    "db:populate-patients:cleanup": "tsx scripts/populate-patients.ts --cleanup",
     "db:cleanup-patients": "tsx scripts/cleanup-patients.ts",
     "db:cleanup-lines-beds": "tsx scripts/cleanup-lines-beds.ts",
     "db:check": "tsx scripts/check-data.ts",

@@ -35,8 +35,17 @@ function calculateButtonState(
   process: MedicationProcess | undefined,
   allMedicationProcesses: MedicationProcess[]
 ) {
+  console.log(
+    `[DEBUG] Management calculateButtonState - Patient: ${patient.id}, Step: ${step}, Process:`,
+    process?.status
+  );
+
   // If there's an actual process for this patient/step, return its status
   if (process) {
+    console.log(
+      `[DEBUG] Management - Process exists for ${step}, returning:`,
+      process.status
+    );
     return process.status;
   }
 
@@ -109,8 +118,7 @@ function calculateButtonState(
   if (step === MedicationProcessStep.DEVOLUCION) {
     const entregaProcess = allMedicationProcesses.find(
       (p) =>
-        p.patientId === patient.id &&
-        p.step === MedicationProcessStep.ENTREGA
+        p.patientId === patient.id && p.step === MedicationProcessStep.ENTREGA
     );
 
     // Check if ENTREGA is completed (prerequisite for devolution)
@@ -118,12 +126,28 @@ function calculateButtonState(
       // Check if patient has a devolution process
       const devolucionProcess = allMedicationProcesses.find(
         (p) =>
-          p.patientId === patient.id && p.step === MedicationProcessStep.DEVOLUCION
+          p.patientId === patient.id &&
+          p.step === MedicationProcessStep.DEVOLUCION
       );
 
       if (devolucionProcess) {
-        // If DEVOLUCION process exists, return its actual status
-        return devolucionProcess.status;
+        // If DEVOLUCION process exists and is ongoing, show as IN_PROGRESS (orange dashed)
+        // Only show as COMPLETED when the entire devolution process is truly finished
+        console.log(
+          `[DEBUG] Management table - DEVOLUCION process found for patient ${patient.id}, status:`,
+          devolucionProcess.status
+        );
+        if (devolucionProcess.status === ProcessStatus.COMPLETED) {
+          console.log(
+            `[DEBUG] Management table - Returning COMPLETED (green solid)`
+          );
+          return ProcessStatus.COMPLETED; // Green solid - fully finished
+        } else {
+          console.log(
+            `[DEBUG] Management table - Returning IN_PROGRESS (orange dashed)`
+          );
+          return ProcessStatus.IN_PROGRESS; // Orange dashed - ongoing devolution
+        }
       } else {
         // No DEVOLUCION process yet - show as pending (orange) for nurses to start
         return ProcessStatus.PENDING;
@@ -146,7 +170,12 @@ interface QRScanRecord {
   transactionType?: string; // "ENTREGA" or "DEVOLUCION"
   qrCode: {
     id: string;
-    type: "PHARMACY_DISPATCH" | "PHARMACY_DISPATCH_DEVOLUTION" | "SERVICE_ARRIVAL" | "DEVOLUTION_PICKUP" | "DEVOLUTION_RETURN";
+    type:
+      | "PHARMACY_DISPATCH"
+      | "PHARMACY_DISPATCH_DEVOLUTION"
+      | "SERVICE_ARRIVAL"
+      | "DEVOLUTION_PICKUP"
+      | "DEVOLUTION_RETURN";
     service?: {
       id: string;
       name: string;
@@ -168,6 +197,11 @@ export default function PacientesOnTimeManagement() {
 
   // Fetch current daily process
   const { data: currentDailyProcess } = useCurrentDailyProcess();
+  console.log(
+    `[DEBUG] Management - currentDailyProcess:`,
+    currentDailyProcess?.id,
+    currentDailyProcess?.status
+  );
 
   // Pre-fetch all medication processes for the current daily process
   // Note: This will return empty array if no daily process exists, which is correct
@@ -175,6 +209,12 @@ export default function PacientesOnTimeManagement() {
     data: allMedicationProcesses = [],
     isLoading: medicationProcessesLoading,
   } = useAllMedicationProcesses(currentDailyProcess?.id);
+  console.log(
+    `[DEBUG] Management - medicationProcessesLoading:`,
+    medicationProcessesLoading,
+    "processes count:",
+    allMedicationProcesses.length
+  );
 
   // Fetch ALL active patients at once (no server-side filtering)
   const {
@@ -261,6 +301,14 @@ export default function PacientesOnTimeManagement() {
         // Get processes for this patient
         const patientProcesses = allMedicationProcesses.filter(
           (p) => p.patientId === patient.id
+        );
+        console.log(
+          `[DEBUG] Management - Patient ${patient.id} has ${patientProcesses.length} processes:`,
+          patientProcesses.map((p) => `${p.step}:${p.status}`)
+        );
+        console.log(
+          `[DEBUG] Management - Total allMedicationProcesses:`,
+          allMedicationProcesses.length
         );
 
         // Calculate state for each step

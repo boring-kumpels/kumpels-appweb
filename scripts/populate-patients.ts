@@ -213,10 +213,56 @@ const samplePatients = [
 async function main() {
   console.log("🏥 Starting to populate patients...\n");
 
+  // Check for command line arguments
+  const args = process.argv.slice(2);
+  const shouldCleanup = args.includes("--cleanup") || args.includes("-c");
+
   try {
+    // Check if patients already exist
+    const existingPatients = await prisma.patient.findMany({
+      select: { externalId: true },
+    });
+
+    const existingExternalIds = new Set(
+      existingPatients.map((p) => p.externalId)
+    );
+
+    if (existingExternalIds.size > 0) {
+      console.log(
+        `⚠️  Found ${existingExternalIds.size} existing patients in database.`
+      );
+
+      if (shouldCleanup) {
+        console.log(
+          "🗑️  Cleanup mode enabled. Deleting all existing patients..."
+        );
+        const deleteResult = await prisma.patient.deleteMany({});
+        console.log(`✅ Deleted ${deleteResult.count} existing patients.\n`);
+        existingExternalIds.clear(); // Clear the set since we deleted everything
+      } else {
+        console.log("📋 Options:");
+        console.log(
+          "1. Skip existing patients and only create new ones (current mode)"
+        );
+        console.log(
+          "2. Use --cleanup flag to delete all existing patients and recreate them"
+        );
+        console.log("\n🔄 Skipping existing patients...\n");
+      }
+    }
+
     const createdPatients = [];
+    let skippedCount = 0;
 
     for (const patientData of samplePatients) {
+      // Skip if patient already exists
+      if (existingExternalIds.has(patientData.externalId)) {
+        console.log(
+          `⏭️  Skipping existing patient: ${patientData.externalId} - ${patientData.firstName} ${patientData.lastName}`
+        );
+        skippedCount++;
+        continue;
+      }
       // Find the line
       const line = await prisma.line.findUnique({
         where: { name: patientData.lineName as any },
@@ -288,9 +334,13 @@ async function main() {
       );
     }
 
-    console.log(`\n🎉 Patients populated successfully!`);
+    console.log(`\n🎉 Patients population completed!`);
     console.log(`📋 Summary:`);
     console.log(`- Total patients created: ${createdPatients.length}`);
+    console.log(`- Total patients skipped: ${skippedCount}`);
+    console.log(
+      `- Total patients processed: ${createdPatients.length + skippedCount}`
+    );
 
     // Group patients by line
     const patientsByLine = createdPatients.reduce(

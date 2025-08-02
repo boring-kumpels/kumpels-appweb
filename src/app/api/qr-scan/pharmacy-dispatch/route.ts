@@ -205,11 +205,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create scan records for all eligible patients with check-in data
+    // Create or update scan records for all eligible patients with check-in data
+    // Use upsert to handle cases where a record already exists (like devolution 2nd QR scan)
     await Promise.all(
       patientsToDispatch.map((patient) =>
-        prisma.qRScanRecord.create({
-          data: {
+        prisma.qRScanRecord.upsert({
+          where: {
+            patientId_qrCodeId_dailyProcessId_transactionType: {
+              patientId: patient.id,
+              qrCodeId: qrCode.id,
+              dailyProcessId: dailyProcess.id,
+              transactionType: transactionType,
+            },
+          },
+          update: {
+            scannedBy: user.id,
+            scannedAt: new Date(),
+            temperature: temperature,
+            destinationLineId: destinationLineId,
+            transactionType: transactionType,
+          },
+          create: {
             patientId: patient.id,
             qrCodeId: qrCode.id,
             scannedBy: user.id,
