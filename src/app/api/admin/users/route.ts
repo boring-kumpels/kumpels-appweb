@@ -8,14 +8,14 @@ import {
   type UserCreationResponse,
   type UserWithProfile,
 } from "@/types/user-management";
-import { saltAndHashPassword } from "@/lib/auth/password-crypto-server";
+
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 // GET - List all users with pagination
 export async function GET(request: NextRequest) {
   try {
     console.log("🔍 Admin users API called");
-    
+
     // Check if service role key is available
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
       console.error("❌ SUPABASE_SERVICE_ROLE_KEY not found in environment");
@@ -24,12 +24,12 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-    
+
     const supabase = createServerComponentClient({ cookies });
     const {
       data: { session },
     } = await supabase.auth.getSession();
-    
+
     console.log("🔍 Session check:", session ? "✅ Found" : "❌ Not found");
 
     if (!session) {
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       where: { userId: session.user.id },
       select: { role: true },
     });
-    
+
     console.log("🔍 User profile:", currentUserProfile);
 
     if (currentUserProfile?.role !== "SUPERADMIN") {
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
         { status: 403 }
       );
     }
-    
+
     console.log("✅ User is SUPERADMIN, proceeding...");
 
     const url = new URL(request.url);
@@ -64,7 +64,10 @@ export async function GET(request: NextRequest) {
     const search = url.searchParams.get("search") || "";
 
     // Get auth users from Supabase
-    console.log("🔍 Calling Supabase admin.listUsers with:", { page, pageSize });
+    console.log("🔍 Calling Supabase admin.listUsers with:", {
+      page,
+      pageSize,
+    });
     const { data: authUsers, error: authError } =
       await supabaseAdmin.auth.admin.listUsers({
         page: page,
@@ -78,8 +81,12 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-    
-    console.log("✅ Successfully fetched", authUsers.users?.length || 0, "users from Supabase");
+
+    console.log(
+      "✅ Successfully fetched",
+      authUsers.users?.length || 0,
+      "users from Supabase"
+    );
 
     // Get profiles from database
     const userIds = authUsers.users.map((user) => user.id);
@@ -143,20 +150,24 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(response);
   } catch (error) {
     console.error("❌ Error in users GET:", error);
-    
+
     // Ensure we always return JSON, never HTML
-    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error occurred";
     return NextResponse.json(
-      { 
-        error: "Internal server error", 
+      {
+        error: "Internal server error",
         details: errorMessage,
-        stack: process.env.NODE_ENV === "development" ? (error as Error)?.stack : undefined
-      }, 
-      { 
+        stack:
+          process.env.NODE_ENV === "development"
+            ? (error as Error)?.stack
+            : undefined,
+      },
+      {
         status: 500,
         headers: {
-          'Content-Type': 'application/json',
-        }
+          "Content-Type": "application/json",
+        },
       }
     );
   }
@@ -200,14 +211,11 @@ export async function POST(request: NextRequest) {
     const { email, password, firstName, lastName, role, active } =
       validationResult.data;
 
-    // Hash password
-    const hashedPassword = saltAndHashPassword(password, email);
-
-    // Create auth user
+    // Create auth user with plain password - let Supabase handle hashing
     const { data: authUser, error: authError } =
       await supabaseAdmin.auth.admin.createUser({
         email,
-        password: hashedPassword,
+        password: password, // Send plain password to Supabase
         email_confirm: true, // Auto-confirm email as requested
       });
 

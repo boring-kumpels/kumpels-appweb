@@ -3,7 +3,7 @@ import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import prisma from "@/lib/prisma";
 import { updateUserPasswordSchema } from "@/types/user-management";
-import { saltAndHashPassword } from "@/lib/auth/password-crypto-server";
+
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 // PUT - Reset user password
@@ -55,16 +55,10 @@ export async function PUT(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Hash the new password with user's email as salt
-    const hashedPassword = saltAndHashPassword(
-      password,
-      authUser.user.email || ""
-    );
-
-    // Update password in Supabase Auth
+    // Update password in Supabase Auth with plain password - let Supabase handle hashing
     const { error: updateError } =
       await supabaseAdmin.auth.admin.updateUserById(userId, {
-        password: hashedPassword,
+        password: password, // Send plain password to Supabase
       });
 
     if (updateError) {

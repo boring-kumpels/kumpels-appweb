@@ -26,7 +26,6 @@ import { useToast } from "@/components/ui/use-toast";
 import { PasswordInput } from "@/components/utils/password-input";
 import { PasswordStrengthIndicator } from "@/components/utils/password-strength-indicator";
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
-import { hashPassword } from "@/lib/auth/password-crypto";
 
 // Password validation schema
 const passwordFormSchema = z
@@ -79,19 +78,15 @@ export function PasswordDialog({ open, onOpenChange }: PasswordDialogProps) {
     try {
       setIsSubmitting(true);
 
-      // Get current user's password hash to send to API
-      const hashedCurrentPassword = await hashPassword(data.currentPassword);
-      const hashedNewPassword = await hashPassword(data.newPassword);
-
-      // Call API to update password
-      const response = await fetch("/api/user/password", {
-        method: "PUT",
+      // Call API to update password with plain passwords
+      const response = await fetch("/api/auth/change-password", {
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          currentPassword: hashedCurrentPassword,
-          newPassword: hashedNewPassword,
+          currentPassword: data.currentPassword,
+          newPassword: data.newPassword,
         }),
       });
 

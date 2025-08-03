@@ -21,8 +21,6 @@ import type { SignInFormData, UserAuthFormProps } from "@/types/auth/sign-in";
 import { signInFormSchema } from "@/types/auth/sign-in";
 import { toast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
-import { saltAndHashPassword } from "@/lib/auth/password-crypto";
-
 export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { signIn } = useAuth();
@@ -40,13 +38,8 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
     try {
       setIsLoading(true);
 
-      // Hash the password with email as salt before sending to server
-      const hashedPassword = await saltAndHashPassword(
-        data.password,
-        data.email
-      );
-
-      await signIn(data.email, hashedPassword);
+      // Send plain password to Supabase Auth - it handles verification internally
+      await signIn(data.email, data.password);
       toast({
         title: "Éxito",
         description: "Has iniciado sesión correctamente.",

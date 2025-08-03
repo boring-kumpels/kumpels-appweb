@@ -66,11 +66,8 @@ export function getStatusColorClass(
     case ProcessStatus.COMPLETED:
       return "bg-green-500 text-white border-0 hover:bg-green-600";
     case ProcessStatus.DISPATCHED_FROM_PHARMACY:
-      // Special styling for entrega step - keep orange even when dispatched
-      if (step === MedicationProcessStep.ENTREGA) {
-        return "bg-transparent text-orange-500 border-2 border-dashed border-orange-500 hover:bg-orange-50";
-      }
-      return "bg-transparent text-blue-500 border-2 border-dashed border-blue-500 hover:bg-blue-50";
+      // All dashed buttons should be orange, regardless of step
+      return "bg-transparent text-orange-500 border-2 border-dashed border-orange-500 hover:bg-orange-50";
     case ProcessStatus.DELIVERED_TO_SERVICE:
       // Special styling for entrega step - keep orange even when delivered
       if (step === MedicationProcessStep.ENTREGA) {

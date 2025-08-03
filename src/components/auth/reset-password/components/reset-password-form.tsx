@@ -19,30 +19,23 @@ import { toast } from "@/components/ui/use-toast";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { PasswordInput } from "@/components/utils/password-input";
 import { PasswordStrengthIndicator } from "@/components/utils/password-strength-indicator";
-import { hashPassword } from "@/lib/auth/password-crypto";
 
 const formSchema = z
   .object({
     password: z
       .string()
-      .min(8, "La contraseña debe tener al menos 8 caracteres")
-      .regex(
-        /[A-Z]/,
-        "La contraseña debe contener al menos una letra mayúscula"
-      )
-      .regex(
-        /[a-z]/,
-        "La contraseña debe contener al menos una letra minúscula"
-      )
-      .regex(/[0-9]/, "La contraseña debe contener al menos un número")
+      .min(8, "Password must be at least 8 characters")
+      .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+      .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+      .regex(/[0-9]/, "Password must contain at least one number")
       .regex(
         /[^A-Za-z0-9]/,
-        "La contraseña debe contener al menos un carácter especial"
+        "Password must contain at least one special character"
       ),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: "Las contraseñas no coinciden",
+    message: "Passwords do not match",
     path: ["confirmPassword"],
   });
 
@@ -81,17 +74,12 @@ export function ResetPasswordForm({
         await supabase.auth.getUser();
 
       if (userError || !userData.user) {
-        throw new Error(
-          "Usuario no encontrado. Por favor intenta iniciar sesión de nuevo."
-        );
+        throw new Error("User not found. Please try logging in again.");
       }
 
-      // Hash the password before sending to server
-      const hashedPassword = await hashPassword(data.password);
-
-      // Update the user's password
+      // Update the user's password with plain password - let Supabase handle hashing
       const { error } = await supabase.auth.updateUser({
-        password: hashedPassword,
+        password: data.password, // Send plain password to Supabase
       });
 
       if (error) {
@@ -99,8 +87,8 @@ export function ResetPasswordForm({
       }
 
       toast({
-        title: "Contraseña Actualizada",
-        description: "Tu contraseña ha sido restablecida exitosamente.",
+        title: "Password Updated",
+        description: "Your password has been reset successfully.",
       });
 
       // Redirect to the login page
@@ -109,8 +97,7 @@ export function ResetPasswordForm({
       console.error("Reset password error:", error);
       toast({
         title: "Error",
-        description:
-          "No se pudo restablecer la contraseña. Por favor intenta de nuevo.",
+        description: "Failed to reset password. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -127,7 +114,7 @@ export function ResetPasswordForm({
             name="password"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Nueva Contraseña</FormLabel>
+                <FormLabel>New Password</FormLabel>
                 <FormControl>
                   <PasswordInput
                     placeholder="********"
@@ -146,7 +133,7 @@ export function ResetPasswordForm({
             name="confirmPassword"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Confirmar Contraseña</FormLabel>
+                <FormLabel>Confirm Password</FormLabel>
                 <FormControl>
                   <PasswordInput placeholder="********" {...field} />
                 </FormControl>
@@ -156,7 +143,7 @@ export function ResetPasswordForm({
           />
 
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Restableciendo..." : "Restablecer Contraseña"}
+            {isLoading ? "Resetting..." : "Reset Password"}
           </Button>
         </form>
       </Form>
