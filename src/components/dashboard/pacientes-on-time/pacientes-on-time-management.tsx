@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Search, Bed, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { PatientsTable } from "./patients-table";
 import { DailyProcessStatusCard } from "./daily-process-status";
 import { usePatients } from "@/hooks/use-patients";
-import { useLines, useServices } from "@/hooks/use-lines-beds";
+import { useLines, useServices, useBeds } from "@/hooks/use-lines-beds";
 import { useCurrentDailyProcess } from "@/hooks/use-daily-processes";
 import { useAllMedicationProcesses } from "@/hooks/use-medication-processes";
 import { useQuery } from "@tanstack/react-query";
@@ -250,7 +250,46 @@ export default function PacientesOnTimeManagement() {
     enabled: !!currentDailyProcess?.id,
   });
 
-  // Apply filters client-side
+  // Fetch lines and services
+  const { data: lines = [], isLoading: linesLoading } = useLines();
+  const { data: services = [], isLoading: servicesLoading = false } =
+    useServices(selectedLineId || undefined, true);
+
+  // Fetch beds with enhanced filtering
+  const { data: allBeds = [], isLoading: bedsLoading } = useBeds({
+    lineId: selectedLineId || undefined,
+    enabled: true,
+  });
+
+  // Enhanced available beds calculation
+  const availableBeds = useMemo(() => {
+    let beds = allBeds;
+
+    // If a line is selected, filter beds by line
+    if (selectedLineId) {
+      beds = beds.filter((bed) => bed.lineId === selectedLineId);
+    }
+
+    // If a service is selected, filter beds to only show those that have patients in that service
+    if (selectedServiceId) {
+      // Get all patients in the selected service
+      const patientsInService = allPatients.filter(
+        (patient) => patient.serviceId === selectedServiceId
+      );
+
+      // Get the bed IDs that have patients in this service
+      const bedIdsWithPatientsInService = new Set(
+        patientsInService.map((patient) => patient.bedId)
+      );
+
+      // Filter beds to only include those that have patients in the selected service
+      beds = beds.filter((bed) => bedIdsWithPatientsInService.has(bed.id));
+    }
+
+    return beds;
+  }, [allBeds, selectedLineId, selectedServiceId, allPatients]);
+
+  // Apply filters client-side with enhanced logic
   const patients = useMemo(() => {
     let filtered = allPatients;
 
@@ -281,7 +320,7 @@ export default function PacientesOnTimeManagement() {
       );
     }
 
-    // Apply bed filter
+    // Apply bed filter with enhanced logic
     if (selectedBeds.length > 0) {
       filtered = filtered.filter(
         (patient) => patient.bed && selectedBeds.includes(patient.bed.id)
@@ -344,19 +383,22 @@ export default function PacientesOnTimeManagement() {
     return statesMap;
   }, [allPatients, allMedicationProcesses]);
 
-  const { data: lines = [], isLoading: linesLoading } = useLines();
-  const { data: services = [], isLoading: servicesLoading = false } =
-    useServices(selectedLineId || undefined, true);
-
   // Create a stable loading state object
   const loadingStates = useMemo(
     () => ({
       patients: isLoading,
       lines: linesLoading,
       services: servicesLoading,
+      beds: bedsLoading,
       medicationProcesses: medicationProcessesLoading,
     }),
-    [isLoading, linesLoading, servicesLoading, medicationProcessesLoading]
+    [
+      isLoading,
+      linesLoading,
+      servicesLoading,
+      bedsLoading,
+      medicationProcessesLoading,
+    ]
   );
 
   // Use effect to control when button states are considered "ready"
@@ -365,6 +407,7 @@ export default function PacientesOnTimeManagement() {
       !loadingStates.patients &&
       !loadingStates.lines &&
       !loadingStates.services &&
+      !loadingStates.beds &&
       !loadingStates.medicationProcesses;
     const hasPatients = allPatients.length > 0;
     const hasCompleteButtonStates =
@@ -378,10 +421,32 @@ export default function PacientesOnTimeManagement() {
     }
   }, [loadingStates, allPatients, buttonStatesMap]);
 
-  // Reset service selection when line changes
-  useEffect(() => {
+  // Enhanced filter reset logic
+  const resetFilters = useCallback(() => {
+    setSelectedLineId("");
     setSelectedServiceId("");
-  }, [selectedLineId]);
+    setSelectedBeds([]);
+    setSearchQuery("");
+  }, []);
+
+  const resetServiceAndBeds = useCallback(() => {
+    setSelectedServiceId("");
+    setSelectedBeds([]);
+  }, []);
+
+  const resetBeds = useCallback(() => {
+    setSelectedBeds([]);
+  }, []);
+
+  // Reset service and beds when line changes
+  useEffect(() => {
+    resetServiceAndBeds();
+  }, [selectedLineId, resetServiceAndBeds]);
+
+  // Reset beds when service changes
+  useEffect(() => {
+    resetBeds();
+  }, [selectedServiceId, resetBeds]);
 
   const handleOpenPatientDetail = (patient: PatientWithRelations) => {
     console.log(
@@ -389,13 +454,6 @@ export default function PacientesOnTimeManagement() {
       `${patient.firstName} ${patient.lastName}`
     );
   };
-
-  // Get available beds for the selected line
-  const availableBeds = useMemo(() => {
-    if (!selectedLineId) return [];
-    const selectedLine = lines.find((line) => line.id === selectedLineId);
-    return selectedLine?.beds || [];
-  }, [selectedLineId, lines]);
 
   const handleBedSelection = (bedId: string) => {
     setSelectedBeds((prev) =>
@@ -412,6 +470,15 @@ export default function PacientesOnTimeManagement() {
     setSelectedBeds([]);
   };
 
+  // Enhanced bed selection with "Select All" functionality
+  const handleSelectAllBeds = () => {
+    setSelectedBeds(availableBeds.map((bed) => bed.id));
+  };
+
+  const handleDeselectAllBeds = () => {
+    setSelectedBeds([]);
+  };
+
   // Use the new button states ready flag for more precise control
   const isAllDataLoading = !isButtonStatesReady;
 
@@ -421,6 +488,7 @@ export default function PacientesOnTimeManagement() {
       if (loadingStates.patients) return "Cargando pacientes...";
       if (loadingStates.lines) return "Cargando líneas...";
       if (loadingStates.services) return "Cargando servicios...";
+      if (loadingStates.beds) return "Cargando camas...";
       if (loadingStates.medicationProcesses) return "Cargando procesos...";
       return "Calculando estados de botones...";
     };
@@ -476,6 +544,19 @@ export default function PacientesOnTimeManagement() {
                 <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
               )}
               <span>Servicios</span>
+            </div>
+
+            <div
+              className={`flex items-center space-x-1 ${!loadingStates.beds ? "text-green-600" : ""}`}
+            >
+              {!loadingStates.beds ? (
+                <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                  <Check className="w-2 h-2 text-white" />
+                </div>
+              ) : (
+                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              )}
+              <span>Camas</span>
             </div>
 
             <div
@@ -536,21 +617,37 @@ export default function PacientesOnTimeManagement() {
       {/* Daily Process Status */}
       <DailyProcessStatusCard />
 
-      {/* Combined Filters Card */}
+      {/* Enhanced Filters Card */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">Filtros</CardTitle>
-            {/* Search Section */}
-            <div className="flex-1 max-w-md ml-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Buscar por nombre, cama, servicio o identificación..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
+            <div className="flex items-center gap-2">
+              {/* Reset All Filters Button */}
+              {(selectedLineId ||
+                selectedServiceId ||
+                selectedBeds.length > 0 ||
+                searchQuery) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={resetFilters}
+                  className="text-xs"
+                >
+                  Limpiar todos los filtros
+                </Button>
+              )}
+              {/* Search Section */}
+              <div className="flex-1 max-w-md ml-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Buscar por nombre, cama, servicio o identificación..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -565,8 +662,7 @@ export default function PacientesOnTimeManagement() {
                 size="sm"
                 onClick={() => {
                   setSelectedLineId("");
-                  setSelectedServiceId("");
-                  setSelectedBeds([]);
+                  resetServiceAndBeds();
                 }}
                 className="rounded-full"
               >
@@ -579,8 +675,7 @@ export default function PacientesOnTimeManagement() {
                   size="sm"
                   onClick={() => {
                     setSelectedLineId(line.id);
-                    setSelectedServiceId("");
-                    setSelectedBeds([]);
+                    resetServiceAndBeds();
                   }}
                   className="rounded-full"
                 >
@@ -590,17 +685,24 @@ export default function PacientesOnTimeManagement() {
             </div>
           </div>
 
-          {/* Service Filter */}
+          {/* Service Filter - Enhanced */}
           {selectedLineId && (
             <div>
-              <h4 className="text-sm font-medium mb-2">Filtro por Servicio</h4>
+              <h4 className="text-sm font-medium mb-2">
+                Filtro por Servicio
+                {services.length > 0 && (
+                  <span className="text-xs text-muted-foreground ml-2">
+                    ({services.length} servicios disponibles)
+                  </span>
+                )}
+              </h4>
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant={selectedServiceId === "" ? "default" : "outline"}
                   size="sm"
                   onClick={() => {
                     setSelectedServiceId("");
-                    setSelectedBeds([]);
+                    resetBeds();
                   }}
                   className="rounded-full"
                 >
@@ -615,7 +717,7 @@ export default function PacientesOnTimeManagement() {
                     size="sm"
                     onClick={() => {
                       setSelectedServiceId(service.id);
-                      setSelectedBeds([]);
+                      resetBeds();
                     }}
                     className="rounded-full"
                   >
@@ -626,9 +728,20 @@ export default function PacientesOnTimeManagement() {
             </div>
           )}
 
-          {/* Bed Filter */}
+          {/* Enhanced Bed Filter */}
           <div>
-            <h4 className="text-sm font-medium mb-2">Filtro por Cama</h4>
+            <h4 className="text-sm font-medium mb-2">
+              Filtro por Cama
+              {availableBeds.length > 0 && (
+                <span className="text-xs text-muted-foreground ml-2">
+                  ({availableBeds.length} camas disponibles
+                  {selectedLineId && " en la línea seleccionada"}
+                  {selectedServiceId &&
+                    " con pacientes en el servicio seleccionado"}
+                  )
+                </span>
+              )}
+            </h4>
             <Dialog
               open={isBedSelectionOpen}
               onOpenChange={setIsBedSelectionOpen}
@@ -648,17 +761,60 @@ export default function PacientesOnTimeManagement() {
               <DialogContent className="max-w-4xl max-h-[80vh]">
                 <DialogHeader>
                   <DialogTitle>
-                    Camas Disponibles -{" "}
-                    {lines.find((l) => l.id === selectedLineId)?.displayName ||
-                      "Línea"}
+                    Camas Disponibles
+                    {selectedLineId && (
+                      <span className="text-sm font-normal text-muted-foreground ml-2">
+                        -{" "}
+                        {
+                          lines.find((l) => l.id === selectedLineId)
+                            ?.displayName
+                        }
+                      </span>
+                    )}
+                    {selectedServiceId && (
+                      <span className="text-sm font-normal text-muted-foreground ml-2">
+                        -{" "}
+                        {services.find((s) => s.id === selectedServiceId)?.name}{" "}
+                        (filtrado por servicio)
+                      </span>
+                    )}
                   </DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">
-                      Selecciona una o múltiples camas
-                    </p>
+                    <div className="text-sm text-muted-foreground">
+                      <p>
+                        Selecciona una o múltiples camas
+                        {availableBeds.length > 0 && (
+                          <span className="ml-1">
+                            ({availableBeds.length} disponibles)
+                          </span>
+                        )}
+                      </p>
+                      {selectedServiceId && (
+                        <p className="text-xs mt-1 text-blue-600">
+                          💡 Mostrando solo camas que tienen pacientes en el
+                          servicio seleccionado.
+                        </p>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleDeselectAllBeds}
+                        disabled={selectedBeds.length === 0}
+                      >
+                        Deseleccionar todo
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSelectAllBeds}
+                        disabled={availableBeds.length === 0}
+                      >
+                        Seleccionar todo
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
@@ -672,25 +828,63 @@ export default function PacientesOnTimeManagement() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-6 gap-2 max-h-[60vh] overflow-y-auto">
-                    {availableBeds.map((bed) => (
-                      <Button
-                        key={bed.id}
-                        variant={
-                          selectedBeds.includes(bed.id) ? "default" : "outline"
-                        }
-                        size="sm"
-                        onClick={() => handleBedSelection(bed.id)}
-                        className="h-10"
-                      >
-                        {bed.number}
-                      </Button>
-                    ))}
-                  </div>
+                  {availableBeds.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Bed className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                      <p>
+                        No hay camas disponibles para los filtros seleccionados
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-6 gap-2 max-h-[60vh] overflow-y-auto">
+                      {availableBeds.map((bed) => (
+                        <Button
+                          key={bed.id}
+                          variant={
+                            selectedBeds.includes(bed.id)
+                              ? "default"
+                              : "outline"
+                          }
+                          size="sm"
+                          onClick={() => handleBedSelection(bed.id)}
+                          className="h-10"
+                        >
+                          {bed.number}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </DialogContent>
             </Dialog>
           </div>
+
+          {/* Filter Summary */}
+          {(selectedLineId || selectedServiceId || selectedBeds.length > 0) && (
+            <div className="pt-2 border-t">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>Filtros activos:</span>
+                {selectedLineId && (
+                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                    Línea:{" "}
+                    {lines.find((l) => l.id === selectedLineId)?.displayName}
+                  </span>
+                )}
+                {selectedServiceId && (
+                  <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
+                    Servicio:{" "}
+                    {services.find((s) => s.id === selectedServiceId)?.name}
+                  </span>
+                )}
+                {selectedBeds.length > 0 && (
+                  <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">
+                    {selectedBeds.length} cama
+                    {selectedBeds.length > 1 ? "s" : ""}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
