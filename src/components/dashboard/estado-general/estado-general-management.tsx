@@ -6,9 +6,9 @@
  *
  * Key Features:
  * - Real-time patient process tracking across all medication stages
- * - Temperature data integration from QR scanning records
+ * - Temperature data integration from QR scanning records grouped by line and service
  * - Line-based organization with detailed process metrics
- * - Patient-level information with current stage and temperature history
+ * - Service-level temperature information with current stage and temperature history
  * - Summary statistics dashboard with live data
  * - Interactive details view for each line
  *
@@ -86,6 +86,26 @@ interface ProcessStage {
   };
 }
 
+interface ServiceData {
+  id: string;
+  name: string;
+  patientCount: number;
+  lastTemperature: number | null;
+  lastScannedAt: string | null;
+  temperatureReadings: Array<{
+    temperature: number;
+    scannedAt: string;
+    qrType: string;
+    transactionType: string | null;
+  }>;
+  processSteps: Array<{
+    step: MedicationProcessStep;
+    status: ProcessStatus | "pendiente";
+    startedAt: string | null;
+    completedAt: string | null;
+  }>;
+}
+
 interface LineData {
   id: string;
   name: string;
@@ -93,27 +113,7 @@ interface LineData {
   patientCount: number;
   showDetails: boolean;
   stages: ProcessStage[];
-  patients: Array<{
-    id: string;
-    firstName: string;
-    lastName: string;
-    bedNumber: string;
-    currentStage: MedicationProcessStep | null;
-    lastTemperature: number | null;
-    lastScannedAt: string | null;
-    temperatureReadings: Array<{
-      temperature: number;
-      scannedAt: string;
-      qrType: string;
-      transactionType: string | null;
-    }>;
-    processSteps: Array<{
-      step: MedicationProcessStep;
-      status: ProcessStatus | "pendiente";
-      startedAt: string | null;
-      completedAt: string | null;
-    }>;
-  }>;
+  services: ServiceData[];
 }
 
 // Helper function to get stage display name
@@ -565,42 +565,55 @@ const LineSection: React.FC<{
             </div>
 
             {/* Patient List with Temperature Data */}
-            {line.patients.length > 0 && (
+            {line.services.length > 0 && (
               <div>
                 <h4 className="text-lg font-semibold text-gray-900 mb-4">
-                  Pacientes de la Línea
+                  Servicios de la Línea
                 </h4>
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
-                    {line.patients.map((patient) => (
+                    {line.services.map((service) => (
                       <div
-                        key={patient.id}
+                        key={service.id}
                         className="bg-white rounded-lg p-4 border border-gray-200 hover:shadow-sm transition-shadow"
                       >
-                        {/* Patient Header */}
+                        {/* Service Header */}
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center space-x-2">
                             <User className="h-4 w-4 text-gray-500" />
                             <span className="text-base font-medium text-gray-900">
-                              {patient.firstName} {patient.lastName}
+                              {service.name}
                             </span>
                           </div>
                           <div className="flex items-center space-x-2">
                             <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                              Cama {patient.bedNumber}
+                              Pacientes: {service.patientCount}
                             </span>
-                            {patient.temperatureReadings.length > 0 && (
-                              <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
-                                {patient.temperatureReadings.length} lecturas
-                              </span>
+                            {service.lastTemperature && (
+                              <div className="flex items-center space-x-1 text-blue-600">
+                                <Thermometer className="h-4 w-4" />
+                                <span className="font-medium">
+                                  Última: {service.lastTemperature.toFixed(1)}°C
+                                </span>
+                              </div>
+                            )}
+                            {service.lastScannedAt && (
+                              <div className="flex items-center space-x-1 text-gray-500">
+                                <Clock className="h-4 w-4" />
+                                <span>
+                                  {new Date(
+                                    service.lastScannedAt
+                                  ).toLocaleString()}
+                                </span>
+                              </div>
                             )}
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => onTogglePatientDetails(patient.id)}
+                              onClick={() => onTogglePatientDetails(service.id)}
                               className="text-xs h-6 px-2"
                             >
-                              {showPatientDetails[patient.id] ? (
+                              {showPatientDetails[service.id] ? (
                                 <>
                                   <EyeOff className="h-3 w-3 mr-1" />
                                   Ocultar Procesos
@@ -615,21 +628,14 @@ const LineSection: React.FC<{
                           </div>
                         </div>
 
-                        {patient.currentStage && (
-                          <div className="text-sm text-blue-600 mb-3 font-medium">
-                            Etapa actual:{" "}
-                            {getStageDisplayName(patient.currentStage)}
-                          </div>
-                        )}
-
                         {/* Process Steps Details */}
-                        {showPatientDetails[patient.id] && (
+                        {showPatientDetails[service.id] && (
                           <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
                             <h6 className="text-sm font-semibold text-gray-700 mb-3">
                               Estado de Procesos:
                             </h6>
                             <div className="grid grid-cols-1 gap-2">
-                              {patient.processSteps.map((processStep) => (
+                              {service.processSteps.map((processStep) => (
                                 <div
                                   key={processStep.step}
                                   className="flex items-center justify-between p-2 bg-white rounded border border-gray-100"
@@ -704,36 +710,14 @@ const LineSection: React.FC<{
                           </div>
                         )}
 
-                        {/* Last Temperature Summary */}
-                        <div className="flex items-center justify-between text-sm mb-3 pb-3 border-b border-gray-100">
-                          {patient.lastTemperature && (
-                            <div className="flex items-center space-x-2 text-blue-600">
-                              <Thermometer className="h-4 w-4" />
-                              <span className="font-medium">
-                                Última: {patient.lastTemperature.toFixed(1)}°C
-                              </span>
-                            </div>
-                          )}
-                          {patient.lastScannedAt && (
-                            <div className="flex items-center space-x-1 text-gray-500">
-                              <Clock className="h-4 w-4" />
-                              <span>
-                                {new Date(
-                                  patient.lastScannedAt
-                                ).toLocaleString()}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-
                         {/* Temperature Readings History */}
-                        {patient.temperatureReadings.length > 0 && (
+                        {service.temperatureReadings.length > 0 && (
                           <div className="space-y-2">
                             <h5 className="text-sm font-semibold text-gray-700 mb-2">
                               Historial de Temperaturas:
                             </h5>
                             <div className="space-y-2 max-h-48 overflow-y-auto">
-                              {patient.temperatureReadings.map(
+                              {service.temperatureReadings.map(
                                 (reading, index) => (
                                   <div
                                     key={index}
@@ -777,13 +761,13 @@ const LineSection: React.FC<{
                             </div>
 
                             {/* Temperature Summary Stats */}
-                            {patient.temperatureReadings.length > 1 && (
+                            {service.temperatureReadings.length > 1 && (
                               <div className="bg-gray-50 rounded-lg p-2 mt-3">
                                 <div className="grid grid-cols-3 gap-2 text-xs">
                                   <div className="text-center">
                                     <div className="font-medium text-green-600">
                                       {Math.min(
-                                        ...patient.temperatureReadings.map(
+                                        ...service.temperatureReadings.map(
                                           (r) => r.temperature
                                         )
                                       ).toFixed(1)}
@@ -794,10 +778,10 @@ const LineSection: React.FC<{
                                   <div className="text-center">
                                     <div className="font-medium text-blue-600">
                                       {(
-                                        patient.temperatureReadings.reduce(
+                                        service.temperatureReadings.reduce(
                                           (sum, r) => sum + r.temperature,
                                           0
-                                        ) / patient.temperatureReadings.length
+                                        ) / service.temperatureReadings.length
                                       ).toFixed(1)}
                                       °C
                                     </div>
@@ -808,7 +792,7 @@ const LineSection: React.FC<{
                                   <div className="text-center">
                                     <div className="font-medium text-red-600">
                                       {Math.max(
-                                        ...patient.temperatureReadings.map(
+                                        ...service.temperatureReadings.map(
                                           (r) => r.temperature
                                         )
                                       ).toFixed(1)}
@@ -823,7 +807,7 @@ const LineSection: React.FC<{
                         )}
 
                         {/* No Temperature Readings */}
-                        {patient.temperatureReadings.length === 0 && (
+                        {service.temperatureReadings.length === 0 && (
                           <div className="text-center py-4 text-gray-500">
                             <Thermometer className="h-8 w-8 mx-auto mb-2 text-gray-400" />
                             <p className="text-sm">
@@ -882,25 +866,35 @@ export default function EstadoGeneralManagement() {
     enabled: !!currentDailyProcess?.id,
   });
 
-  // Process data to create line-based structure
+  // Process data to create line-based structure with service grouping
   const lines = useMemo(() => {
     if (!allPatients.length || patientsLoading || processesLoading || qrLoading)
       return [];
 
-    // Group patients by line
-    const patientsByLine = allPatients.reduce(
+    // Group patients by line and service
+    const patientsByLineAndService = allPatients.reduce(
       (acc, patient) => {
-        if (!patient.bed?.line) {
-          return acc; // Skip patients without bed or line
+        if (!patient.bed?.line || !patient.service) {
+          return acc; // Skip patients without bed, line, or service
         }
         const lineId = patient.bed.line.id;
+        const serviceId = patient.service.id;
+
         if (!acc[lineId]) {
           acc[lineId] = {
             line: patient.bed.line,
+            services: {},
+          };
+        }
+
+        if (!acc[lineId].services[serviceId]) {
+          acc[lineId].services[serviceId] = {
+            service: patient.service,
             patients: [],
           };
         }
-        acc[lineId].patients.push(patient);
+
+        acc[lineId].services[serviceId].patients.push(patient);
         return acc;
       },
       {} as Record<
@@ -910,20 +904,35 @@ export default function EstadoGeneralManagement() {
             id: string;
             name: string;
           };
-          patients: Array<{
-            id: string;
-            firstName: string;
-            lastName: string;
-            externalId: string;
-            bed: {
-              id: string;
-              number: string;
-              line?: {
+          services: Record<
+            string,
+            {
+              service: {
                 id: string;
                 name: string;
+                lineId: string;
               };
-            };
-          }>;
+              patients: Array<{
+                id: string;
+                firstName: string;
+                lastName: string;
+                externalId: string;
+                bed: {
+                  id: string;
+                  number: string;
+                  line?: {
+                    id: string;
+                    name: string;
+                  };
+                };
+                service: {
+                  id: string;
+                  name: string;
+                  lineId: string;
+                };
+              }>;
+            }
+          >;
         }
       >
     );
@@ -938,17 +947,22 @@ export default function EstadoGeneralManagement() {
       {} as Record<string, QRScanRecord[]>
     );
 
-    return Object.values(patientsByLine).map(({ line, patients }) => {
+    return Object.values(patientsByLineAndService).map(({ line, services }) => {
+      // Get all patients in this line
+      const allLinePatients = Object.values(services).flatMap(
+        (s) => s.patients
+      );
+
       const stages = Object.values(MedicationProcessStep).map((step) => {
         // Get all processes for this step across patients in this line
         const stageProcesses = allMedicationProcesses.filter(
           (p) =>
             p.step === step &&
-            patients.some((patient) => patient.id === p.patientId)
+            allLinePatients.some((patient) => patient.id === p.patientId)
         );
 
         // Get QR records for this stage across all patients in this line
-        const stageQRRecords = patients.flatMap(
+        const stageQRRecords = allLinePatients.flatMap(
           (patient) =>
             qrRecordsByPatient[patient.id]?.filter((record) => {
               // Map QR types to medication process steps - more comprehensive mapping
@@ -984,7 +998,7 @@ export default function EstadoGeneralManagement() {
             : null;
 
         // Count completed patients based on the step type (matching patient detail view logic)
-        const completedPatientsCount = patients.filter((patient) => {
+        const completedPatientsCount = allLinePatients.filter((patient) => {
           const patientQRRecords = qrRecordsByPatient[patient.id] || [];
           const patientProcesses = stageProcesses.filter(
             (p) => p.patientId === patient.id
@@ -1040,9 +1054,9 @@ export default function EstadoGeneralManagement() {
             stageProcesses,
             step,
             completedPatientsCount,
-            patients.length
+            allLinePatients.length
           ),
-          patientCount: patients.length,
+          patientCount: allLinePatients.length,
           completedPatients: completedPatientsCount,
           averageTemperature,
           lastScannedAt,
@@ -1057,100 +1071,99 @@ export default function EstadoGeneralManagement() {
         };
       });
 
-      // Process patient data with temperature information
-      const processedPatients = patients.map((patient) => {
-        const patientQRRecords = qrRecordsByPatient[patient.id] || [];
-        const latestQRRecord = patientQRRecords.sort(
-          (a, b) =>
-            new Date(b.scannedAt).getTime() - new Date(a.scannedAt).getTime()
-        )[0];
-
-        // Determine current stage from latest medication process
-        const patientProcesses = allMedicationProcesses.filter(
-          (p) => p.patientId === patient.id
-        );
-        const currentStage =
-          patientProcesses.length > 0
-            ? patientProcesses.sort(
-                (a, b) =>
-                  new Date(b.createdAt).getTime() -
-                  new Date(a.createdAt).getTime()
-              )[0].step
-            : null;
-
-        // Collect all temperature readings for this patient
-        const temperatureReadings = patientQRRecords
-          .filter((record) => record.temperature !== null)
-          .map((record) => ({
-            temperature: record.temperature!,
-            scannedAt: record.scannedAt,
-            qrType: record.qrCode.type,
-            transactionType: record.transactionType,
-          }))
-          .sort(
-            (a, b) =>
-              new Date(b.scannedAt).getTime() - new Date(a.scannedAt).getTime()
+      // Process service data with temperature information
+      const processedServices = Object.values(services).map(
+        ({ service, patients }) => {
+          // Get all QR records for patients in this service
+          const serviceQRRecords = patients.flatMap(
+            (patient) => qrRecordsByPatient[patient.id] || []
           );
 
-        // Calculate process steps status for this patient
-        const processSteps = Object.values(MedicationProcessStep).map(
-          (step) => {
-            const stepProcesses = patientProcesses.filter(
-              (p) => p.step === step
+          const latestQRRecord = serviceQRRecords.sort(
+            (a, b) =>
+              new Date(b.scannedAt).getTime() - new Date(a.scannedAt).getTime()
+          )[0];
+
+          // Get all medication processes for patients in this service
+          const serviceProcesses = allMedicationProcesses.filter((p) =>
+            patients.some((patient) => patient.id === p.patientId)
+          );
+
+          // Collect all temperature readings for this service
+          const temperatureReadings = serviceQRRecords
+            .filter((record) => record.temperature !== null)
+            .map((record) => ({
+              temperature: record.temperature!,
+              scannedAt: record.scannedAt,
+              qrType: record.qrCode.type,
+              transactionType: record.transactionType,
+            }))
+            .sort(
+              (a, b) =>
+                new Date(b.scannedAt).getTime() -
+                new Date(a.scannedAt).getTime()
             );
 
-            return {
-              step,
-              status: getPatientStepStatus(
-                patient,
-                step,
-                patientProcesses,
-                patientQRRecords
-              ),
-              startedAt: (() => {
-                const started =
-                  stepProcesses.length > 0 ? stepProcesses[0].startedAt : null;
-                if (!started) return null;
-                return started instanceof Date
-                  ? started.toISOString()
-                  : started;
-              })(),
-              completedAt: (() => {
-                const completed = stepProcesses.find(
-                  (p) => p.status === ProcessStatus.COMPLETED
-                )?.completedAt;
-                if (!completed) return null;
-                return completed instanceof Date
-                  ? completed.toISOString()
-                  : completed;
-              })(),
-            };
-          }
-        );
+          // Calculate process steps status for this service
+          const processSteps = Object.values(MedicationProcessStep).map(
+            (step) => {
+              const stepProcesses = serviceProcesses.filter(
+                (p) => p.step === step
+              );
 
-        return {
-          id: patient.id,
-          firstName: patient.firstName,
-          lastName: patient.lastName,
-          bedNumber: patient.bed.number,
-          currentStage,
-          lastTemperature: latestQRRecord?.temperature || null,
-          lastScannedAt: latestQRRecord?.scannedAt || null,
-          temperatureReadings,
-          processSteps,
-        };
-      });
+              return {
+                step,
+                status: getPatientStepStatus(
+                  patients[0], // Use first patient as reference for service status
+                  step,
+                  serviceProcesses,
+                  serviceQRRecords
+                ),
+                startedAt: (() => {
+                  const started =
+                    stepProcesses.length > 0
+                      ? stepProcesses[0].startedAt
+                      : null;
+                  if (!started) return null;
+                  return started instanceof Date
+                    ? started.toISOString()
+                    : started;
+                })(),
+                completedAt: (() => {
+                  const completed = stepProcesses.find(
+                    (p) => p.status === ProcessStatus.COMPLETED
+                  )?.completedAt;
+                  if (!completed) return null;
+                  return completed instanceof Date
+                    ? completed.toISOString()
+                    : completed;
+                })(),
+              };
+            }
+          );
+
+          return {
+            id: service.id,
+            name: service.name,
+            patientCount: patients.length,
+            lastTemperature: latestQRRecord?.temperature || null,
+            lastScannedAt: latestQRRecord?.scannedAt || null,
+            temperatureReadings,
+            processSteps,
+          };
+        }
+      );
 
       return {
-        id: line?.id || "unknown", // Use line?.id or a default if line is undefined
-        name: line?.name || "Desconocida", // Use line?.name or a default
+        id: line?.id || "unknown",
+        name: line?.name || "Desconocida",
         displayName: getLineDisplayName(
           (line?.name as LineName) || LineName.LINE_1
         ),
-        patientCount: patients.length,
-        showDetails: showDetails[line?.id || "unknown"] || false, // Use line?.id or a default
+        patientCount: allLinePatients.length,
+        showDetails: showDetails[line?.id || "unknown"] || false,
         stages,
-        patients: processedPatients,
+        services: processedServices,
       };
     });
   }, [

@@ -463,9 +463,9 @@ export function ProcessStatusButton({
     // Special case for devolution: different rules for nurses vs pharmacy regents
     if (step === MedicationProcessStep.DEVOLUCION) {
       if (actualUserRole === "NURSE") {
-        // Must have completed entrega first
+        // Devolutions are now independent and don't require ENTREGA completion
         if (buttonStatus === null) {
-          return false; // Step not enabled due to workflow (entrega not completed)
+          return false; // Step not enabled
         }
 
         // Only allow starting the devolution process, not completing it

@@ -1,46 +1,44 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, AlertCircle } from "lucide-react";
-import { MedicationSearch } from "./medication-search";
+import { Loader2, Edit, Check } from "lucide-react";
 import { useDevolutionCauses } from "@/hooks/use-devolution-causes";
-import { useCreateManualReturn } from "@/hooks/use-manual-returns";
-import { ManualReturnType } from "@/types/patient";
+import { useUpdateManualReturn } from "@/hooks/use-manual-returns";
+import { ManualReturn, ManualReturnStatus } from "@/types/patient";
 
-interface DevolutionFormProps {
-  patientId: string;
+interface EditDevolutionFormProps {
+  manualReturn: ManualReturn;
   onSuccess: () => void;
   onCancel: () => void;
 }
 
-export function DevolutionForm({
-  patientId,
+export function EditDevolutionForm({
+  manualReturn,
   onSuccess,
   onCancel,
-}: DevolutionFormProps) {
-  const [selectedMedication, setSelectedMedication] = useState<{
-    id: string;
-    nombrePreciso?: string | null;
-    nuevaEstructuraEstandarSemantico?: string | null;
-    principioActivo?: string | null;
-    concentracionEstandarizada?: string | null;
-    formaFarmaceutica?: string | null;
-    cumSinCeros?: string | null;
-    codigoServinte?: string | null;
-  } | null>(null);
-  const [quantity, setQuantity] = useState("");
+}: EditDevolutionFormProps) {
   const [selectedCauses, setSelectedCauses] = useState<string[]>([]);
   const [comment, setComment] = useState("");
 
   const { data: devolutionCauses = [], isLoading: causesLoading } =
     useDevolutionCauses();
-  const createManualReturn = useCreateManualReturn();
+  const updateManualReturn = useUpdateManualReturn();
+
+  // Initialize form with existing data
+  useEffect(() => {
+    if (manualReturn.devolutionCauseId) {
+      setSelectedCauses([manualReturn.devolutionCauseId]);
+    }
+
+    if (manualReturn.comments) {
+      setComment(manualReturn.comments);
+    }
+  }, [manualReturn]);
 
   const handleSubmit = async () => {
-    if (!selectedMedication || !quantity || selectedCauses.length === 0) {
+    if (selectedCauses.length === 0) {
       return;
     }
 
@@ -49,33 +47,21 @@ export function DevolutionForm({
         selectedCauses.includes(cause.id)
       );
 
-      await createManualReturn.mutateAsync({
-        patientId,
-        // Always create standalone devolutions - no medication process dependency
-        type: ManualReturnType.STANDALONE,
-        devolutionCauseId: selectedCauseObjects[0]?.id, // Use first selected cause for structured data
-        cause: selectedCauseObjects.map((c) => c.description).join(", "),
-        comments: comment,
-        supplies: [
-          {
-            medicationId: selectedMedication.id,
-            supplyCode:
-              selectedMedication.cumSinCeros ||
-              selectedMedication.codigoServinte ||
-              "SUPPLY_" + Date.now(),
-            supplyName:
-              selectedMedication.nombrePreciso ||
-              selectedMedication.nuevaEstructuraEstandarSemantico ||
-              selectedMedication.principioActivo ||
-              "Medicamento",
-            quantityReturned: parseInt(quantity) || 1,
-          },
-        ],
+      await updateManualReturn.mutateAsync({
+        id: manualReturn.id,
+        data: {
+          status: ManualReturnStatus.APPROVED,
+          devolutionCauseId: selectedCauseObjects[0]?.id,
+          cause: selectedCauseObjects.map((c) => c.description).join(", "),
+          comments: comment,
+          // Note: We can't update supplies through the current API structure
+          // This would require additional API changes to update supplies
+        },
       });
 
       onSuccess();
     } catch (error) {
-      console.error("Error creating devolution return:", error);
+      console.error("Error updating devolution return:", error);
     }
   };
 
@@ -87,65 +73,51 @@ export function DevolutionForm({
     );
   };
 
-  const isFormValid =
-    selectedMedication && quantity && selectedCauses.length > 0;
+  const isFormValid = selectedCauses.length > 0;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center space-x-2 text-blue-600">
-        <AlertCircle className="h-5 w-5" />
+        <Edit className="h-5 w-5" />
         <h3 className="text-lg font-semibold">
-          Nueva Devolución Independiente
+          Editar y Aprobar Devolución Manual
         </h3>
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <p className="text-sm text-blue-800">
-          Esta es una devolución independiente que no requiere un proceso de
-          entrega previo. Requerirá aprobación del regente de farmacia antes de
-          proceder.
+          <strong>Nota:</strong> Al guardar los cambios, esta devolución será
+          automáticamente aprobada. Los medicamentos no se pueden modificar en
+          esta vista, solo la causa y comentarios.
         </p>
       </div>
 
       <div className="space-y-4">
+        {/* Display current medication (read-only) */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-foreground">
-            Medicamento *
+            Medicamento (no editable)
           </label>
-          <MedicationSearch
-            onSelect={setSelectedMedication}
-            placeholder="Buscar medicamento a devolver..."
-          />
-          {selectedMedication && (
-            <div className="p-3 bg-muted rounded-md">
+          {manualReturn.supplies && manualReturn.supplies.length > 0 && (
+            <div className="p-3 bg-muted rounded-md border">
               <div className="text-sm font-medium">
-                {selectedMedication.nombrePreciso ||
-                  selectedMedication.nuevaEstructuraEstandarSemantico ||
-                  selectedMedication.principioActivo}
+                {manualReturn.supplies[0].medication?.nombrePreciso ||
+                  manualReturn.supplies[0].medication
+                    ?.nuevaEstructuraEstandarSemantico ||
+                  manualReturn.supplies[0].supplyName}
               </div>
               <div className="text-xs text-muted-foreground">
-                {selectedMedication.concentracionEstandarizada &&
-                  `${selectedMedication.concentracionEstandarizada} • `}
-                {selectedMedication.formaFarmaceutica &&
-                  `${selectedMedication.formaFarmaceutica} • `}
-                {selectedMedication.cumSinCeros &&
-                  `CUM: ${selectedMedication.cumSinCeros}`}
+                {manualReturn.supplies[0].medication
+                  ?.concentracionEstandarizada &&
+                  `${manualReturn.supplies[0].medication.concentracionEstandarizada} • `}
+                {manualReturn.supplies[0].medication?.formaFarmaceutica &&
+                  `${manualReturn.supplies[0].medication.formaFarmaceutica} • `}
+                Cantidad: {manualReturn.supplies[0].quantityReturned}
+                {manualReturn.supplies[0].medication?.cumSinCeros &&
+                  ` • CUM: ${manualReturn.supplies[0].medication.cumSinCeros}`}
               </div>
             </div>
           )}
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">
-            Cantidad *
-          </label>
-          <Input
-            type="number"
-            min="1"
-            placeholder="Cantidad a devolver"
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
-          />
         </div>
 
         <div className="space-y-2">
@@ -200,22 +172,25 @@ export function DevolutionForm({
         <Button
           variant="outline"
           onClick={onCancel}
-          disabled={createManualReturn.isPending}
+          disabled={updateManualReturn.isPending}
         >
           Cancelar
         </Button>
         <Button
           onClick={handleSubmit}
-          disabled={!isFormValid || createManualReturn.isPending}
-          className="bg-blue-600 hover:bg-blue-700"
+          disabled={!isFormValid || updateManualReturn.isPending}
+          className="bg-green-600 hover:bg-green-700"
         >
-          {createManualReturn.isPending ? (
+          {updateManualReturn.isPending ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              Creando...
+              Guardando y Aprobando...
             </>
           ) : (
-            "Crear Devolución Independiente"
+            <>
+              <Check className="h-4 w-4 mr-2" />
+              Guardar y Aprobar
+            </>
           )}
         </Button>
       </div>

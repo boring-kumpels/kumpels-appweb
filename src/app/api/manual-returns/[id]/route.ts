@@ -30,13 +30,18 @@ export async function PATCH(
 
     const data: UpdateManualReturnData = await request.json();
 
-    // If approving or rejecting, only allow PHARMACY_REGENT and SUPERADMIN
-    if (data.status === "APPROVED" || data.status === "REJECTED") {
+    // If approving, rejecting, or editing cause fields, only allow PHARMACY_REGENT and SUPERADMIN
+    if (
+      data.status === "APPROVED" ||
+      data.status === "REJECTED" ||
+      data.devolutionCauseId !== undefined ||
+      data.cause !== undefined
+    ) {
       if (profile.role !== "PHARMACY_REGENT" && profile.role !== "SUPERADMIN") {
         return NextResponse.json(
           {
             error:
-              "Forbidden - Only pharmacy regents can approve/reject manual returns",
+              "Forbidden - Only pharmacy regents can approve/reject/edit manual returns",
           },
           { status: 403 }
         );
@@ -63,7 +68,12 @@ export async function PATCH(
             bed: true,
           },
         },
-        supplies: true,
+        supplies: {
+          include: {
+            medication: true,
+          },
+        },
+        devolutionCause: true,
       },
     });
 

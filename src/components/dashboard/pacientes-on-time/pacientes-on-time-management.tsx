@@ -116,53 +116,45 @@ function calculateButtonState(
   }
 
   if (step === MedicationProcessStep.DEVOLUCION) {
-    const entregaProcess = allMedicationProcesses.find(
+    // Check if patient has a devolution process
+    const devolucionProcess = allMedicationProcesses.find(
       (p) =>
-        p.patientId === patient.id && p.step === MedicationProcessStep.ENTREGA
+        p.patientId === patient.id &&
+        p.step === MedicationProcessStep.DEVOLUCION
     );
 
-    // Check if ENTREGA is completed (prerequisite for devolution)
-    if (entregaProcess?.status === ProcessStatus.COMPLETED) {
-      // Check if patient has a devolution process
-      const devolucionProcess = allMedicationProcesses.find(
-        (p) =>
-          p.patientId === patient.id &&
-          p.step === MedicationProcessStep.DEVOLUCION
+    if (devolucionProcess) {
+      // If DEVOLUCION process exists and is ongoing, show as IN_PROGRESS (orange dashed)
+      // Only show as COMPLETED when the entire devolution process is truly finished
+      console.log(
+        `[DEBUG] Management table - DEVOLUCION process found for patient ${patient.id}, status:`,
+        devolucionProcess.status
       );
-
-      if (devolucionProcess) {
-        // If DEVOLUCION process exists and is ongoing, show as IN_PROGRESS (orange dashed)
-        // Only show as COMPLETED when the entire devolution process is truly finished
+      if (devolucionProcess.status === ProcessStatus.COMPLETED) {
         console.log(
-          `[DEBUG] Management table - DEVOLUCION process found for patient ${patient.id}, status:`,
-          devolucionProcess.status
+          `[DEBUG] Management table - Returning COMPLETED (green solid)`
         );
-        if (devolucionProcess.status === ProcessStatus.COMPLETED) {
-          console.log(
-            `[DEBUG] Management table - Returning COMPLETED (green solid)`
-          );
-          return ProcessStatus.COMPLETED; // Green solid - fully finished
-        } else if (
-          devolucionProcess.status === ProcessStatus.DISPATCHED_FROM_PHARMACY ||
-          devolucionProcess.status === ProcessStatus.DELIVERED_TO_SERVICE ||
-          devolucionProcess.status === ProcessStatus.IN_PROGRESS
-        ) {
-          console.log(
-            `[DEBUG] Management table - Returning IN_PROGRESS (orange dashed) for status: ${devolucionProcess.status}`
-          );
-          return ProcessStatus.IN_PROGRESS; // Orange dashed - ongoing devolution
-        } else {
-          console.log(
-            `[DEBUG] Management table - Returning IN_PROGRESS (orange dashed) for unknown status: ${devolucionProcess.status}`
-          );
-          return ProcessStatus.IN_PROGRESS; // Orange dashed - ongoing devolution
-        }
+        return ProcessStatus.COMPLETED; // Green solid - fully finished
+      } else if (
+        devolucionProcess.status === ProcessStatus.DISPATCHED_FROM_PHARMACY ||
+        devolucionProcess.status === ProcessStatus.DELIVERED_TO_SERVICE ||
+        devolucionProcess.status === ProcessStatus.IN_PROGRESS
+      ) {
+        console.log(
+          `[DEBUG] Management table - Returning IN_PROGRESS (orange dashed) for status: ${devolucionProcess.status}`
+        );
+        return ProcessStatus.IN_PROGRESS; // Orange dashed - ongoing devolution
       } else {
-        // No DEVOLUCION process yet - show as pending (orange) for nurses to start
-        return ProcessStatus.PENDING;
+        console.log(
+          `[DEBUG] Management table - Returning IN_PROGRESS (orange dashed) for unknown status: ${devolucionProcess.status}`
+        );
+        return ProcessStatus.IN_PROGRESS; // Orange dashed - ongoing devolution
       }
+    } else {
+      // No DEVOLUCION process yet - show as pending (orange) for nurses to start
+      // Devolutions are now independent and don't require ENTREGA completion
+      return ProcessStatus.PENDING;
     }
-    return null; // Show as disabled (black border) - ENTREGA not completed
   }
 
   return null; // Default: disabled

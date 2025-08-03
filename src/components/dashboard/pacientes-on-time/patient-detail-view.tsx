@@ -844,9 +844,7 @@ export default function PatientDetailView({
 
   // Devolution workflow state
   const [isDevolutionFormOpen, setIsDevolutionFormOpen] = useState(false);
-  const [pendingDevolutionProcessId, setPendingDevolutionProcessId] = useState<
-    string | null
-  >(null);
+
 
   // Export Modal State
   const [startDate, setStartDate] = useState("");
@@ -1249,14 +1247,6 @@ export default function PatientDetailView({
     );
   };
 
-  // Check if entrega process is completed to enable manual devolutions
-  const isEntregaCompleted = allMedicationProcesses.some(
-    (mp) =>
-      mp.patientId === patientId &&
-      mp.step === "ENTREGA" &&
-      mp.status === "COMPLETED"
-  );
-
   const tabs = [
     {
       id: "dispensacion" as const,
@@ -1275,9 +1265,8 @@ export default function PatientDetailView({
     },
     {
       id: "devoluciones_manuales" as const,
-      name: "Devoluciones Manuales",
+      name: "Devoluciones Independientes",
       icon: <User className="h-4 w-4" />,
-      disabled: !isEntregaCompleted,
     },
   ];
 
@@ -1363,19 +1352,6 @@ export default function PatientDetailView({
               <CardContent>
                 {activeTab === "devoluciones_manuales" ? (
                   <div className="space-y-6">
-                    {!isEntregaCompleted ? (
-                      <div className="text-center py-12">
-                        <Lock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                        <h3 className="text-lg font-semibold text-foreground mb-2">
-                          Devoluciones Manuales No Disponibles
-                        </h3>
-                        <p className="text-muted-foreground">
-                          Las devoluciones manuales se habilitarán una vez que
-                          se complete el proceso de devolución y la recepción de
-                          farmacia.
-                        </p>
-                      </div>
-                    ) : (
                       <>
                         {/* Header Section */}
                         <div className="flex items-center justify-between">
@@ -1420,14 +1396,14 @@ export default function PatientDetailView({
                                   d="M12 4v16m8-8H4"
                                 />
                               </svg>
-                              Generar Devolución Manual
+                              Generar Devolución Independiente
                             </Button>
                           </div>
                         </div>
 
                         {/* Subtitle */}
                         <p className="text-sm text-muted-foreground">
-                          Devoluciones Manuales Registradas
+                          Devoluciones Independientes Registradas
                         </p>
 
                         {/* Manual Return Cards */}
@@ -1570,7 +1546,7 @@ export default function PatientDetailView({
                         ) : (
                           <div className="text-center py-8">
                             <p className="text-muted-foreground">
-                              No hay devoluciones manuales registradas.
+                              No hay devoluciones independientes registradas.
                             </p>
                           </div>
                         )}
@@ -1692,9 +1668,7 @@ export default function PatientDetailView({
                                     <Button
                                       size="sm"
                                       onClick={() => {
-                                        setPendingDevolutionProcessId(
-                                          devolutionProcess.id
-                                        );
+                                                                // No longer needed - devolutions are independent
                                         setIsDevolutionFormOpen(true);
                                       }}
                                       className="bg-blue-600 hover:bg-blue-700"
@@ -1995,7 +1969,7 @@ export default function PatientDetailView({
       >
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Nueva Devolución Manual</DialogTitle>
+            <DialogTitle>Nueva Devolución Independiente</DialogTitle>
           </DialogHeader>
           <DevolutionForm
             patientId={patientId}
@@ -2014,12 +1988,11 @@ export default function PatientDetailView({
       {/* Devolution Form Modal */}
       <Dialog
         open={isDevolutionFormOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            setIsDevolutionFormOpen(false);
-            setPendingDevolutionProcessId(null);
-          }
-        }}
+                  onOpenChange={(open) => {
+            if (!open) {
+              setIsDevolutionFormOpen(false);
+            }
+          }}
       >
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -2027,22 +2000,17 @@ export default function PatientDetailView({
               Proceso de Devolución - Crear Devolución Manual
             </DialogTitle>
           </DialogHeader>
-          {pendingDevolutionProcessId && (
-            <DevolutionForm
-              patientId={patientId}
-              medicationProcessId={pendingDevolutionProcessId}
-              onSuccess={() => {
-                setIsDevolutionFormOpen(false);
-                setPendingDevolutionProcessId(null);
-                // Refresh data
-                queryClient.invalidateQueries({ queryKey: ["manual-returns"] });
-              }}
-              onCancel={() => {
-                setIsDevolutionFormOpen(false);
-                setPendingDevolutionProcessId(null);
-              }}
-            />
-          )}
+          <DevolutionForm
+            patientId={patientId}
+            onSuccess={() => {
+              setIsDevolutionFormOpen(false);
+              // Refresh data
+              queryClient.invalidateQueries({ queryKey: ["manual-returns"] });
+            }}
+            onCancel={() => {
+              setIsDevolutionFormOpen(false);
+            }}
+          />
         </DialogContent>
       </Dialog>
 

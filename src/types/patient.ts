@@ -400,6 +400,8 @@ export interface UpdateManualReturnData {
   reviewedBy?: string;
   approvalDate?: Date;
   comments?: string;
+  devolutionCauseId?: string;
+  cause?: string;
 }
 
 export interface ManualReturnFilters {
