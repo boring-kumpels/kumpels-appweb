@@ -845,7 +845,6 @@ export default function PatientDetailView({
   // Devolution workflow state
   const [isDevolutionFormOpen, setIsDevolutionFormOpen] = useState(false);
 
-
   // Export Modal State
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -1352,205 +1351,191 @@ export default function PatientDetailView({
               <CardContent>
                 {activeTab === "devoluciones_manuales" ? (
                   <div className="space-y-6">
-                      <>
-                        {/* Header Section */}
-                        <div className="flex items-center justify-between">
-                          <h2 className="text-xl font-semibold text-foreground">
-                            Devoluciones Manuales
-                          </h2>
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setIsExportModalOpen(true)}
-                            >
-                              <svg
-                                className="h-4 w-4 mr-2"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                />
-                              </svg>
-                              Exportar Devoluciones
-                            </Button>
-                            <Button
-                              className="bg-blue-600 hover:bg-blue-700"
-                              onClick={() => setIsManualReturnModalOpen(true)}
-                            >
-                              <svg
-                                className="h-4 w-4 mr-2"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M12 4v16m8-8H4"
-                                />
-                              </svg>
-                              Generar Devolución Independiente
-                            </Button>
-                          </div>
-                        </div>
-
-                        {/* Subtitle */}
-                        <p className="text-sm text-muted-foreground">
-                          Devoluciones Independientes Registradas
-                        </p>
-
-                        {/* Manual Return Cards */}
-                        {manualReturns.length > 0 ? (
-                          <div className="space-y-4">
-                            {manualReturns.map((manualReturn) => (
-                              <Card key={manualReturn.id}>
-                                <CardContent className="p-6">
-                                  <div className="flex items-start justify-between">
-                                    <div className="flex-1">
-                                      <div className="flex items-center justify-between mb-4">
-                                        <h3 className="text-lg font-semibold text-foreground">
-                                          {manualReturn.supplies?.[0]
-                                            ?.supplyName || "Medicamento"}
-                                        </h3>
-                                        <div className="flex items-center space-x-2">
-                                          <span className="text-xs text-muted-foreground bg-gray-100 px-2 py-1 rounded-full">
-                                            Cantidad:{" "}
-                                            {manualReturn.supplies?.[0]
-                                              ?.quantityReturned || 0}
-                                          </span>
-                                        </div>
-                                      </div>
-
-                                      <div className="space-y-2 mb-4">
-                                        <p className="text-sm">
-                                          <span className="font-medium">
-                                            Causas:
-                                          </span>{" "}
-                                          {manualReturn.cause}
-                                        </p>
-                                        <p className="text-sm">
-                                          <span className="font-medium">
-                                            Comentario:
-                                          </span>{" "}
-                                          {manualReturn.comments ||
-                                            "Sin comentarios"}
-                                        </p>
-                                      </div>
-
-                                      <div className="flex items-center justify-between">
-                                        <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                                          <svg
-                                            className="h-4 w-4"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            viewBox="0 0 24 24"
-                                          >
-                                            <path
-                                              strokeLinecap="round"
-                                              strokeLinejoin="round"
-                                              strokeWidth={2}
-                                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                                            />
-                                          </svg>
-                                          <span>
-                                            {new Date(
-                                              manualReturn.createdAt
-                                            ).toLocaleString()}
-                                          </span>
-                                        </div>
-
-                                        <div className="flex items-center space-x-2">
-                                          <span
-                                            className={`text-xs px-2 py-1 rounded-full ${
-                                              manualReturn.status === "PENDING"
-                                                ? "bg-orange-100 text-orange-800"
-                                                : manualReturn.status ===
-                                                    "APPROVED"
-                                                  ? "bg-green-100 text-green-800"
-                                                  : "bg-red-100 text-red-800"
-                                            }`}
-                                          >
-                                            {manualReturn.status ===
-                                              "PENDING" &&
-                                              "En espera de revisión"}
-                                            {manualReturn.status ===
-                                              "APPROVED" && "Aprobado"}
-                                            {manualReturn.status ===
-                                              "REJECTED" && "Rechazado"}
-                                          </span>
-
-                                          {manualReturn.status ===
-                                            "PENDING" && (
-                                            <>
-                                              {/* Only show approve/reject buttons for authorized roles */}
-                                              {profile?.role ===
-                                                "PHARMACY_REGENT" ||
-                                              profile?.role === "SUPERADMIN" ? (
-                                                <>
-                                                  <Button
-                                                    size="sm"
-                                                    className="bg-green-500 hover:bg-green-600"
-                                                    onClick={() =>
-                                                      approveManualReturn.mutate(
-                                                        manualReturn.id
-                                                      )
-                                                    }
-                                                    disabled={
-                                                      approveManualReturn.isPending
-                                                    }
-                                                  >
-                                                    <Check className="h-4 w-4 mr-1" />
-                                                    Aprobar
-                                                  </Button>
-                                                  <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    className="border-red-500 text-red-500 hover:bg-red-50"
-                                                    onClick={() =>
-                                                      rejectManualReturn.mutate(
-                                                        {
-                                                          id: manualReturn.id,
-                                                        }
-                                                      )
-                                                    }
-                                                    disabled={
-                                                      rejectManualReturn.isPending
-                                                    }
-                                                  >
-                                                    <AlertTriangle className="h-4 w-4 mr-1" />
-                                                    Rechazar
-                                                  </Button>
-                                                </>
-                                              ) : (
-                                                <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
-                                                  Pendiente de aprobación
-                                                </span>
-                                              )}
-                                            </>
-                                          )}
-                                        </div>
-                                      </div>
+                    {/* Header Section */}
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-xl font-semibold text-foreground">
+                        Devoluciones Manuales
+                      </h2>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsExportModalOpen(true)}
+                        >
+                          <svg
+                            className="h-4 w-4 mr-2"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            />
+                          </svg>
+                          Exportar Devoluciones
+                        </Button>
+                        <Button
+                          className="bg-blue-600 hover:bg-blue-700"
+                          onClick={() => setIsManualReturnModalOpen(true)}
+                        >
+                          <svg
+                            className="h-4 w-4 mr-2"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 4v16m8-8H4"
+                            />
+                          </svg>
+                          Generar Devolución Independiente
+                        </Button>
+                      </div>
+                    </div>
+                    {/* Subtitle */}
+                    <p className="text-sm text-muted-foreground">
+                      Devoluciones Independientes Registradas
+                    </p>
+                    {/* Manual Return Cards */}
+                    {manualReturns.length > 0 ? (
+                      <div className="space-y-4">
+                        {manualReturns.map((manualReturn) => (
+                          <Card key={manualReturn.id}>
+                            <CardContent className="p-6">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-lg font-semibold text-foreground">
+                                      {manualReturn.supplies?.[0]?.supplyName ||
+                                        "Medicamento"}
+                                    </h3>
+                                    <div className="flex items-center space-x-2">
+                                      <span className="text-xs text-muted-foreground bg-gray-100 px-2 py-1 rounded-full">
+                                        Cantidad:{" "}
+                                        {manualReturn.supplies?.[0]
+                                          ?.quantityReturned || 0}
+                                      </span>
                                     </div>
                                   </div>
-                                </CardContent>
-                              </Card>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-center py-8">
-                            <p className="text-muted-foreground">
-                              No hay devoluciones independientes registradas.
-                            </p>
-                          </div>
-                        )}
-                      </>
+                                  <div className="space-y-2 mb-4">
+                                    <p className="text-sm">
+                                      <span className="font-medium">
+                                        Causas:
+                                      </span>{" "}
+                                      {manualReturn.cause}
+                                    </p>
+                                    <p className="text-sm">
+                                      <span className="font-medium">
+                                        Comentario:
+                                      </span>{" "}
+                                      {manualReturn.comments ||
+                                        "Sin comentarios"}
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                                      <svg
+                                        className="h-4 w-4"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth={2}
+                                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        />
+                                      </svg>
+                                      <span>
+                                        {new Date(
+                                          manualReturn.createdAt
+                                        ).toLocaleString()}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                      <span
+                                        className={`text-xs px-2 py-1 rounded-full ${
+                                          manualReturn.status === "PENDING"
+                                            ? "bg-orange-100 text-orange-800"
+                                            : manualReturn.status === "APPROVED"
+                                              ? "bg-green-100 text-green-800"
+                                              : "bg-red-100 text-red-800"
+                                        }`}
+                                      >
+                                        {manualReturn.status === "PENDING" &&
+                                          "En espera de revisión"}
+                                        {manualReturn.status === "APPROVED" &&
+                                          "Aprobado"}
+                                        {manualReturn.status === "REJECTED" &&
+                                          "Rechazado"}
+                                      </span>
+                                      {manualReturn.status === "PENDING" && (
+                                        <>
+                                          {/* Only show approve/reject buttons for authorized roles */}
+                                          {profile?.role ===
+                                            "PHARMACY_REGENT" ||
+                                          profile?.role === "SUPERADMIN" ? (
+                                            <>
+                                              <Button
+                                                size="sm"
+                                                className="bg-green-500 hover:bg-green-600"
+                                                onClick={() =>
+                                                  approveManualReturn.mutate(
+                                                    manualReturn.id
+                                                  )
+                                                }
+                                                disabled={
+                                                  approveManualReturn.isPending
+                                                }
+                                              >
+                                                <Check className="h-4 w-4 mr-1" />
+                                                Aprobar
+                                              </Button>
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="border-red-500 text-red-500 hover:bg-red-50"
+                                                onClick={() =>
+                                                  rejectManualReturn.mutate({
+                                                    id: manualReturn.id,
+                                                  })
+                                                }
+                                                disabled={
+                                                  rejectManualReturn.isPending
+                                                }
+                                              >
+                                                <AlertTriangle className="h-4 w-4 mr-1" />
+                                                Rechazar
+                                              </Button>
+                                            </>
+                                          ) : (
+                                            <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+                                              Pendiente de aprobación
+                                            </span>
+                                          )}
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <p className="text-muted-foreground">
+                          No hay devoluciones independientes registradas.
+                        </p>
+                      </div>
                     )}
                   </div>
                 ) : (
@@ -1668,7 +1653,7 @@ export default function PatientDetailView({
                                     <Button
                                       size="sm"
                                       onClick={() => {
-                                                                // No longer needed - devolutions are independent
+                                        // No longer needed - devolutions are independent
                                         setIsDevolutionFormOpen(true);
                                       }}
                                       className="bg-blue-600 hover:bg-blue-700"
@@ -1988,11 +1973,11 @@ export default function PatientDetailView({
       {/* Devolution Form Modal */}
       <Dialog
         open={isDevolutionFormOpen}
-                  onOpenChange={(open) => {
-            if (!open) {
-              setIsDevolutionFormOpen(false);
-            }
-          }}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsDevolutionFormOpen(false);
+          }
+        }}
       >
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
