@@ -438,6 +438,7 @@ export function ProcessStatusButton({
       return false;
     }
 
+
     // Special case for predespacho: always clickable for regents when empty or in progress
     if (step === MedicationProcessStep.PREDESPACHO && isRegent) {
       return (
@@ -464,24 +465,23 @@ export function ProcessStatusButton({
     if (step === MedicationProcessStep.DEVOLUCION) {
       if (actualUserRole === "NURSE") {
         // Devolutions are now independent and don't require ENTREGA completion
-        if (buttonStatus === null) {
-          return false; // Step not enabled
+        // For nurses, devolution buttons should be clickable when:
+        // 1. No process exists yet (buttonStatus === null) - allow starting
+        // 2. Process exists but is PENDING - allow starting
+        if (buttonStatus === null || buttonStatus === ProcessStatus.PENDING) {
+          return true; // Allow starting devolution
         }
 
-        // Only allow starting the devolution process, not completing it
-        // (Completion happens through QR scanning process)
-        if (
-          buttonStatus === ProcessStatus.PENDING ||
-          buttonStatus === ProcessStatus.IN_PROGRESS
-        ) {
-          return buttonStatus === ProcessStatus.PENDING; // Only clickable if pending (to start)
-        }
-
-        return false; // Already in progress or completed
+        // If process is IN_PROGRESS or COMPLETED, nurse cannot interact anymore
+        return false;
       } else if (actualUserRole === "PHARMACY_REGENT") {
         // Pharmacy regents can complete devolution after QR scans are done
         if (buttonStatus === ProcessStatus.DELIVERED_TO_SERVICE) {
           return true; // Allow final reception step
+        }
+        // For null or PENDING status, regent cannot click - waiting for nurse to start
+        if (buttonStatus === null || buttonStatus === ProcessStatus.PENDING) {
+          return false; // Waiting for nurse to initiate
         }
         return false; // Not ready for reception yet
       }
@@ -529,7 +529,7 @@ export function ProcessStatusButton({
     // Special text for devolution step based on status and role
     if (step === MedicationProcessStep.DEVOLUCION) {
       if (actualUserRole === "NURSE") {
-        if (buttonStatus === ProcessStatus.PENDING) {
+        if (buttonStatus === null || buttonStatus === ProcessStatus.PENDING) {
           return "Iniciar Devolución";
         } else if (buttonStatus === ProcessStatus.IN_PROGRESS) {
           return "En Proceso";
@@ -541,6 +541,10 @@ export function ProcessStatusButton({
           return "Recepción";
         } else if (buttonStatus === ProcessStatus.COMPLETED) {
           return "Completada";
+        } else if (buttonStatus === null || buttonStatus === ProcessStatus.PENDING) {
+          return "Esperando Inicio";
+        } else if (buttonStatus === ProcessStatus.IN_PROGRESS) {
+          return "En Proceso";
         } else {
           return "En Proceso";
         }

@@ -142,8 +142,8 @@ export async function POST(request: NextRequest) {
         (patient) => patient.qrScanRecords.length === 0
       );
     } else if (transactionType === "DEVOLUCION") {
-      // For devolution: patients that have DEVOLUCION process with DISPATCHED_FROM_PHARMACY status
-      // (they should have been scanned with PHARMACY_DISPATCH_DEVOLUTION first)
+      // For devolution: patients that have DEVOLUCION process with IN_PROGRESS status
+      // (this is the first QR scan in the new devolution workflow)
       eligiblePatients = await prisma.patient.findMany({
         where: {
           status: "ACTIVE",
@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
             some: {
               dailyProcessId: dailyProcess.id,
               step: "DEVOLUCION",
-              status: ProcessStatus.DISPATCHED_FROM_PHARMACY, // Already scanned with devolution pharmacy dispatch
+              status: ProcessStatus.IN_PROGRESS, // Devolution process started by nurse
             },
           },
           service: {
@@ -290,8 +290,8 @@ export async function POST(request: NextRequest) {
           });
         }
       } else if (transactionType === "DEVOLUCION") {
-        // Handle devolution process - move from DISPATCHED_FROM_PHARMACY to DELIVERED_TO_SERVICE
-        // (This is the second QR scan in devolution workflow)
+        // Handle devolution process - move from IN_PROGRESS to DISPATCHED_FROM_PHARMACY
+        // (This is the first QR scan in the new devolution workflow)
         const existingDevolucion = await prisma.medicationProcess.findFirst({
           where: {
             patientId: patient.id,
@@ -301,11 +301,11 @@ export async function POST(request: NextRequest) {
         });
 
         if (existingDevolucion) {
-          // Update existing DEVOLUCION process to delivered to service
+          // Update existing DEVOLUCION process to dispatched from pharmacy
           return prisma.medicationProcess.update({
             where: { id: existingDevolucion.id },
             data: {
-              status: ProcessStatus.DELIVERED_TO_SERVICE,
+              status: ProcessStatus.DISPATCHED_FROM_PHARMACY,
               updatedAt: new Date(),
             },
           });
@@ -316,7 +316,7 @@ export async function POST(request: NextRequest) {
               patientId: patient.id,
               dailyProcessId: dailyProcess.id,
               step: "DEVOLUCION",
-              status: ProcessStatus.DELIVERED_TO_SERVICE,
+              status: ProcessStatus.DISPATCHED_FROM_PHARMACY,
               startedAt: new Date(),
               startedBy: user.id,
             },

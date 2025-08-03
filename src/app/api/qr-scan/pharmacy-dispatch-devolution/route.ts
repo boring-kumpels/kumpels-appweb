@@ -100,13 +100,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find all patients with DEVOLUCION process in IN_PROGRESS status for the selected line
-    // These are patients that nurses have started the devolution process for
+    // Find all patients with DEVOLUCION process in DELIVERED_TO_SERVICE status for the selected line
+    // These are patients that have completed the first two QR scans in the devolution workflow
     const devolutionProcesses = await prisma.medicationProcess.findMany({
       where: {
         dailyProcessId: currentDailyProcess.id,
         step: "DEVOLUCION",
-        status: ProcessStatus.IN_PROGRESS,
+        status: ProcessStatus.DELIVERED_TO_SERVICE, // After service arrival QR scan
         patient: {
           service: {
             lineId: destinationLineId, // Filter by selected line
@@ -130,39 +130,20 @@ export async function POST(request: NextRequest) {
     if (devolutionProcesses.length === 0) {
       return NextResponse.json(
         {
-          error: `No hay pacientes con proceso de devolución activo en la línea ${selectedLine.displayName}`,
+          error: `No hay pacientes listos para llegada a farmacia en la línea ${selectedLine.displayName}`,
           message:
-            "Asegúrate de que los pacientes tengan el proceso de devolución iniciado por enfermería",
+            "Asegúrate de que los pacientes hayan completado los pasos anteriores: salida de farmacia (entregas) y llegada a servicio",
         },
         { status: 400 }
       );
     }
 
-    // Update all devolution processes to DISPATCHED_FROM_PHARMACY status
-    // This indicates they have left the pharmacy for the devolution process
-    const updatedProcesses = await Promise.all(
-      devolutionProcesses.map(async (process) => {
-        return await prisma.medicationProcess.update({
-          where: { id: process.id },
-          data: {
-            status: ProcessStatus.DISPATCHED_FROM_PHARMACY,
-            updatedAt: new Date(),
-          },
-          include: {
-            patient: {
-              include: {
-                bed: true,
-                service: {
-                  include: {
-                    line: true,
-                  },
-                },
-              },
-            },
-          },
-        });
-      })
-    );
+    // Don't update the process status - it should remain DELIVERED_TO_SERVICE
+    // so that regents can confirm the final reception
+    const updatedProcesses = devolutionProcesses.map((process) => ({
+      ...process,
+      updatedAt: new Date(),
+    }));
 
     // Create QR scan records for all processed patients
     await Promise.all(
@@ -184,11 +165,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Salida de farmacia (devolución) registrada para ${updatedProcesses.length} paciente${updatedProcesses.length > 1 ? "s" : ""} de la línea ${selectedLine.displayName}`,
+      message: `Llegada a farmacia registrada para ${updatedProcesses.length} paciente${updatedProcesses.length > 1 ? "s" : ""} de la línea ${selectedLine.displayName}`,
       patientsCount: updatedProcesses.length,
       selectedLine: selectedLine.displayName,
       nextStep:
-        "Escanear QR de Salida de Farmacia (Entregas) para completar el proceso de devolución",
+        "El regente de farmacia puede ahora confirmar la recepción final",
     });
   } catch (error) {
     console.error("Error processing pharmacy dispatch devolution QR:", error);

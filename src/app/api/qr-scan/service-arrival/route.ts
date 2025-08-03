@@ -191,25 +191,16 @@ export async function POST(request: NextRequest) {
         return !hasServiceArrivalScan;
       });
     } else if (transactionType === "DEVOLUCION") {
-      // For returns: patients with ENTREGA completed and DEVOLUCION process started
+      // For devolution: patients with DEVOLUCION process that has been dispatched from pharmacy
       readyPatients = await prisma.patient.findMany({
         where: {
           serviceId: qrCode.serviceId,
           status: "ACTIVE",
           medicationProcesses: {
             some: {
-              step: "ENTREGA",
-              status: "COMPLETED",
               dailyProcessId: dailyProcess.id,
-            },
-          },
-          AND: {
-            medicationProcesses: {
-              some: {
-                dailyProcessId: dailyProcess.id,
-                step: "DEVOLUCION",
-                status: "IN_PROGRESS",
-              },
+              step: "DEVOLUCION",
+              status: "DISPATCHED_FROM_PHARMACY", // Pharmacy dispatch QR was already scanned
             },
           },
           service: {
@@ -313,9 +304,29 @@ export async function POST(request: NextRequest) {
           });
         }
       } else if (transactionType === "DEVOLUCION") {
-        // For returns, we don't update the DEVOLUCION process here
-        // The DEVOLUCION process will be completed when pharmacy reception is scanned
-        return Promise.resolve();
+        // For devolution: update process from DISPATCHED_FROM_PHARMACY to DELIVERED_TO_SERVICE
+        // This makes it ready for the "Llegada a Farmacia" QR scan
+        const existingDevolucion = await prisma.medicationProcess.findFirst({
+          where: {
+            patientId: patient.id,
+            dailyProcessId: dailyProcess.id,
+            step: "DEVOLUCION",
+          },
+        });
+
+        if (existingDevolucion) {
+          // Update existing DEVOLUCION process to DELIVERED_TO_SERVICE
+          return prisma.medicationProcess.update({
+            where: { id: existingDevolucion.id },
+            data: {
+              status: "DELIVERED_TO_SERVICE",
+              updatedAt: new Date(),
+            },
+          });
+        } else {
+          // This shouldn't happen, but handle gracefully
+          return Promise.resolve();
+        }
       }
     });
 

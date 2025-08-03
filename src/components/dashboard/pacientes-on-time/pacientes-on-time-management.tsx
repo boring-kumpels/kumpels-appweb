@@ -146,9 +146,10 @@ function calculateButtonState(
         return ProcessStatus.IN_PROGRESS; // Orange dashed - ongoing devolution
       } else {
         console.log(
-          `[DEBUG] Management table - Returning IN_PROGRESS (orange dashed) for unknown status: ${devolucionProcess.status}`
+          `[DEBUG] Management table - Returning status for devolution process: ${devolucionProcess.status}`
         );
-        return ProcessStatus.IN_PROGRESS; // Orange dashed - ongoing devolution
+        // For other statuses (PENDING, etc.), return the actual status
+        return devolucionProcess.status;
       }
     } else {
       // No DEVOLUCION process yet - show as pending (orange) for nurses to start

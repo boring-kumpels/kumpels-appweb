@@ -90,8 +90,11 @@ export function QRCheckInModal({
   // Reset form when modal opens
   useEffect(() => {
     if (open) {
-      // Set transaction type based on current tab
-      if (currentTab === "devoluciones") {
+      // Set transaction type based on QR type or current tab
+      if (qrData?.type === "PHARMACY_DISPATCH_DEVOLUTION") {
+        // "Llegada a Farmacia" QR is always for devolution
+        setTransactionType("DEVOLUCION");
+      } else if (currentTab === "devoluciones") {
         setTransactionType("DEVOLUCION");
       } else {
         setTransactionType("ENTREGA");
@@ -99,7 +102,7 @@ export function QRCheckInModal({
       setTemperature("");
       setSelectedLineId("");
     }
-  }, [open, currentTab]);
+  }, [open, currentTab, qrData]);
 
   const fetchLines = async () => {
     try {
@@ -299,46 +302,62 @@ export function QRCheckInModal({
             </CardContent>
           </Card>
 
-          {/* Transaction Type Selection */}
-          <div className="space-y-3">
-            <h3 className="text-lg font-semibold text-foreground">
-              Selecciona el tipo de transacción
-            </h3>
-            <div className="grid grid-cols-2 gap-3">
-              <Card
-                className={`cursor-pointer transition-all ${
-                  transactionType === "ENTREGA"
-                    ? "border-blue-500 bg-blue-50"
-                    : "border-gray-200 hover:border-gray-300"
-                }`}
-                onClick={() => setTransactionType("ENTREGA")}
-              >
-                <CardContent className="p-4 text-center">
-                  <Truck className="h-8 w-8 mx-auto mb-2 text-blue-600" />
-                  <p className="font-medium text-sm">Entrega</p>
-                  <p className="text-xs text-muted-foreground">
-                    Registrar entrega de medicamentos
-                  </p>
-                </CardContent>
-              </Card>
-              <Card
-                className={`cursor-pointer transition-all ${
-                  transactionType === "DEVOLUCION"
-                    ? "border-blue-500 bg-blue-50"
-                    : "border-gray-200 hover:border-gray-300"
-                }`}
-                onClick={() => setTransactionType("DEVOLUCION")}
-              >
-                <CardContent className="p-4 text-center">
-                  <RotateCcw className="h-8 w-8 mx-auto mb-2 text-blue-600" />
-                  <p className="font-medium text-sm">Devolución</p>
-                  <p className="text-xs text-muted-foreground">
-                    Registrar devolución de medicamentos
-                  </p>
-                </CardContent>
-              </Card>
+          {/* Transaction Type Selection - Hidden for PHARMACY_DISPATCH_DEVOLUTION */}
+          {qrData?.type === "PHARMACY_DISPATCH_DEVOLUTION" ? (
+            <div className="space-y-3">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center gap-2">
+                  <RotateCcw className="h-5 w-5 text-blue-600" />
+                  <div>
+                    <p className="font-medium text-blue-800">Devolución - Llegada a Farmacia</p>
+                    <p className="text-sm text-blue-600">
+                      Este código QR es específico para procesos de devolución
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold text-foreground">
+                Selecciona el tipo de transacción
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                <Card
+                  className={`cursor-pointer transition-all ${
+                    transactionType === "ENTREGA"
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                  onClick={() => setTransactionType("ENTREGA")}
+                >
+                  <CardContent className="p-4 text-center">
+                    <Truck className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+                    <p className="font-medium text-sm">Entrega</p>
+                    <p className="text-xs text-muted-foreground">
+                      Registrar entrega de medicamentos
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card
+                  className={`cursor-pointer transition-all ${
+                    transactionType === "DEVOLUCION"
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                  onClick={() => setTransactionType("DEVOLUCION")}
+                >
+                  <CardContent className="p-4 text-center">
+                    <RotateCcw className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+                    <p className="font-medium text-sm">Devolución</p>
+                    <p className="text-xs text-muted-foreground">
+                      Registrar devolución de medicamentos
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
 
           {/* Temperature Control */}
           <div className="space-y-3">

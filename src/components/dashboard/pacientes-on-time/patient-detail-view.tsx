@@ -87,12 +87,14 @@ function DevolutionReceptionButton({
   userRole,
   patientProcesses,
   queryClient,
+  qrScanRecords,
 }: {
   patient: PatientWithRelations;
   step: ProcessStep;
   userRole: string;
   patientProcesses: MedicationProcess[];
   queryClient: QueryClient;
+  qrScanRecords?: QRScanRecord[];
 }) {
   const [isSyncing, setIsSyncing] = useState(false);
   const completeDevolutionReception = useCompleteDevolutionReception();
@@ -106,7 +108,29 @@ function DevolutionReceptionButton({
     if (userRole !== "PHARMACY_REGENT" && userRole !== "SUPERADMIN")
       return false;
     if (!devolutionProcess) return false;
-    return devolutionProcess.status === ProcessStatus.DELIVERED_TO_SERVICE;
+    
+    if (!qrScanRecords) return false;
+    
+    // Check if all three QR codes have been scanned for devolution
+    const hasPharmacyDispatchQR = qrScanRecords.some(
+      (record) =>
+        record.qrCode.type === "PHARMACY_DISPATCH" &&
+        record.transactionType === "DEVOLUCION"
+    );
+    const hasServiceArrivalQR = qrScanRecords.some(
+      (record) =>
+        record.qrCode.type === "SERVICE_ARRIVAL" &&
+        record.transactionType === "DEVOLUCION"
+    );
+    const hasPharmacyArrivalQR = qrScanRecords.some(
+      (record) =>
+        record.qrCode.type === "PHARMACY_DISPATCH_DEVOLUTION" &&
+        record.transactionType === "DEVOLUCION"
+    );
+    
+    // Only clickable when all three QRs are scanned and process is ready
+    return hasPharmacyDispatchQR && hasServiceArrivalQR && hasPharmacyArrivalQR && 
+           devolutionProcess.status === ProcessStatus.DELIVERED_TO_SERVICE;
   };
 
   const handleClick = async () => {
@@ -590,7 +614,7 @@ function QRStepButton({
     }
 
     if (step.qrType === "PHARMACY_DISPATCH_DEVOLUTION") {
-      return "Escanear Salida (Devolución)";
+      return "Escanear Llegada a Farmacia";
     }
 
     if (step.qrType === "PHARMACY_DISPATCH") {
@@ -1150,16 +1174,17 @@ export default function PatientDetailView({
             : ProcessStatus.PENDING,
         step: MedicationProcessStep.DEVOLUCION,
         isQRStep: false,
+        qrType: "NURSING_REQUEST",
         description:
           "Enfermería inicia el proceso de devolución desde la gestión de pacientes",
       },
       {
-        id: "salida-farmacia-devolucion",
-        name: "Salida Farmacia (Devolución)",
-        icon: <Truck className="h-4 w-4" />,
+        id: "salida-farmacia-entregas", 
+        name: "Salida Farmacia (Entregas)",
+        icon: <ArrowRight className="h-4 w-4" />,
         status: qrScanRecords.some(
           (record) =>
-            record.qrCode.type === "PHARMACY_DISPATCH_DEVOLUTION" &&
+            record.qrCode.type === "PHARMACY_DISPATCH" &&
             record.transactionType === "DEVOLUCION"
         )
           ? ProcessStatus.COMPLETED
@@ -1173,35 +1198,57 @@ export default function PatientDetailView({
             : ProcessStatus.PENDING,
         step: MedicationProcessStep.DEVOLUCION,
         isQRStep: true,
-        qrType: "PHARMACY_DISPATCH_DEVOLUTION",
-        description: "Primer QR: Registra salida de farmacia para devolución",
+        qrType: "PHARMACY_DISPATCH",
+        description: "Primer QR: Escanear código de salida de farmacia (entregas)",
       },
       {
-        id: "salida-farmacia-entrega",
-        name: "Salida Farmacia (Entrega)",
-        icon: <ArrowRight className="h-4 w-4" />,
+        id: "llegada-servicio-devolucion",
+        name: "Llegada Servicio + Devolución",
+        icon: <MapPin className="h-4 w-4" />,
         status: qrScanRecords.some(
           (record) =>
-            record.qrCode.type === "PHARMACY_DISPATCH" &&
+            record.qrCode.type === "SERVICE_ARRIVAL" &&
             record.transactionType === "DEVOLUCION"
         )
           ? ProcessStatus.COMPLETED
           : qrScanRecords.some(
                 (record) =>
-                  record.qrCode.type === "PHARMACY_DISPATCH_DEVOLUTION" &&
+                  record.qrCode.type === "PHARMACY_DISPATCH" &&
                   record.transactionType === "DEVOLUCION"
               )
             ? ProcessStatus.PENDING
             : ProcessStatus.PENDING,
         step: MedicationProcessStep.DEVOLUCION,
         isQRStep: true,
-        qrType: "PHARMACY_DISPATCH",
+        qrType: "SERVICE_ARRIVAL",
         description:
-          "Segundo QR: Completa el proceso de salida para devolución",
+          "Segundo QR: Escanear código del servicio y seleccionar devolución",
       },
       {
-        id: "recepcion-farmacia",
-        name: "Recepción de Farmacia",
+        id: "llegada-farmacia",
+        name: "Llegada a Farmacia",
+        icon: <Truck className="h-4 w-4" />,
+        status: qrScanRecords.some(
+          (record) =>
+            record.qrCode.type === "PHARMACY_DISPATCH_DEVOLUTION" &&
+            record.transactionType === "DEVOLUCION"
+        )
+          ? ProcessStatus.COMPLETED
+          : qrScanRecords.some(
+                (record) =>
+                  record.qrCode.type === "SERVICE_ARRIVAL" &&
+                  record.transactionType === "DEVOLUCION"
+              )
+            ? ProcessStatus.PENDING
+            : ProcessStatus.PENDING,
+        step: MedicationProcessStep.DEVOLUCION,
+        isQRStep: true,
+        qrType: "PHARMACY_DISPATCH_DEVOLUTION",
+        description: "Tercer QR: Escanear código de llegada a farmacia",
+      },
+      {
+        id: "confirmar-recepcion",
+        name: "Confirmar Recepción",
         icon: <Check className="h-4 w-4" />,
         status: allMedicationProcesses.some(
           (mp) =>
@@ -1210,14 +1257,31 @@ export default function PatientDetailView({
             mp.status === "COMPLETED"
         )
           ? ProcessStatus.COMPLETED
-          : allMedicationProcesses.some(
-                (mp) =>
-                  mp.patientId === patientId &&
-                  mp.step === "DEVOLUCION" &&
-                  mp.status === "DELIVERED_TO_SERVICE"
-              )
-            ? ProcessStatus.IN_PROGRESS
-            : ProcessStatus.PENDING,
+          : (() => {
+              // Check if all three QR codes have been scanned for devolution
+              const hasPharmacyDispatchQR = qrScanRecords.some(
+                (record) =>
+                  record.qrCode.type === "PHARMACY_DISPATCH" &&
+                  record.transactionType === "DEVOLUCION"
+              );
+              const hasServiceArrivalQR = qrScanRecords.some(
+                (record) =>
+                  record.qrCode.type === "SERVICE_ARRIVAL" &&
+                  record.transactionType === "DEVOLUCION"
+              );
+              const hasPharmacyArrivalQR = qrScanRecords.some(
+                (record) =>
+                  record.qrCode.type === "PHARMACY_DISPATCH_DEVOLUTION" &&
+                  record.transactionType === "DEVOLUCION"
+              );
+              
+              // Only show as IN_PROGRESS when all three QRs are scanned
+              if (hasPharmacyDispatchQR && hasServiceArrivalQR && hasPharmacyArrivalQR) {
+                return ProcessStatus.IN_PROGRESS;
+              }
+              
+              return ProcessStatus.PENDING;
+            })(),
         step: MedicationProcessStep.DEVOLUCION,
         isQRStep: false,
         qrType: "PHARMACY_RECEPTION",
@@ -1650,13 +1714,14 @@ export default function PatientDetailView({
                                   currentDailyProcess={currentDailyProcess}
                                   isNursePanel={isNursePanel}
                                 />
-                              ) : step.id === "recepcion-farmacia" ? (
+                              ) : step.id === "recepcion-farmacia" || step.id === "confirmar-recepcion" ? (
                                 <DevolutionReceptionButton
                                   patient={patient}
                                   step={step}
                                   userRole={profile?.role || ""}
                                   patientProcesses={patientProcesses}
                                   queryClient={queryClient}
+                                  qrScanRecords={qrScanRecords}
                                 />
                               ) : (
                                 <ProcessStatusButton
