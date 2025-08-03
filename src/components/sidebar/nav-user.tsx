@@ -95,7 +95,7 @@ export function NavUser() {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link href="/settings/account">
+                <Link href="/settings">
                   <BadgeCheck />
                   Cuenta
                 </Link>
