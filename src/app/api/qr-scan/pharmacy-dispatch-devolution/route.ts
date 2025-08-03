@@ -7,7 +7,10 @@ import { ProcessStatus } from "@/types/patient";
 export async function POST(request: NextRequest) {
   try {
     const supabase = createRouteHandlerClient({ cookies });
-    const { data: { session }, error } = await supabase.auth.getSession();
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
     const user = session?.user;
 
     if (error || !user) {
@@ -23,22 +26,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
-    const { qrId, temperature, destinationLineId, transactionType } = await request.json();
+    const { qrId, temperature, destinationLineId, transactionType } =
+      await request.json();
 
     if (!qrId) {
       return NextResponse.json({ error: "QR ID is required" }, { status: 400 });
     }
 
     if (temperature === undefined || temperature === null) {
-      return NextResponse.json({ error: "Temperature is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Temperature is required" },
+        { status: 400 }
+      );
     }
 
     if (!destinationLineId) {
-      return NextResponse.json({ error: "Destination line is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Destination line is required" },
+        { status: 400 }
+      );
     }
 
     if (!transactionType) {
-      return NextResponse.json({ error: "Transaction type is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Transaction type is required" },
+        { status: 400 }
+      );
     }
 
     // Validate that the selected line exists
@@ -58,8 +71,15 @@ export async function POST(request: NextRequest) {
       where: { qrId },
     });
 
-    if (!qrCode || !qrCode.isActive || qrCode.type !== 'PHARMACY_DISPATCH_DEVOLUTION') {
-      return NextResponse.json({ error: "Invalid or inactive devolution pharmacy dispatch QR code" }, { status: 400 });
+    if (
+      !qrCode ||
+      !qrCode.isActive ||
+      qrCode.type !== "PHARMACY_DISPATCH_DEVOLUTION"
+    ) {
+      return NextResponse.json(
+        { error: "Invalid or inactive devolution pharmacy dispatch QR code" },
+        { status: 400 }
+      );
     }
 
     // Get the current active daily process
@@ -67,14 +87,17 @@ export async function POST(request: NextRequest) {
       where: {
         date: {
           gte: new Date(new Date().setHours(0, 0, 0, 0)),
-          lt: new Date(new Date().setHours(23, 59, 59, 999))
-        }
+          lt: new Date(new Date().setHours(23, 59, 59, 999)),
+        },
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: "desc" },
     });
 
     if (!currentDailyProcess) {
-      return NextResponse.json({ error: "No active daily process found" }, { status: 400 });
+      return NextResponse.json(
+        { error: "No active daily process found" },
+        { status: 400 }
+      );
     }
 
     // Find all patients with DEVOLUCION process in IN_PROGRESS status for the selected line
@@ -82,13 +105,13 @@ export async function POST(request: NextRequest) {
     const devolutionProcesses = await prisma.medicationProcess.findMany({
       where: {
         dailyProcessId: currentDailyProcess.id,
-        step: 'DEVOLUCION',
+        step: "DEVOLUCION",
         status: ProcessStatus.IN_PROGRESS,
         patient: {
           service: {
-            lineId: destinationLineId // Filter by selected line
-          }
-        }
+            lineId: destinationLineId, // Filter by selected line
+          },
+        },
       },
       include: {
         patient: {
@@ -96,19 +119,23 @@ export async function POST(request: NextRequest) {
             bed: true,
             service: {
               include: {
-                line: true
-              }
-            }
-          }
-        }
-      }
+                line: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (devolutionProcesses.length === 0) {
-      return NextResponse.json({ 
-        error: `No hay pacientes con proceso de devolución activo en la línea ${selectedLine.displayName}`,
-        message: "Asegúrate de que los pacientes tengan el proceso de devolución iniciado por enfermería"
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: `No hay pacientes con proceso de devolución activo en la línea ${selectedLine.displayName}`,
+          message:
+            "Asegúrate de que los pacientes tengan el proceso de devolución iniciado por enfermería",
+        },
+        { status: 400 }
+      );
     }
 
     // Update all devolution processes to DISPATCHED_FROM_PHARMACY status
@@ -117,9 +144,9 @@ export async function POST(request: NextRequest) {
       devolutionProcesses.map(async (process) => {
         return await prisma.medicationProcess.update({
           where: { id: process.id },
-          data: { 
+          data: {
             status: ProcessStatus.DISPATCHED_FROM_PHARMACY,
-            updatedAt: new Date()
+            updatedAt: new Date(),
           },
           include: {
             patient: {
@@ -127,12 +154,12 @@ export async function POST(request: NextRequest) {
                 bed: true,
                 service: {
                   include: {
-                    line: true
-                  }
-                }
-              }
-            }
-          }
+                    line: true,
+                  },
+                },
+              },
+            },
+          },
         });
       })
     );
@@ -149,20 +176,20 @@ export async function POST(request: NextRequest) {
             temperature: temperature,
             destinationLineId: destinationLineId,
             transactionType: transactionType,
-            scannedAt: new Date()
-          }
+            scannedAt: new Date(),
+          },
         });
       })
     );
 
     return NextResponse.json({
       success: true,
-      message: `Salida de farmacia (devolución) registrada para ${updatedProcesses.length} paciente${updatedProcesses.length > 1 ? 's' : ''} de la línea ${selectedLine.displayName}`,
+      message: `Salida de farmacia (devolución) registrada para ${updatedProcesses.length} paciente${updatedProcesses.length > 1 ? "s" : ""} de la línea ${selectedLine.displayName}`,
       patientsCount: updatedProcesses.length,
       selectedLine: selectedLine.displayName,
-      nextStep: "Escanear QR de Salida de Farmacia (Entregas) para completar el proceso de devolución"
+      nextStep:
+        "Escanear QR de Salida de Farmacia (Entregas) para completar el proceso de devolución",
     });
-
   } catch (error) {
     console.error("Error processing pharmacy dispatch devolution QR:", error);
     return NextResponse.json(

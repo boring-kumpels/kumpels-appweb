@@ -18,7 +18,6 @@ interface UseMedicationProcessOptions {
   enabled?: boolean;
 }
 
-
 // Pre-fetch all medication processes for all patients in current daily process
 export const useAllMedicationProcesses = (dailyProcessId?: string) => {
   return useQuery({
@@ -133,7 +132,6 @@ export const usePatientProcessStatus = (
 
 // Create a new medication process with optimistic updates
 export const useCreateMedicationProcess = () => {
-
   return useMutation({
     mutationFn: async (
       data: CreateMedicationProcessData
@@ -147,26 +145,34 @@ export const useCreateMedicationProcess = () => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
-        
+        const errorData = await response
+          .json()
+          .catch(() => ({ error: "Unknown error" }));
+
         // Handle specific error cases
         if (response.status === 409) {
-          throw new Error("Ya existe un proceso para este paciente y paso. Actualizando vista...");
+          throw new Error(
+            "Ya existe un proceso para este paciente y paso. Actualizando vista..."
+          );
         }
-        
+
         if (response.status === 403) {
           throw new Error("No tienes permisos para crear este proceso.");
         }
-        
+
         if (response.status === 401) {
-          throw new Error("Sesión expirada. Por favor, inicia sesión nuevamente.");
+          throw new Error(
+            "Sesión expirada. Por favor, inicia sesión nuevamente."
+          );
         }
-        
+
         if (response.status === 400) {
           throw new Error("Datos inválidos para crear el proceso.");
         }
-        
-        throw new Error(errorData.error || "Error al crear el proceso de medicación");
+
+        throw new Error(
+          errorData.error || "Error al crear el proceso de medicación"
+        );
       }
 
       return response.json();
@@ -182,7 +188,6 @@ export const useCreateMedicationProcess = () => {
 
 // Update a medication process with optimistic updates
 export const useUpdateMedicationProcess = () => {
-
   return useMutation({
     mutationFn: async ({
       id,
@@ -200,22 +205,30 @@ export const useUpdateMedicationProcess = () => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
-        
+        const errorData = await response
+          .json()
+          .catch(() => ({ error: "Unknown error" }));
+
         // Handle specific error cases
         if (response.status === 404) {
-          throw new Error("El proceso no fue encontrado. Puede haber sido eliminado o modificado por otro usuario.");
+          throw new Error(
+            "El proceso no fue encontrado. Puede haber sido eliminado o modificado por otro usuario."
+          );
         }
-        
+
         if (response.status === 403) {
           throw new Error("No tienes permisos para realizar esta acción.");
         }
-        
+
         if (response.status === 401) {
-          throw new Error("Sesión expirada. Por favor, inicia sesión nuevamente.");
+          throw new Error(
+            "Sesión expirada. Por favor, inicia sesión nuevamente."
+          );
         }
-        
-        throw new Error(errorData.error || "Error al actualizar el proceso de medicación");
+
+        throw new Error(
+          errorData.error || "Error al actualizar el proceso de medicación"
+        );
       }
 
       return response.json();
@@ -223,7 +236,7 @@ export const useUpdateMedicationProcess = () => {
     // Optimistic updates are now handled manually in the component
     // to provide immediate visual feedback with the correct final state
     onSettled: () => {
-      // No query invalidation - optimistic updates handle all UI changes  
+      // No query invalidation - optimistic updates handle all UI changes
       // Data will be consistent when operations complete
     },
   });
@@ -306,4 +319,37 @@ export const useRetryMedicationProcess = () => {
         },
       }),
   };
+};
+
+// Complete devolution reception (pharmacy regent final step)
+export const useCompleteDevolutionReception = () => {
+  return useMutation({
+    mutationFn: async ({
+      patientId,
+      medicationProcessId,
+    }: {
+      patientId: string;
+      medicationProcessId: string;
+    }) => {
+      const response = await fetch("/api/devolution-reception", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          patientId,
+          medicationProcessId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.error || "Error completing devolution reception"
+        );
+      }
+
+      return response.json();
+    },
+  });
 };

@@ -35,20 +35,56 @@ export async function POST() {
       );
     }
 
-    // Delete all medication processes first (due to foreign key constraints)
-    const deletedMedicationProcesses =
-      await prisma.medicationProcess.deleteMany({});
+    // Use a transaction to ensure atomicity of the reset operation
+    const result = await prisma.$transaction(async (tx) => {
+      // Delete all related data in the correct order to avoid foreign key constraint issues
+      // 1. Delete QR scan records first (they reference daily processes)
+      const deletedQRScanRecords = await tx.qRScanRecord.deleteMany({});
 
-    // Delete all daily processes
-    const deletedDailyProcesses = await prisma.dailyProcess.deleteMany({});
+      // 2. Delete process error logs (they reference medication processes)
+      const deletedProcessErrorLogs = await tx.processErrorLog.deleteMany({});
+
+      // 3. Delete all medication processes (they reference daily processes)
+      const deletedMedicationProcesses = await tx.medicationProcess.deleteMany(
+        {}
+      );
+
+      // 4. Delete all daily processes
+      const deletedDailyProcesses = await tx.dailyProcess.deleteMany({});
+
+      // 5. Verify that all data has been deleted (for debugging)
+      const remainingQRScanRecords = await tx.qRScanRecord.count();
+      const remainingProcessErrorLogs = await tx.processErrorLog.count();
+      const remainingMedicationProcesses = await tx.medicationProcess.count();
+      const remainingDailyProcesses = await tx.dailyProcess.count();
+
+      console.log("Reset verification:", {
+        deleted: {
+          qrScanRecords: deletedQRScanRecords.count,
+          processErrorLogs: deletedProcessErrorLogs.count,
+          medicationProcesses: deletedMedicationProcesses.count,
+          dailyProcesses: deletedDailyProcesses.count,
+        },
+        remaining: {
+          qrScanRecords: remainingQRScanRecords,
+          processErrorLogs: remainingProcessErrorLogs,
+          medicationProcesses: remainingMedicationProcesses,
+          dailyProcesses: remainingDailyProcesses,
+        },
+      });
+
+      return {
+        qrScanRecords: deletedQRScanRecords.count,
+        processErrorLogs: deletedProcessErrorLogs.count,
+        medicationProcesses: deletedMedicationProcesses.count,
+        dailyProcesses: deletedDailyProcesses.count,
+      };
+    });
 
     return NextResponse.json({
       success: true,
       message: "Procesos reseteados exitosamente",
-      deleted: {
-        medicationProcesses: deletedMedicationProcesses.count,
-        dailyProcesses: deletedDailyProcesses.count,
-      },
+      deleted: result,
     });
   } catch (error) {
     console.error("Error during reset:", error);

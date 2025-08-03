@@ -193,14 +193,14 @@ export function QRScanner({ open, onOpenChange, currentTab }: QRScannerProps) {
           qrData.type === QRCodeType.SERVICE_ARRIVAL
             ? (qrData as ServiceArrivalQRData).serviceId
             : qrData.type === QRCodeType.DEVOLUTION_PICKUP
-            ? (qrData as DevolutionPickupQRData).serviceId
-            : undefined,
+              ? (qrData as DevolutionPickupQRData).serviceId
+              : undefined,
         serviceName:
           qrData.type === QRCodeType.SERVICE_ARRIVAL
             ? (qrData as ServiceArrivalQRData).serviceName
             : qrData.type === QRCodeType.DEVOLUTION_PICKUP
-            ? (qrData as DevolutionPickupQRData).serviceName
-            : undefined,
+              ? (qrData as DevolutionPickupQRData).serviceName
+              : undefined,
       });
       setShowCheckInModal(true);
     } catch (error) {
@@ -313,7 +313,10 @@ export function QRScanner({ open, onOpenChange, currentTab }: QRScannerProps) {
         });
       }
     } catch (error) {
-      console.error("Error fetching services for devolution pickup simulation:", error);
+      console.error(
+        "Error fetching services for devolution pickup simulation:",
+        error
+      );
       toast({
         title: "Error",
         description: "Error al obtener servicios para simulación",
@@ -574,7 +577,7 @@ export function QRScanner({ open, onOpenChange, currentTab }: QRScannerProps) {
                 <p className="text-xs text-muted-foreground text-center mb-3">
                   Botones de simulación para desarrollo:
                 </p>
-                
+
                 {/* Delivery QR buttons */}
                 {(!currentTab || currentTab === "entrega") && (
                   <>
@@ -598,7 +601,7 @@ export function QRScanner({ open, onOpenChange, currentTab }: QRScannerProps) {
                     </Button>
                   </>
                 )}
-                
+
                 {/* Devolution QR buttons */}
                 {currentTab === "devoluciones" && (
                   <>
@@ -622,7 +625,7 @@ export function QRScanner({ open, onOpenChange, currentTab }: QRScannerProps) {
                     </Button>
                   </>
                 )}
-                
+
                 {/* Show all buttons if no specific tab */}
                 {!currentTab && (
                   <>
@@ -656,7 +659,7 @@ export function QRScanner({ open, onOpenChange, currentTab }: QRScannerProps) {
                 <span className="font-medium">Instrucciones de uso</span>
               </div>
               <p>
-                {currentTab === "devoluciones" 
+                {currentTab === "devoluciones"
                   ? "Posiciona el código QR dentro del marco de escaneo. El sistema procesará automáticamente todos los pacientes elegibles para el proceso de devolución."
                   : "Posiciona el código QR dentro del marco de escaneo. El sistema procesará automáticamente todos los pacientes elegibles para salida de farmacia."}
               </p>

@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -21,15 +20,18 @@ import {
 } from "@/components/ui/dialog";
 import { Calendar, TrendingUp, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CircularProgress } from "@/components/ui/circular-progress";
+import {
+  useGeneralStatistics,
+  useComparativeStatistics,
+  useExportStatistics,
+  type StatisticsFilters,
+} from "@/hooks/use-statistics";
+import { useLines, useServices } from "@/hooks/use-lines-beds";
+import { useCurrentDailyProcess } from "@/hooks/use-daily-processes";
 
-interface StatisticsData {
-  onTimeDelivery: number;
-  onTimeReturns: number;
-  medicationCartAdherence: number;
-  patientsWithErrors: number;
-}
-
-interface ComparativeData {
+// Legacy interface for mock data - will be removed once comparative analytics are fully migrated
+interface LegacyComparativeData {
   averageTimePerStage: {
     total: number;
     change: number;
@@ -83,9 +85,9 @@ interface ComparativeData {
 }
 
 interface FilterState {
-  linea: string;
-  servicio: string;
-  personal: string;
+  lineId: string;
+  serviceId: string;
+  personalRole: string;
   groupBy: string;
   dateRange: {
     from: Date;
@@ -93,39 +95,7 @@ interface FilterState {
   };
 }
 
-const lineas = ["línea 1", "línea 2", "línea 3", "línea 4", "ucis"];
-
-const servicios = {
-  "línea 1": [
-    "uci pediátrica cardiovascular",
-    "uci quirúrgica",
-    "uci pediátrica general",
-  ],
-  "línea 2": [
-    "segundo adultos",
-    "pebellón benefactores",
-    "unidad de trasplantes",
-  ],
-  "línea 3": ["tercero adultos", "cuarto adultos", "segundo pediatría"],
-  "línea 4": [
-    "tercero pediatría",
-    "suite pediátrica",
-    "neonatos",
-    "tercero renaldo",
-    "quinto renaldo",
-    "sexto renaldo",
-  ],
-  ucis: [
-    "uci medica 1",
-    "uci medica 2",
-    "uci medica 3",
-    "uci cardiovascular",
-    "urgencias",
-  ],
-};
-
 const personalOptions = ["PharmacyRegents", "Nurse", "SUPERUSER"];
-
 const groupByOptions = ["Día", "Semana", "Mes"];
 
 export function EstadisticasManagement() {
@@ -133,9 +103,9 @@ export function EstadisticasManagement() {
     "general"
   );
   const [filters, setFilters] = useState<FilterState>({
-    linea: "",
-    servicio: "",
-    personal: "",
+    lineId: "",
+    serviceId: "",
+    personalRole: "",
     groupBy: "Día",
     dateRange: {
       from: new Date(2025, 5, 22), // June 22, 2025
@@ -143,14 +113,38 @@ export function EstadisticasManagement() {
     },
   });
 
-  const [statistics, setStatistics] = useState<StatisticsData>({
-    onTimeDelivery: 0,
-    onTimeReturns: 0,
-    medicationCartAdherence: 0,
-    patientsWithErrors: 0,
-  });
+  // Get real data from API
+  const { data: lines } = useLines();
+  const { data: services } = useServices();
+  const { data: dailyProcess } = useCurrentDailyProcess();
 
-  const [comparativeData] = useState<ComparativeData>({
+  // Create statistics filters from current state
+  const statisticsFilters = useMemo<StatisticsFilters>(
+    () => ({
+      lineId: filters.lineId || undefined,
+      serviceId: filters.serviceId || undefined,
+      personalRole: filters.personalRole || undefined,
+      dateFrom: filters.dateRange.from.toISOString(),
+      dateTo: filters.dateRange.to.toISOString(),
+      dailyProcessId: dailyProcess?.id,
+    }),
+    [filters, dailyProcess]
+  );
+
+  // Fetch real statistics data
+  const {
+    data: generalStats,
+    isLoading: generalLoading,
+    error: generalError,
+  } = useGeneralStatistics(statisticsFilters);
+
+  const { data: comparativeStats, isLoading: comparativeLoading } =
+    useComparativeStatistics(statisticsFilters);
+
+  const { exportData } = useExportStatistics();
+
+  // Keep mock comparative data for features not yet implemented
+  const [mockComparativeData] = useState<LegacyComparativeData>({
     averageTimePerStage: {
       total: 400,
       change: 10,
@@ -219,24 +213,11 @@ export function EstadisticasManagement() {
     },
   });
 
-  const [isLoading, setIsLoading] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [showReturnsExportDialog, setShowReturnsExportDialog] = useState(false);
 
-  // Mock data - in real app this would come from API
-  useEffect(() => {
-    setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setStatistics({
-        onTimeDelivery: 85,
-        onTimeReturns: 92,
-        medicationCartAdherence: 78,
-        patientsWithErrors: 5,
-      });
-      setIsLoading(false);
-    }, 1000);
-  }, [filters]);
+  const isLoading =
+    activeTab === "general" ? generalLoading : comparativeLoading;
 
   const handleFilterChange = (key: keyof FilterState, value: string) => {
     setFilters((prev) => ({
@@ -245,17 +226,17 @@ export function EstadisticasManagement() {
     }));
   };
 
-  const handleLineaChange = (linea: string) => {
+  const handleLineChange = (lineId: string) => {
     setFilters((prev) => ({
       ...prev,
-      linea,
-      servicio: "", // Reset servicio when linea changes
+      lineId,
+      serviceId: "", // Reset service when line changes
     }));
   };
 
-  const getAvailableServicios = () => {
-    if (!filters.linea) return [];
-    return servicios[filters.linea as keyof typeof servicios] || [];
+  const getAvailableServices = () => {
+    if (!filters.lineId || !services) return [];
+    return services.filter((service) => service.lineId === filters.lineId);
   };
 
   const formatDateRange = () => {
@@ -265,46 +246,55 @@ export function EstadisticasManagement() {
   };
 
   const hasData =
-    statistics.onTimeDelivery > 0 ||
-    statistics.onTimeReturns > 0 ||
-    statistics.medicationCartAdherence > 0 ||
-    statistics.patientsWithErrors > 0;
+    activeTab === "general"
+      ? generalStats &&
+        (generalStats.onTimeDelivery > 0 ||
+          generalStats.onTimeReturns > 0 ||
+          generalStats.medicationCartAdherence > 0 ||
+          generalStats.patientsWithErrors > 0)
+      : comparativeStats &&
+        comparativeStats.averageTimePerStage.lines.length > 0;
 
-  const handleExport = (format: "PDF" | "CSV") => {
-    console.log(`Exporting data as ${format} with filters:`, filters);
-    console.log("Statistics data:", statistics);
-
-    // Simulate export process
-    setTimeout(() => {
-      console.log(
-        `Export completed: estadisticas_${activeTab}_${new Date().toISOString().split("T")[0]}.${format.toLowerCase()}`
-      );
+  const handleExport = async (format: "PDF" | "CSV" | "EXCEL") => {
+    try {
+      const exportType =
+        activeTab === "comparativo" ? "comparative" : activeTab;
+      await exportData(exportType, format, statisticsFilters);
       setShowExportDialog(false);
-    }, 1000);
+    } catch (error) {
+      console.error("Export failed:", error);
+      // You could show a toast notification here
+    }
   };
 
+  // Updated metric card with circular progress
   const MetricCard = ({
     title,
     value,
     isLoading,
+    color = "green",
   }: {
     title: string;
     value: number;
     isLoading: boolean;
+    color?: "blue" | "green" | "orange" | "red";
   }) => (
-    <Card>
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
-        </div>
-        <div className="flex items-center space-x-4">
-          <div className="flex-1">
-            <div className="text-2xl font-bold text-foreground">
-              {isLoading ? "..." : `${value}%`}
-            </div>
-            <Progress value={value} className="mt-2" />
+    <Card className="flex items-center justify-center p-6">
+      <CardContent className="p-0">
+        {isLoading ? (
+          <div className="flex flex-col items-center">
+            <div className="w-[120px] h-[120px] rounded-full border-8 border-gray-200 animate-pulse mb-4" />
+            <div className="h-4 bg-gray-200 rounded w-32 animate-pulse" />
           </div>
-        </div>
+        ) : (
+          <CircularProgress
+            value={value}
+            title={title}
+            color={color}
+            size={120}
+            strokeWidth={8}
+          />
+        )}
       </CardContent>
     </Card>
   );
@@ -321,18 +311,25 @@ export function EstadisticasManagement() {
         <div className="space-y-4">
           <div className="flex items-center space-x-2">
             <span className="text-2xl font-bold text-blue-600">
-              {comparativeData.averageTimePerStage.total} horas
+              {comparativeStats?.averageTimePerStage.total ||
+                mockComparativeData.averageTimePerStage.total}{" "}
+              horas
             </span>
             <div className="flex items-center space-x-1">
               <TrendingUp className="h-4 w-4 text-orange-500" />
               <span className="text-sm text-orange-500">
-                {comparativeData.averageTimePerStage.change}%
+                {comparativeStats?.averageTimePerStage.change ||
+                  mockComparativeData.averageTimePerStage.change}
+                %
               </span>
             </div>
           </div>
 
           <div className="space-y-3">
-            {comparativeData.averageTimePerStage.lines.map((line) => (
+            {(
+              comparativeStats?.averageTimePerStage.lines ||
+              mockComparativeData.averageTimePerStage.lines
+            ).map((line) => (
               <div key={line.name} className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">{line.name}</span>
@@ -396,12 +393,16 @@ export function EstadisticasManagement() {
         <div className="space-y-4">
           <div className="flex items-center space-x-2">
             <span className="text-2xl font-bold text-blue-600">
-              #{comparativeData.manualReturns.total}
+              #
+              {comparativeStats?.manualReturns.total ||
+                mockComparativeData.manualReturns.total}
             </span>
             <div className="flex items-center space-x-1">
               <TrendingUp className="h-4 w-4 text-orange-500" />
               <span className="text-sm text-orange-500">
-                {comparativeData.manualReturns.change}%
+                {comparativeStats?.manualReturns.change ||
+                  mockComparativeData.manualReturns.change}
+                %
               </span>
             </div>
           </div>
@@ -425,20 +426,28 @@ export function EstadisticasManagement() {
                   stroke="currentColor"
                   strokeWidth="8"
                   fill="transparent"
-                  strokeDasharray={`${comparativeData.manualReturns.percentage * 2.26} 226`}
+                  strokeDasharray={`${(comparativeStats?.manualReturns.percentage || mockComparativeData.manualReturns.percentage) * 2.26} 226`}
                   className="text-blue-600"
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
                 <span className="text-sm font-bold">
-                  {comparativeData.manualReturns.percentage}%
+                  {comparativeStats?.manualReturns.percentage ||
+                    mockComparativeData.manualReturns.percentage}
+                  %
                 </span>
               </div>
             </div>
           </div>
 
           <div className="space-y-2">
-            {comparativeData.manualReturns.distribution.map((item) => (
+            {(
+              comparativeStats?.manualReturns.byReason.map((reason) => ({
+                type: reason.reason,
+                percentage: reason.percentage,
+                color: "bg-blue-600", // You can add color logic here
+              })) || mockComparativeData.manualReturns.distribution
+            ).map((item) => (
               <div
                 key={item.type}
                 className="flex items-center justify-between"
@@ -472,12 +481,12 @@ export function EstadisticasManagement() {
         <div className="space-y-4">
           <div className="flex items-center space-x-2">
             <span className="text-2xl font-bold text-blue-600">
-              {comparativeData.supplyReturnsByPatient.current}%
+              {mockComparativeData.supplyReturnsByPatient.current}%
             </span>
             <div className="flex items-center space-x-1">
               <TrendingUp className="h-4 w-4 text-green-500" />
               <span className="text-sm text-green-500">
-                {comparativeData.supplyReturnsByPatient.change}%
+                {mockComparativeData.supplyReturnsByPatient.change}%
               </span>
             </div>
           </div>
@@ -485,7 +494,8 @@ export function EstadisticasManagement() {
           <div className="text-sm">
             <span className="text-muted-foreground">Total: </span>
             <span className="font-bold text-blue-600">
-              {comparativeData.supplyReturnsByPatient.totalReturns} Devoluciones
+              {mockComparativeData.supplyReturnsByPatient.totalReturns}{" "}
+              Devoluciones
             </span>
           </div>
 
@@ -497,22 +507,23 @@ export function EstadisticasManagement() {
               <div
                 className="bg-blue-400 rounded-l"
                 style={{
-                  width: `${comparativeData.supplyReturnsByPatient.distribution.manual}%`,
+                  width: `${mockComparativeData.supplyReturnsByPatient.distribution.manual}%`,
                 }}
               />
               <div
                 className="bg-blue-600 rounded-r"
                 style={{
-                  width: `${comparativeData.supplyReturnsByPatient.distribution.total}%`,
+                  width: `${mockComparativeData.supplyReturnsByPatient.distribution.total}%`,
                 }}
               />
             </div>
             <div className="flex justify-between text-xs">
               <span>
-                {comparativeData.supplyReturnsByPatient.distribution.manual}%
+                {mockComparativeData.supplyReturnsByPatient.distribution.manual}
+                %
               </span>
               <span>
-                {comparativeData.supplyReturnsByPatient.distribution.total}%
+                {mockComparativeData.supplyReturnsByPatient.distribution.total}%
               </span>
             </div>
           </div>
@@ -534,23 +545,24 @@ export function EstadisticasManagement() {
           <div className="grid grid-cols-2 gap-4">
             <div className="text-center">
               <div className="text-lg font-bold text-green-600">
-                {comparativeData.averageMinutesVsAgreed.deliveries.value}
+                {mockComparativeData.averageMinutesVsAgreed.deliveries.value}
               </div>
               <div className="flex items-center justify-center space-x-1">
                 <TrendingUp className="h-3 w-3 text-green-500" />
                 <span className="text-xs text-green-500">
-                  {comparativeData.averageMinutesVsAgreed.deliveries.change}%
+                  {mockComparativeData.averageMinutesVsAgreed.deliveries.change}
+                  %
                 </span>
               </div>
             </div>
             <div className="text-center">
               <div className="text-lg font-bold text-red-600">
-                {comparativeData.averageMinutesVsAgreed.returns.value}
+                {mockComparativeData.averageMinutesVsAgreed.returns.value}
               </div>
               <div className="flex items-center justify-center space-x-1">
                 <TrendingDown className="h-3 w-3 text-red-500" />
                 <span className="text-xs text-red-500">
-                  {comparativeData.averageMinutesVsAgreed.returns.change}%
+                  {mockComparativeData.averageMinutesVsAgreed.returns.change}%
                 </span>
               </div>
             </div>
@@ -559,34 +571,36 @@ export function EstadisticasManagement() {
           <div className="space-y-2">
             <div className="text-xs text-muted-foreground">HISTÓRICO</div>
             <div className="space-y-1">
-              {comparativeData.averageMinutesVsAgreed.historical.map((item) => (
-                <div
-                  key={item.date}
-                  className="flex items-center justify-between text-xs"
-                >
-                  <span>{item.date}</span>
-                  <div className="flex space-x-4">
-                    <span
-                      className={
-                        item.deliveries >= 0
-                          ? "text-blue-600"
-                          : "text-green-600"
-                      }
-                    >
-                      {item.deliveries >= 0 ? "+" : ""}
-                      {item.deliveries.toFixed(1)}
-                    </span>
-                    <span
-                      className={
-                        item.returns >= 0 ? "text-blue-600" : "text-green-600"
-                      }
-                    >
-                      {item.returns >= 0 ? "+" : ""}
-                      {item.returns.toFixed(1)}
-                    </span>
+              {mockComparativeData.averageMinutesVsAgreed.historical.map(
+                (item) => (
+                  <div
+                    key={item.date}
+                    className="flex items-center justify-between text-xs"
+                  >
+                    <span>{item.date}</span>
+                    <div className="flex space-x-4">
+                      <span
+                        className={
+                          item.deliveries >= 0
+                            ? "text-blue-600"
+                            : "text-green-600"
+                        }
+                      >
+                        {item.deliveries >= 0 ? "+" : ""}
+                        {item.deliveries.toFixed(1)}
+                      </span>
+                      <span
+                        className={
+                          item.returns >= 0 ? "text-blue-600" : "text-green-600"
+                        }
+                      >
+                        {item.returns >= 0 ? "+" : ""}
+                        {item.returns.toFixed(1)}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              )}
             </div>
           </div>
         </div>
@@ -602,14 +616,14 @@ export function EstadisticasManagement() {
           {/* Línea Filter */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">Línea</label>
-            <Select value={filters.linea} onValueChange={handleLineaChange}>
+            <Select value={filters.lineId} onValueChange={handleLineChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecciona línea" />
               </SelectTrigger>
               <SelectContent>
-                {lineas.map((linea) => (
-                  <SelectItem key={linea} value={linea}>
-                    {linea}
+                {lines?.map((line) => (
+                  <SelectItem key={line.id} value={line.id}>
+                    {line.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -622,17 +636,17 @@ export function EstadisticasManagement() {
               Servicio
             </label>
             <Select
-              value={filters.servicio}
-              onValueChange={(value) => handleFilterChange("servicio", value)}
-              disabled={!filters.linea}
+              value={filters.serviceId}
+              onValueChange={(value) => handleFilterChange("serviceId", value)}
+              disabled={!filters.lineId}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecciona servicio" />
               </SelectTrigger>
               <SelectContent>
-                {getAvailableServicios().map((servicio) => (
-                  <SelectItem key={servicio} value={servicio}>
-                    {servicio}
+                {getAvailableServices().map((service) => (
+                  <SelectItem key={service.id} value={service.id}>
+                    {service.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -645,8 +659,10 @@ export function EstadisticasManagement() {
               Personal
             </label>
             <Select
-              value={filters.personal}
-              onValueChange={(value) => handleFilterChange("personal", value)}
+              value={filters.personalRole}
+              onValueChange={(value) =>
+                handleFilterChange("personalRole", value)
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecciona personal" />
@@ -748,9 +764,9 @@ export function EstadisticasManagement() {
             variant="outline"
             onClick={() => {
               setFilters({
-                linea: "",
-                servicio: "",
-                personal: "",
+                lineId: "",
+                serviceId: "",
+                personalRole: "",
                 groupBy: "Día",
                 dateRange: {
                   from: new Date(2025, 5, 22),
@@ -831,14 +847,14 @@ export function EstadisticasManagement() {
                 <label className="text-sm font-medium text-foreground">
                   Línea
                 </label>
-                <Select value={filters.linea} onValueChange={handleLineaChange}>
+                <Select value={filters.lineId} onValueChange={handleLineChange}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecciona línea" />
                   </SelectTrigger>
                   <SelectContent>
-                    {lineas.map((linea) => (
-                      <SelectItem key={linea} value={linea}>
-                        {linea}
+                    {lines?.map((line) => (
+                      <SelectItem key={line.id} value={line.id}>
+                        {line.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -941,37 +957,43 @@ export function EstadisticasManagement() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {/* On-Time Delivery */}
               <MetricCard
-                title="Cumplimiento horario entrega"
-                value={statistics.onTimeDelivery}
+                title="cumplimiento horario entrega"
+                value={generalStats?.onTimeDelivery || 0}
                 isLoading={isLoading}
+                color="green"
               />
 
               {/* On-Time Returns */}
               <MetricCard
-                title="Cumplimiento horario devoluciones"
-                value={statistics.onTimeReturns}
+                title="cumplimiento horario devoluciones"
+                value={generalStats?.onTimeReturns || 0}
                 isLoading={isLoading}
+                color="blue"
               />
 
               {/* Medication Cart Adherence */}
               <MetricCard
-                title="Adherencia verificación carro medicamentos"
-                value={statistics.medicationCartAdherence}
+                title="adherencia verificación carro medicamentos"
+                value={generalStats?.medicationCartAdherence || 0}
                 isLoading={isLoading}
+                color="orange"
               />
 
               {/* Patients with Errors */}
               <MetricCard
-                title="Pacientes con errores en entrega de medicamentos"
-                value={statistics.patientsWithErrors}
+                title="pacientes con errores en entrega de medicamentos"
+                value={generalStats?.patientsWithErrors || 0}
                 isLoading={isLoading}
+                color="red"
               />
             </div>
           ) : (
             <Card>
               <CardContent className="p-12">
                 <div className="text-center text-muted-foreground">
-                  No hay datos disponibles para los filtros seleccionados.
+                  {generalError
+                    ? `Error cargando datos: ${generalError.message}`
+                    : "No hay datos disponibles para los filtros seleccionados."}
                 </div>
               </CardContent>
             </Card>
@@ -1023,6 +1045,19 @@ export function EstadisticasManagement() {
                 <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
               </svg>
               <span className="text-sm font-medium">CSV</span>
+            </Button>
+            <Button
+              onClick={() => handleExport("EXCEL")}
+              className="flex flex-col items-center justify-center p-6 h-24 border-2 border-dashed border-border hover:border-muted-foreground hover:bg-muted transition-colors"
+            >
+              <svg
+                className="h-8 w-8 text-blue-500 mb-2"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+              </svg>
+              <span className="text-sm font-medium">Excel</span>
             </Button>
           </div>
           <DialogFooter>

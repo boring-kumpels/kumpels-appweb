@@ -142,9 +142,18 @@ function calculateButtonState(
             `[DEBUG] Management table - Returning COMPLETED (green solid)`
           );
           return ProcessStatus.COMPLETED; // Green solid - fully finished
+        } else if (
+          devolucionProcess.status === ProcessStatus.DISPATCHED_FROM_PHARMACY ||
+          devolucionProcess.status === ProcessStatus.DELIVERED_TO_SERVICE ||
+          devolucionProcess.status === ProcessStatus.IN_PROGRESS
+        ) {
+          console.log(
+            `[DEBUG] Management table - Returning IN_PROGRESS (orange dashed) for status: ${devolucionProcess.status}`
+          );
+          return ProcessStatus.IN_PROGRESS; // Orange dashed - ongoing devolution
         } else {
           console.log(
-            `[DEBUG] Management table - Returning IN_PROGRESS (orange dashed)`
+            `[DEBUG] Management table - Returning IN_PROGRESS (orange dashed) for unknown status: ${devolucionProcess.status}`
           );
           return ProcessStatus.IN_PROGRESS; // Orange dashed - ongoing devolution
         }

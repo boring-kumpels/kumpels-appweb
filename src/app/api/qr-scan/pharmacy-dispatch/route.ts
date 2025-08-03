@@ -206,26 +206,40 @@ export async function POST(request: NextRequest) {
     }
 
     // Create or update scan records for all eligible patients with check-in data
-    // Use upsert to handle cases where a record already exists (like devolution 2nd QR scan)
-    await Promise.all(
-      patientsToDispatch.map((patient) =>
-        prisma.qRScanRecord.upsert({
-          where: {
-            patientId_qrCodeId_dailyProcessId_transactionType: {
-              patientId: patient.id,
-              qrCodeId: qrCode.id,
-              dailyProcessId: dailyProcess.id,
-              transactionType: transactionType,
-            },
-          },
-          update: {
+    // The actual DB constraint is on (patientId, qrCodeId, dailyProcessId) without transactionType
+    // So we need to find any existing record with these 3 fields and update it
+    const scanRecordPromises = patientsToDispatch.map(async (patient) => {
+      // Always check for existing record based on the actual constraint (3 fields)
+      const existingRecord = await prisma.qRScanRecord.findFirst({
+        where: {
+          patientId: patient.id,
+          qrCodeId: qrCode.id,
+          dailyProcessId: dailyProcess.id,
+        },
+      });
+
+      if (existingRecord) {
+        console.log(
+          `[DEBUG] Pharmacy dispatch - Found existing QR scan record for patient ${patient.id}. Updating transactionType from '${existingRecord.transactionType}' to '${transactionType}'`
+        );
+        // Update existing record with new transaction type and data
+        return prisma.qRScanRecord.update({
+          where: { id: existingRecord.id },
+          data: {
             scannedBy: user.id,
             scannedAt: new Date(),
             temperature: temperature,
             destinationLineId: destinationLineId,
             transactionType: transactionType,
           },
-          create: {
+        });
+      } else {
+        console.log(
+          `[DEBUG] Pharmacy dispatch - Creating new QR scan record for patient ${patient.id}, transaction ${transactionType}`
+        );
+        // Create new record - this should not fail if the constraint check above worked
+        return prisma.qRScanRecord.create({
+          data: {
             patientId: patient.id,
             qrCodeId: qrCode.id,
             scannedBy: user.id,
@@ -234,9 +248,11 @@ export async function POST(request: NextRequest) {
             destinationLineId: destinationLineId,
             transactionType: transactionType,
           },
-        })
-      )
-    );
+        });
+      }
+    });
+
+    await Promise.all(scanRecordPromises);
 
     // Create or update medication processes based on transaction type
     const updatePromises = patientsToDispatch.map(async (patient) => {

@@ -94,7 +94,10 @@ export async function PATCH(request: NextRequest) {
     const { id, status, completedAt, notes } = body;
 
     if (!id) {
-      return NextResponse.json({ error: "Process ID is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Process ID is required" },
+        { status: 400 }
+      );
     }
 
     // Get the existing process
@@ -203,42 +206,54 @@ export async function POST(request: NextRequest) {
     const processDate = new Date(date);
     processDate.setHours(0, 0, 0, 0); // Set to start of day
 
-    // Check if daily process already exists for this date
-    const existingProcess = await prisma.dailyProcess.findUnique({
-      where: { date: processDate },
+    // Use a transaction to ensure atomicity
+    const dailyProcess = await prisma.$transaction(async (tx) => {
+      // Check if daily process already exists for this date
+      const existingProcess = await tx.dailyProcess.findUnique({
+        where: { date: processDate },
+      });
+
+      if (existingProcess) {
+        throw new Error("Daily process already exists for this date");
+      }
+
+      // Create new daily process (without automatically creating medication processes)
+      return await tx.dailyProcess.create({
+        data: {
+          date: processDate,
+          startedBy: session.user.id,
+          notes,
+          status: DailyProcessStatus.ACTIVE,
+        },
+        include: {
+          medicationProcesses: {
+            include: {
+              patient: {
+                include: {
+                  bed: true,
+                },
+              },
+            },
+          },
+        },
+      });
     });
 
-    if (existingProcess) {
+    return NextResponse.json(dailyProcess, { status: 201 });
+  } catch (error) {
+    console.error("Error creating daily process:", error);
+
+    // Check if it's our specific error
+    if (
+      error instanceof Error &&
+      error.message === "Daily process already exists for this date"
+    ) {
       return NextResponse.json(
         { error: "Daily process already exists for this date" },
         { status: 409 }
       );
     }
 
-    // Create new daily process (without automatically creating medication processes)
-    const dailyProcess = await prisma.dailyProcess.create({
-      data: {
-        date: processDate,
-        startedBy: session.user.id,
-        notes,
-        status: DailyProcessStatus.ACTIVE,
-      },
-      include: {
-        medicationProcesses: {
-          include: {
-            patient: {
-              include: {
-                bed: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    return NextResponse.json(dailyProcess, { status: 201 });
-  } catch (error) {
-    console.error("Error creating daily process:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
