@@ -48,14 +48,14 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
 
       await signIn(data.email, hashedPassword);
       toast({
-        title: "Success",
-        description: "You have been signed in.",
+        title: "Éxito",
+        description: "Has iniciado sesión correctamente.",
       });
       router.push("/dashboard");
     } catch {
       toast({
         title: "Error",
-        description: "Invalid email or password.",
+        description: "Correo electrónico o contraseña inválidos.",
         variant: "destructive",
       });
     } finally {
@@ -73,9 +73,9 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
               name="email"
               render={({ field }) => (
                 <FormItem className="space-y-1">
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>Correo Electrónico</FormLabel>
                   <FormControl>
-                    <Input placeholder="name@example.com" {...field} />
+                    <Input placeholder="nombre@ejemplo.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -87,12 +87,12 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
               render={({ field }) => (
                 <FormItem className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>Contraseña</FormLabel>
                     <Link
                       href="/forgot-password"
                       className="text-sm font-medium text-muted-foreground hover:opacity-75"
                     >
-                      Forgot password?
+                      ¿Olvidaste tu contraseña?
                     </Link>
                   </div>
                   <FormControl>
@@ -103,7 +103,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
               )}
             />
             <Button className="mt-2" disabled={isLoading}>
-              Login
+              Iniciar Sesión
             </Button>
           </div>
         </form>

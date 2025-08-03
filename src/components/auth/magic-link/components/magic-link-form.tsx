@@ -21,8 +21,8 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 const formSchema = z.object({
   email: z
     .string()
-    .min(1, { message: "Please enter your email" })
-    .email({ message: "Invalid email address" }),
+    .min(1, { message: "Por favor ingresa tu correo electrónico" })
+    .email({ message: "Dirección de correo electrónico inválida" }),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -63,14 +63,14 @@ export function MagicLinkForm({ className, ...props }: MagicLinkFormProps) {
 
       setIsSuccess(true);
       toast({
-        title: "Check your email",
-        description: "We&apos;ve sent you a magic link to sign in.",
+        title: "Revisa tu correo",
+        description: "Te hemos enviado un enlace mágico para iniciar sesión.",
       });
     } catch (error) {
       console.error("Magic link error:", error);
       toast({
         title: "Error",
-        description: "Something went wrong. Please try again.",
+        description: "Algo salió mal. Por favor intenta de nuevo.",
         variant: "destructive",
       });
     } finally {
@@ -82,10 +82,10 @@ export function MagicLinkForm({ className, ...props }: MagicLinkFormProps) {
     <div className={cn("grid gap-6", className)} {...props}>
       {isSuccess ? (
         <div className="text-center">
-          <h3 className="mb-1 text-lg font-medium">Check your email</h3>
+          <h3 className="mb-1 text-lg font-medium">Revisa tu correo</h3>
           <p className="text-sm text-muted-foreground">
-            We&apos;ve sent a magic link to your email. Please check your inbox
-            and click the link to sign in.
+            Te hemos enviado un enlace mágico a tu correo. Por favor revisa tu
+            bandeja de entrada y haz clic en el enlace para iniciar sesión.
           </p>
         </div>
       ) : (
@@ -96,16 +96,16 @@ export function MagicLinkForm({ className, ...props }: MagicLinkFormProps) {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>Correo Electrónico</FormLabel>
                   <FormControl>
-                    <Input placeholder="name@example.com" {...field} />
+                    <Input placeholder="nombre@ejemplo.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Sending..." : "Send Magic Link"}
+              {isLoading ? "Enviando..." : "Enviar Enlace Mágico"}
             </Button>
           </form>
         </Form>

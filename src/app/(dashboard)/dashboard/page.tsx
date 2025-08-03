@@ -13,25 +13,26 @@ export default async function DashboardPage() {
     redirect("/sign-in");
   }
 
-  // Get user's role and redirect to appropriate dashboard
+  // Get user's role and redirect to appropriate pacientes-on-time page
   const currentUserProfile = await prisma.profile.findUnique({
     where: { userId: session.user.id },
     select: { role: true },
   });
 
-  if (currentUserProfile?.role === "SUPERADMIN") {
-    redirect("/dashboard/pacientes-on-time");
-  }
+  const role = currentUserProfile?.role;
 
-  // For other roles, show a basic dashboard for now
-  return (
-    <div className="space-y-8">
-      <div className="bg-card rounded-lg p-6">
-        <h2 className="text-2xl font-semibold mb-4">Dashboard</h2>
-        <p className="text-muted-foreground">
-          Welcome to your medical system dashboard.
-        </p>
-      </div>
-    </div>
-  );
+  // Redirect to role-specific pacientes-on-time page
+  switch (role) {
+    case "SUPERADMIN":
+      redirect("/dashboard/pacientes-on-time");
+    case "NURSE":
+      redirect("/nurse/pacientes-on-time");
+    case "PHARMACY_VALIDATOR":
+      redirect("/pharmacy/pacientes-on-time");
+    case "PHARMACY_REGENT":
+      redirect("/regent/pacientes-on-time");
+    default:
+      // Fallback to main dashboard pacientes-on-time
+      redirect("/dashboard/pacientes-on-time");
+  }
 }

@@ -21,8 +21,8 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 const formSchema = z.object({
   email: z
     .string()
-    .min(1, { message: "Please enter your email" })
-    .email({ message: "Invalid email address" }),
+    .min(1, { message: "Por favor ingresa tu correo electrónico" })
+    .email({ message: "Dirección de correo electrónico inválida" }),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -63,14 +63,15 @@ export function ForgotPasswordForm({
 
       setIsSuccess(true);
       toast({
-        title: "Check your email",
-        description: "We've sent you a password reset link.",
+        title: "Revisa tu correo",
+        description:
+          "Te hemos enviado un enlace para restablecer tu contraseña.",
       });
     } catch (error) {
       console.error("Reset password error:", error);
       toast({
         title: "Error",
-        description: "Something went wrong. Please try again.",
+        description: "Algo salió mal. Por favor intenta de nuevo.",
         variant: "destructive",
       });
     } finally {
@@ -82,10 +83,10 @@ export function ForgotPasswordForm({
     <div className={cn("grid gap-6", className)} {...props}>
       {isSuccess ? (
         <div className="text-center">
-          <h3 className="mb-1 text-lg font-medium">Check your email</h3>
+          <h3 className="mb-1 text-lg font-medium">Revisa tu correo</h3>
           <p className="text-sm text-muted-foreground">
-            We&apos;ve sent a password reset link to your email. Please check
-            your inbox and follow the instructions.
+            Te hemos enviado un enlace para restablecer tu contraseña. Por favor
+            revisa tu bandeja de entrada y sigue las instrucciones.
           </p>
         </div>
       ) : (
@@ -96,16 +97,16 @@ export function ForgotPasswordForm({
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>Correo Electrónico</FormLabel>
                   <FormControl>
-                    <Input placeholder="name@example.com" {...field} />
+                    <Input placeholder="nombre@ejemplo.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Sending..." : "Send reset link"}
+              {isLoading ? "Enviando..." : "Enviar enlace de restablecimiento"}
             </Button>
           </form>
         </Form>

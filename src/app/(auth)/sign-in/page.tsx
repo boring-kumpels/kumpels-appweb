@@ -5,8 +5,8 @@ import { UserAuthForm } from "@/components/auth/sign-in/components/user-auth-for
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Sign In",
-  description: "Sign in to your account",
+  title: "Iniciar Sesión",
+  description: "Inicia sesión en tu cuenta",
 };
 
 export default function SignInPage() {
@@ -14,38 +14,28 @@ export default function SignInPage() {
     <AuthLayout>
       <Card className="p-6">
         <div className="flex flex-col space-y-2 text-left">
-          <h1 className="text-2xl font-semibold tracking-tight">Login</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Iniciar Sesión
+          </h1>
           <p className="text-sm text-muted-foreground">
-            Enter your email and password below <br />
-            to log into your account.
+            Ingresa tu correo electrónico y contraseña para acceder a tu cuenta.
           </p>
         </div>
         <UserAuthForm />
-        <div className="mt-4 text-center text-sm">
-          <p className="text-muted-foreground">
-            Prefer to sign in without a password?{" "}
-            <Link
-              href="/magic-link"
-              className="underline underline-offset-4 hover:text-primary"
-            >
-              Sign in with a magic link
-            </Link>
-          </p>
-        </div>
         <p className="mt-4 px-8 text-center text-sm text-muted-foreground">
-          By clicking login, you agree to our{" "}
+          Al hacer clic en iniciar sesión, aceptas nuestros{" "}
           <Link
             href="/terms"
             className="underline underline-offset-4 hover:text-primary"
           >
-            Terms of Service
+            Términos de Servicio
           </Link>{" "}
-          and{" "}
+          y{" "}
           <Link
             href="/privacy"
             className="underline underline-offset-4 hover:text-primary"
           >
-            Privacy Policy
+            Política de Privacidad
           </Link>
           .
         </p>

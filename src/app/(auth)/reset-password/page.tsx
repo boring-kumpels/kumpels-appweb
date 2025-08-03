@@ -4,8 +4,8 @@ import AuthLayout from "@/components/auth/auth-layout";
 import { ResetPasswordForm } from "@/components/auth/reset-password/components/reset-password-form";
 
 export const metadata: Metadata = {
-  title: "Reset Password",
-  description: "Enter your new password",
+  title: "Restablecer Contraseña",
+  description: "Ingresa tu nueva contraseña",
 };
 
 export default function ResetPasswordPage() {
@@ -14,10 +14,10 @@ export default function ResetPasswordPage() {
       <Card className="p-6">
         <div className="flex flex-col space-y-2 text-left">
           <h1 className="text-2xl font-semibold tracking-tight">
-            Reset Password
+            Restablecer Contraseña
           </h1>
           <p className="text-sm text-muted-foreground">
-            Enter your new password below.
+            Ingresa tu nueva contraseña a continuación.
           </p>
         </div>
         <ResetPasswordForm />

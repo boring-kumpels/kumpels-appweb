@@ -5,8 +5,8 @@ import { ForgotPasswordForm } from "@/components/auth/forgot-password/components
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Forgot Password",
-  description: "Reset your password",
+  title: "Olvidé Contraseña",
+  description: "Restablece tu contraseña",
 };
 
 export default function ForgotPasswordPage() {
@@ -15,15 +15,16 @@ export default function ForgotPasswordPage() {
       <Card className="p-6">
         <div className="flex flex-col space-y-2 text-left">
           <h1 className="text-2xl font-semibold tracking-tight">
-            Reset Password
+            Restablecer Contraseña
           </h1>
           <p className="text-sm text-muted-foreground">
-            Enter your email below to receive a password reset link.{" "}
+            Ingresa tu correo electrónico para recibir un enlace de
+            restablecimiento de contraseña.{" "}
             <Link
               href="/sign-in"
               className="underline underline-offset-4 hover:text-primary"
             >
-              Back to Sign In
+              Volver a Iniciar Sesión
             </Link>
           </p>
         </div>

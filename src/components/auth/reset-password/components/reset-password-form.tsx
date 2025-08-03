@@ -25,18 +25,24 @@ const formSchema = z
   .object({
     password: z
       .string()
-      .min(8, "Password must be at least 8 characters")
-      .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-      .regex(/[a-z]/, "Password must contain at least one lowercase letter")
-      .regex(/[0-9]/, "Password must contain at least one number")
+      .min(8, "La contraseña debe tener al menos 8 caracteres")
+      .regex(
+        /[A-Z]/,
+        "La contraseña debe contener al menos una letra mayúscula"
+      )
+      .regex(
+        /[a-z]/,
+        "La contraseña debe contener al menos una letra minúscula"
+      )
+      .regex(/[0-9]/, "La contraseña debe contener al menos un número")
       .regex(
         /[^A-Za-z0-9]/,
-        "Password must contain at least one special character"
+        "La contraseña debe contener al menos un carácter especial"
       ),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match",
+    message: "Las contraseñas no coinciden",
     path: ["confirmPassword"],
   });
 
@@ -75,7 +81,9 @@ export function ResetPasswordForm({
         await supabase.auth.getUser();
 
       if (userError || !userData.user) {
-        throw new Error("User not found. Please try logging in again.");
+        throw new Error(
+          "Usuario no encontrado. Por favor intenta iniciar sesión de nuevo."
+        );
       }
 
       // Hash the password before sending to server
@@ -91,8 +99,8 @@ export function ResetPasswordForm({
       }
 
       toast({
-        title: "Password Updated",
-        description: "Your password has been reset successfully.",
+        title: "Contraseña Actualizada",
+        description: "Tu contraseña ha sido restablecida exitosamente.",
       });
 
       // Redirect to the login page
@@ -101,7 +109,8 @@ export function ResetPasswordForm({
       console.error("Reset password error:", error);
       toast({
         title: "Error",
-        description: "Failed to reset password. Please try again.",
+        description:
+          "No se pudo restablecer la contraseña. Por favor intenta de nuevo.",
         variant: "destructive",
       });
     } finally {
@@ -118,7 +127,7 @@ export function ResetPasswordForm({
             name="password"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>New Password</FormLabel>
+                <FormLabel>Nueva Contraseña</FormLabel>
                 <FormControl>
                   <PasswordInput
                     placeholder="********"
@@ -137,7 +146,7 @@ export function ResetPasswordForm({
             name="confirmPassword"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Confirm Password</FormLabel>
+                <FormLabel>Confirmar Contraseña</FormLabel>
                 <FormControl>
                   <PasswordInput placeholder="********" {...field} />
                 </FormControl>
@@ -147,7 +156,7 @@ export function ResetPasswordForm({
           />
 
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Resetting..." : "Reset Password"}
+            {isLoading ? "Restableciendo..." : "Restablecer Contraseña"}
           </Button>
         </form>
       </Form>

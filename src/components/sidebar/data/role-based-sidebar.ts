@@ -20,15 +20,14 @@ type UserRole =
 export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
   const baseSidebar: SidebarData = {
     user: {
-      name: "User",
+      name: "Usuario",
       email: "user@example.com",
       avatar: "/avatars/shadcn.jpg",
     },
     teams: [
       {
-        name: "Medical Platform",
-        logo: Command,
-        plan: "Hospital System",
+        name: "Plataforma Médica",
+        plan: "Sistema Hospitalario",
       },
     ],
     navGroups: [],
@@ -38,35 +37,35 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
     case "SUPERADMIN":
       baseSidebar.navGroups = [
         {
-          title: "Medical Operations",
+          title: "Operaciones Médicas",
           items: [
             {
-              title: "On-Time Patients",
+              title: "pacientes On-Time",
               url: "/dashboard/pacientes-on-time",
               icon: Clock,
             },
             {
-              title: "General Status",
+              title: "Estado General",
               url: "/dashboard/estado-general",
               icon: CheckCircle2,
             },
             {
-              title: "Statistics",
+              title: "Estadísticas",
               url: "/dashboard/estadisticas",
               icon: TrendingUp,
             },
             {
-              title: "User Management",
+              title: "Gestión de Usuarios",
               url: "/admin/users",
               icon: Users,
             },
           ],
         },
         {
-          title: "QR Management",
+          title: "Gestión QR",
           items: [
             {
-              title: "QR Codes",
+              title: "Códigos QR",
               url: "/dashboard/qr-management",
               icon: QrCode,
             },
@@ -78,20 +77,20 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
     case "NURSE":
       baseSidebar.navGroups = [
         {
-          title: "Medical Operations",
+          title: "Operaciones Médicas",
           items: [
             {
-              title: "On-Time Patients",
+              title: "pacientes On-Time",
               url: "/nurse/pacientes-on-time",
               icon: Clock,
             },
             {
-              title: "General Status",
+              title: "Estado General",
               url: "/nurse/estado-general",
               icon: CheckCircle2,
             },
             {
-              title: "Statistics",
+              title: "Estadísticas",
               url: "/nurse/estadisticas",
               icon: TrendingUp,
             },
@@ -103,20 +102,20 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
     case "PHARMACY_VALIDATOR":
       baseSidebar.navGroups = [
         {
-          title: "Medical Operations",
+          title: "Operaciones Médicas",
           items: [
             {
-              title: "On-Time Patients",
+              title: "pacientes On-Time",
               url: "/pharmacy/pacientes-on-time",
               icon: Clock,
             },
             {
-              title: "General Status",
+              title: "Estado General",
               url: "/pharmacy/estado-general",
               icon: CheckCircle2,
             },
             {
-              title: "Statistics",
+              title: "Estadísticas",
               url: "/pharmacy/estadisticas",
               icon: TrendingUp,
             },
@@ -128,22 +127,32 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
     case "PHARMACY_REGENT":
       baseSidebar.navGroups = [
         {
-          title: "Medical Operations",
+          title: "Operaciones Médicas",
           items: [
             {
-              title: "On-Time Patients",
+              title: "pacientes On-Time",
               url: "/regent/pacientes-on-time",
               icon: Clock,
             },
             {
-              title: "General Status",
+              title: "Estado General",
               url: "/regent/estado-general",
               icon: CheckCircle2,
             },
             {
-              title: "Statistics",
+              title: "Estadísticas",
               url: "/regent/estadisticas",
               icon: TrendingUp,
+            },
+          ],
+        },
+        {
+          title: "Gestión QR",
+          items: [
+            {
+              title: "Códigos QR",
+              url: "/regent/qr-management",
+              icon: QrCode,
             },
           ],
         },
@@ -157,7 +166,7 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
           title: "General",
           items: [
             {
-              title: "Dashboard",
+              title: "Panel Principal",
               url: "/dashboard",
               icon: LayoutDashboard,
             },
@@ -173,15 +182,15 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
     role !== "PHARMACY_REGENT"
   ) {
     baseSidebar.navGroups.push({
-      title: "Account",
+      title: "Cuenta",
       items: [
         {
-          title: "Settings",
+          title: "Configuración",
           icon: Settings,
           url: "/settings",
         },
         {
-          title: "Help Center",
+          title: "Centro de Ayuda",
           url: "/help-center",
           icon: HelpCircle,
         },

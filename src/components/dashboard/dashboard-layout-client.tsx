@@ -13,6 +13,7 @@ import { ProfileDropdown } from "@/components/sidebar/profile-dropdown";
 import { QRScanner } from "@/components/dashboard/qr-scanner";
 import { QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/providers/auth-provider";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -20,6 +21,7 @@ interface DashboardLayoutProps {
 
 export function DashboardLayoutClient({ children }: DashboardLayoutProps) {
   const [qrScannerOpen, setQrScannerOpen] = useState(false);
+  const { profile } = useAuth();
 
   return (
     <SearchProvider>
@@ -41,15 +43,17 @@ export function DashboardLayoutClient({ children }: DashboardLayoutProps) {
           <Header>
             <div className="ml-auto flex items-center space-x-4">
               <Search />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setQrScannerOpen(true)}
-                className="h-8 w-8 p-0"
-                title="Escáner QR"
-              >
-                <QrCode className="h-4 w-4" />
-              </Button>
+              {profile?.role === "PHARMACY_REGENT" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setQrScannerOpen(true)}
+                  className="h-8 w-8 p-0"
+                  title="Escáner QR"
+                >
+                  <QrCode className="h-4 w-4" />
+                </Button>
+              )}
               <ThemeSwitch />
               <ProfileDropdown />
             </div>

@@ -27,19 +27,8 @@ export const sidebarData: SidebarData = {
   },
   teams: [
     {
-      name: "Shadcn Admin",
-      logo: Command,
-      plan: "Vite + ShadcnUI",
-    },
-    {
-      name: "Acme Inc",
-      logo: GalleryVerticalEnd,
-      plan: "Enterprise",
-    },
-    {
-      name: "Acme Corp.",
-      logo: AudioWaveform,
-      plan: "Startup",
+      name: "Plataforma Médica",
+      plan: "Sistema Hospitalario",
     },
   ],
   navGroups: [
@@ -47,17 +36,17 @@ export const sidebarData: SidebarData = {
       title: "General",
       items: [
         {
-          title: "Dashboard",
+          title: "Panel Principal",
           url: "/",
           icon: LayoutDashboard,
         },
         {
-          title: "Tasks",
+          title: "Tareas",
           url: "/tasks",
           icon: CheckSquare,
         },
         {
-          title: "Apps",
+          title: "Aplicaciones",
           url: "/apps",
           icon: AppWindow,
         },
@@ -68,33 +57,33 @@ export const sidebarData: SidebarData = {
           icon: MessageSquare,
         },
         {
-          title: "Users",
+          title: "Usuarios",
           url: "/users",
           icon: Users,
         },
       ],
     },
     {
-      title: "Pages",
+      title: "Páginas",
       items: [
         {
-          title: "Auth",
+          title: "Autenticación",
           icon: Lock,
           items: [
             {
-              title: "Sign In",
+              title: "Iniciar Sesión",
               url: "/sign-in",
             },
             {
-              title: "Sign In (2 Col)",
+              title: "Iniciar Sesión (2 Col)",
               url: "/sign-in-2",
             },
             {
-              title: "Sign Up",
+              title: "Registrarse",
               url: "/sign-up",
             },
             {
-              title: "Forgot Password",
+              title: "Olvidé Contraseña",
               url: "/forgot-password",
             },
             {
@@ -104,31 +93,31 @@ export const sidebarData: SidebarData = {
           ],
         },
         {
-          title: "Errors",
+          title: "Errores",
           icon: Bug,
           items: [
             {
-              title: "Unauthorized",
+              title: "No Autorizado",
               url: "/401",
               icon: LockKeyhole,
             },
             {
-              title: "Forbidden",
+              title: "Prohibido",
               url: "/403",
               icon: UserX,
             },
             {
-              title: "Not Found",
+              title: "No Encontrado",
               url: "/404",
               icon: AlertCircle,
             },
             {
-              title: "Internal Server Error",
+              title: "Error del Servidor",
               url: "/500",
               icon: ServerCrash,
             },
             {
-              title: "Maintenance Error",
+              title: "Error de Mantenimiento",
               url: "/503",
               icon: Ban,
             },
@@ -137,15 +126,15 @@ export const sidebarData: SidebarData = {
       ],
     },
     {
-      title: "Other",
+      title: "Otros",
       items: [
         {
-          title: "Settings",
+          title: "Configuración",
           icon: Settings,
           url: "/settings",
         },
         {
-          title: "Help Center",
+          title: "Centro de Ayuda",
           url: "/help-center",
           icon: HelpCircle,
         },
