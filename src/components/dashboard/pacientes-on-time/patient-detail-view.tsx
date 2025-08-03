@@ -66,6 +66,7 @@ import { ProcessStatusButton } from "./process-status-button";
 import { QRScanner } from "../qr-scanner";
 import { DevolutionForm } from "./devolution-form";
 import { DevolutionApproval } from "./devolution-approval";
+import { useCompleteDevolutionReception } from "@/hooks/use-medication-processes";
 import {
   MedicationProcessStep,
   ProcessStatus,
@@ -77,6 +78,86 @@ import {
 import { UserRole } from "@prisma/client";
 import { getLineDisplayName } from "@/lib/lines";
 import { toast } from "@/components/ui/use-toast";
+
+// Custom button component for devolution reception step
+function DevolutionReceptionButton({
+  patient,
+  step,
+  userRole,
+  patientProcesses,
+  queryClient,
+  currentDailyProcess,
+}: {
+  patient: PatientWithRelations;
+  step: ProcessStep;
+  userRole: string;
+  patientProcesses: MedicationProcess[];
+  queryClient: QueryClient;
+  currentDailyProcess?: DailyProcess | null;
+}) {
+  const [isSyncing, setIsSyncing] = useState(false);
+  const completeDevolutionReception = useCompleteDevolutionReception();
+
+  const devolutionProcess = patientProcesses.find(
+    (p) => p.step === MedicationProcessStep.DEVOLUCION
+  );
+
+  const isClickable = () => {
+    if (isSyncing) return false;
+    if (userRole !== "PHARMACY_REGENT" && userRole !== "SUPERADMIN")
+      return false;
+    if (!devolutionProcess) return false;
+    return devolutionProcess.status === ProcessStatus.DELIVERED_TO_SERVICE;
+  };
+
+  const handleClick = async () => {
+    if (!isClickable() || !devolutionProcess) return;
+
+    setIsSyncing(true);
+    try {
+      await completeDevolutionReception.mutateAsync({
+        patientId: patient.id,
+        medicationProcessId: devolutionProcess.id,
+      });
+
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({
+        queryKey: ["all-medication-processes"],
+      });
+    } catch (error) {
+      console.error("Error completing devolution reception:", error);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const getButtonStyle = () => {
+    if (step.status === ProcessStatus.COMPLETED) {
+      return "bg-green-500 hover:bg-green-600 text-white border-green-500";
+    }
+    if (step.status === ProcessStatus.IN_PROGRESS) {
+      return "bg-orange-500 hover:bg-orange-600 text-white border-orange-500";
+    }
+    return "bg-gray-300 text-gray-600 border-gray-300 cursor-not-allowed";
+  };
+
+  const getButtonText = () => {
+    if (isSyncing) return "Completando...";
+    if (step.status === ProcessStatus.COMPLETED) return "Completada";
+    if (step.status === ProcessStatus.IN_PROGRESS) return "Recepción";
+    return "Pendiente";
+  };
+
+  return (
+    <Button
+      onClick={handleClick}
+      disabled={!isClickable()}
+      className={`px-4 py-2 rounded-lg font-medium transition-colors ${getButtonStyle()}`}
+    >
+      {getButtonText()}
+    </Button>
+  );
+}
 
 // Helper function to calculate button state (same as in management component)
 function calculateButtonState(
@@ -1132,7 +1213,7 @@ export default function PatientDetailView({
                   mp.step === "DEVOLUCION" &&
                   mp.status === "DELIVERED_TO_SERVICE"
               )
-            ? ProcessStatus.PENDING
+            ? ProcessStatus.IN_PROGRESS
             : ProcessStatus.PENDING,
         step: MedicationProcessStep.DEVOLUCION,
         isQRStep: false,
@@ -1565,6 +1646,15 @@ export default function PatientDetailView({
                                   queryClient={queryClient}
                                   currentDailyProcess={currentDailyProcess}
                                   isNursePanel={isNursePanel}
+                                />
+                              ) : step.id === "recepcion-farmacia" ? (
+                                <DevolutionReceptionButton
+                                  patient={patient}
+                                  step={step}
+                                  userRole={profile?.role || ""}
+                                  patientProcesses={patientProcesses}
+                                  queryClient={queryClient}
+                                  currentDailyProcess={currentDailyProcess}
                                 />
                               ) : (
                                 <ProcessStatusButton
