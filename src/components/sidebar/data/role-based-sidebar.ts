@@ -1,5 +1,4 @@
 import {
-  Command,
   HelpCircle,
   LayoutDashboard,
   Settings,
@@ -8,6 +7,7 @@ import {
   TrendingUp,
   CheckCircle2,
   QrCode,
+  Building2,
 } from "lucide-react";
 import type { SidebarData } from "../types";
 
@@ -27,6 +27,7 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
     teams: [
       {
         name: "Plataforma Médica",
+        logo: Building2,
         plan: "Sistema Hospitalario",
       },
     ],

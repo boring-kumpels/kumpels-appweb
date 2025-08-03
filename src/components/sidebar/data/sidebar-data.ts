@@ -1,12 +1,9 @@
 import {
   AlertCircle,
   AppWindow,
-  AudioWaveform,
   Ban,
   Bug,
   CheckSquare,
-  Command,
-  GalleryVerticalEnd,
   HelpCircle,
   LayoutDashboard,
   Lock,
@@ -16,6 +13,7 @@ import {
   ServerCrash,
   UserX,
   Users,
+  Building2,
 } from "lucide-react";
 import type { SidebarData } from "../types";
 
@@ -28,6 +26,7 @@ export const sidebarData: SidebarData = {
   teams: [
     {
       name: "Plataforma Médica",
+      logo: Building2,
       plan: "Sistema Hospitalario",
     },
   ],
