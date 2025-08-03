@@ -77,6 +77,7 @@ import {
 } from "@/types/patient";
 import { UserRole } from "@prisma/client";
 import { getLineDisplayName } from "@/lib/lines";
+import { getStatusColorClass } from "@/lib/medication-process-permissions";
 import { toast } from "@/components/ui/use-toast";
 
 // Custom button component for devolution reception step
@@ -131,16 +132,6 @@ function DevolutionReceptionButton({
     }
   };
 
-  const getButtonStyle = () => {
-    if (step.status === ProcessStatus.COMPLETED) {
-      return "bg-green-500 hover:bg-green-600 text-white border-green-500";
-    }
-    if (step.status === ProcessStatus.IN_PROGRESS) {
-      return "bg-orange-500 hover:bg-orange-600 text-white border-orange-500";
-    }
-    return "bg-gray-300 text-gray-600 border-gray-300 cursor-not-allowed";
-  };
-
   const getButtonText = () => {
     if (isSyncing) return "Completando...";
     if (step.status === ProcessStatus.COMPLETED) return "Completada";
@@ -148,14 +139,28 @@ function DevolutionReceptionButton({
     return "Pendiente";
   };
 
+  const buttonText = getButtonText();
+  const colorClass = getStatusColorClass(
+    step.status || ProcessStatus.PENDING,
+    isClickable(),
+    MedicationProcessStep.DEVOLUCION
+  );
+
   return (
-    <Button
-      onClick={handleClick}
-      disabled={!isClickable()}
-      className={`px-4 py-2 rounded-lg font-medium transition-colors ${getButtonStyle()}`}
-    >
-      {getButtonText()}
-    </Button>
+    <div className="flex items-center gap-1">
+      <Button
+        variant="ghost"
+        size="sm"
+        className={`px-3 py-1 h-8 min-w-[80px] rounded-full text-xs font-medium ${colorClass} ${!isClickable() ? "cursor-not-allowed" : "cursor-pointer"} ${isSyncing ? "opacity-75" : ""}`}
+        onClick={isClickable() ? handleClick : undefined}
+        disabled={!isClickable() || isSyncing}
+      >
+        <div className="flex items-center gap-1">
+          {isSyncing && <Loader2 className="h-3 w-3 animate-spin" />}
+          <span>{buttonText}</span>
+        </div>
+      </Button>
+    </div>
   );
 }
 
