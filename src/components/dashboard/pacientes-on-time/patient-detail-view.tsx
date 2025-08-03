@@ -87,14 +87,12 @@ function DevolutionReceptionButton({
   userRole,
   patientProcesses,
   queryClient,
-  currentDailyProcess,
 }: {
   patient: PatientWithRelations;
   step: ProcessStep;
   userRole: string;
   patientProcesses: MedicationProcess[];
   queryClient: QueryClient;
-  currentDailyProcess?: DailyProcess | null;
 }) {
   const [isSyncing, setIsSyncing] = useState(false);
   const completeDevolutionReception = useCompleteDevolutionReception();
@@ -1659,7 +1657,6 @@ export default function PatientDetailView({
                                   userRole={profile?.role || ""}
                                   patientProcesses={patientProcesses}
                                   queryClient={queryClient}
-                                  currentDailyProcess={currentDailyProcess}
                                 />
                               ) : (
                                 <ProcessStatusButton
