@@ -1,40 +1,32 @@
-import Head from "next/head";
-import Header from "@/components/views/landing-page/Header";
-import Hero from "@/components/views/landing-page/Hero";
-import SocialProof from "@/components/views/landing-page/SocialProof";
-import Features from "@/components/views/landing-page/Features";
-import About from "@/components/views/landing-page/About";
-import Testimonials from "@/components/views/landing-page/Testimonials";
-import CTA from "@/components/views/landing-page/CTA";
-import Footer from "@/components/views/landing-page/Footer";
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/providers/auth-provider";
 
 export default function Home() {
-  return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-b from-background via-background to-secondary/20">
-      <Head>
-        <title>POSITIVE-Next: Your Mind&apos;s Best Friend</title>
-        <meta
-          name="description"
-          content="Transform your mindset with POSITIVE-Next - the AI-powered mental fitness companion that helps you overcome mental saboteurs."
-        />
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
 
-      <Header />
+  useEffect(() => {
+    if (!isLoading) {
+      if (user) {
+        router.replace("/dashboard");
+      } else {
+        router.replace("/sign-in");
+      }
+    }
+  }, [user, isLoading, router]);
 
-      <main className="flex-grow relative">
-        <div className="absolute inset-0 bg-grid-black/[0.02] -z-10" />
-        <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-transparent -z-10" />
+  // Show loading state while checking auth
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
-        <Hero />
-        <SocialProof />
-        <Features />
-        <About />
-        <Testimonials />
-        <CTA />
-      </main>
-
-      <Footer />
-    </div>
-  );
+  // This should never render, but just in case
+  return null;
 }
