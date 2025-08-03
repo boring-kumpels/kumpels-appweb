@@ -56,7 +56,7 @@ export default function UsersTable({
   onPageChange,
 }: UsersTableProps) {
   const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat("en-US", {
+    return new Intl.DateTimeFormat("es-ES", {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -70,7 +70,7 @@ export default function UsersTable({
     }
     if (firstName) return firstName;
     if (lastName) return lastName;
-    return "No name set";
+    return "Sin nombre";
   };
 
   if (isLoading) {
@@ -80,12 +80,12 @@ export default function UsersTable({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>User</TableHead>
+                <TableHead>Usuario</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="w-[100px]">Actions</TableHead>
+                <TableHead>Rol</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Creado</TableHead>
+                <TableHead className="w-[100px]">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -141,7 +141,9 @@ export default function UsersTable({
                 <TableCell colSpan={6} className="text-center py-8">
                   <div className="flex flex-col items-center space-y-2">
                     <User className="h-8 w-8 text-muted-foreground" />
-                    <p className="text-muted-foreground">No users found</p>
+                    <p className="text-muted-foreground">
+                      No se encontraron usuarios
+                    </p>
                   </div>
                 </TableCell>
               </TableRow>
@@ -176,7 +178,7 @@ export default function UsersTable({
                     <Badge
                       variant={user.profile.active ? "default" : "secondary"}
                     >
-                      {user.profile.active ? "Active" : "Inactive"}
+                      {user.profile.active ? "Activo" : "Inactivo"}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -199,11 +201,11 @@ export default function UsersTable({
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => onEdit(user)}>
                           <Edit className="mr-2 h-4 w-4" />
-                          Edit User
+                          Editar Usuario
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => onResetPassword(user)}>
                           <Key className="mr-2 h-4 w-4" />
-                          Reset Password
+                          Restablecer Contraseña
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
@@ -211,7 +213,7 @@ export default function UsersTable({
                           className="text-destructive focus:text-destructive"
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
-                          Delete User
+                          Eliminar Usuario
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -227,7 +229,7 @@ export default function UsersTable({
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
-            Page {currentPage} of {totalPages}
+            Página {currentPage} de {totalPages}
           </div>
           <div className="flex items-center space-x-2">
             <Button
@@ -237,7 +239,7 @@ export default function UsersTable({
               disabled={currentPage <= 1}
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
-              Previous
+              Anterior
             </Button>
             <Button
               variant="outline"
@@ -245,7 +247,7 @@ export default function UsersTable({
               onClick={() => onPageChange(currentPage + 1)}
               disabled={currentPage >= totalPages}
             >
-              Next
+              Siguiente
               <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </div>

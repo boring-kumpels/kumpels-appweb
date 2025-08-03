@@ -86,9 +86,13 @@ export default function CreateUserForm({ onSubmit }: CreateUserFormProps) {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>Correo Electrónico</FormLabel>
               <FormControl>
-                <Input placeholder="user@example.com" type="email" {...field} />
+                <Input
+                  placeholder="usuario@ejemplo.com"
+                  type="email"
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -100,10 +104,13 @@ export default function CreateUserForm({ onSubmit }: CreateUserFormProps) {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <FormLabel>Contraseña</FormLabel>
               <div className="flex space-x-2">
                 <FormControl>
-                  <PasswordInput placeholder="Enter password" {...field} />
+                  <PasswordInput
+                    placeholder="Ingresa la contraseña"
+                    {...field}
+                  />
                 </FormControl>
                 <Button
                   type="button"
@@ -111,7 +118,7 @@ export default function CreateUserForm({ onSubmit }: CreateUserFormProps) {
                   size="sm"
                   onClick={generateRandomPassword}
                 >
-                  Generate
+                  Generar
                 </Button>
               </div>
               <FormMessage />
@@ -125,10 +132,10 @@ export default function CreateUserForm({ onSubmit }: CreateUserFormProps) {
             name="firstName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>First Name</FormLabel>
+                <FormLabel>Nombre</FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="John"
+                    placeholder="Juan"
                     {...field}
                     value={field.value || ""}
                   />
@@ -143,10 +150,10 @@ export default function CreateUserForm({ onSubmit }: CreateUserFormProps) {
             name="lastName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Last Name</FormLabel>
+                <FormLabel>Apellido</FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="Doe"
+                    placeholder="Pérez"
                     {...field}
                     value={field.value || ""}
                   />
@@ -162,11 +169,11 @@ export default function CreateUserForm({ onSubmit }: CreateUserFormProps) {
           name="role"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Role</FormLabel>
+              <FormLabel>Rol</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a role" />
+                    <SelectValue placeholder="Selecciona un rol" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -194,9 +201,9 @@ export default function CreateUserForm({ onSubmit }: CreateUserFormProps) {
                 />
               </FormControl>
               <div className="space-y-1 leading-none">
-                <FormLabel>Active User</FormLabel>
+                <FormLabel>Usuario Activo</FormLabel>
                 <p className="text-sm text-muted-foreground">
-                  User can sign in and access the application
+                  El usuario puede iniciar sesión y acceder a la aplicación
                 </p>
               </div>
             </FormItem>
@@ -205,7 +212,7 @@ export default function CreateUserForm({ onSubmit }: CreateUserFormProps) {
 
         <div className="flex justify-end space-x-2 pt-4">
           <Button type="submit" disabled={isLoading}>
-            {isLoading ? "Creating..." : "Create User"}
+            {isLoading ? "Creando..." : "Crear Usuario"}
           </Button>
         </div>
       </form>

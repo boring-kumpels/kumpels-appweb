@@ -6,8 +6,8 @@ import { redirect } from "next/navigation";
 import UsersManagement from "@/components/admin/users/users-management";
 
 export const metadata: Metadata = {
-  title: "User Management",
-  description: "Manage application users and their roles",
+  title: "Gestión de Usuarios",
+  description: "Gestionar usuarios de la aplicación y sus roles",
 };
 
 export default async function AdminUsersPage() {
@@ -34,9 +34,11 @@ export default async function AdminUsersPage() {
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">User Management</h2>
+          <h2 className="text-3xl font-bold tracking-tight">
+            Gestión de Usuarios
+          </h2>
           <p className="text-muted-foreground">
-            Create and manage application users and their roles.
+            Crear y gestionar usuarios de la aplicación y sus roles.
           </p>
         </div>
       </div>

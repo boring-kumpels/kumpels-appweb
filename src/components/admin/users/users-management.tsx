@@ -65,7 +65,7 @@ export default function UsersManagement() {
       console.error("Error fetching users:", error);
       toast({
         title: "Error",
-        description: "Failed to fetch users. Please try again.",
+        description: "Error al cargar usuarios. Por favor, inténtalo de nuevo.",
         variant: "destructive",
       });
     } finally {
@@ -106,8 +106,8 @@ export default function UsersManagement() {
       const data = await response.json();
 
       toast({
-        title: "Success",
-        description: `User created successfully. Temporary password: ${data.temporaryPassword}`,
+        title: "Éxito",
+        description: `Usuario creado exitosamente. Contraseña temporal: ${data.temporaryPassword}`,
       });
 
       setIsCreateDialogOpen(false);
@@ -115,7 +115,8 @@ export default function UsersManagement() {
     } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create user",
+        description:
+          error instanceof Error ? error.message : "Error al crear usuario",
         variant: "destructive",
       });
     }
@@ -137,8 +138,8 @@ export default function UsersManagement() {
       }
 
       toast({
-        title: "Success",
-        description: "User updated successfully",
+        title: "Éxito",
+        description: "Usuario actualizado exitosamente",
       });
 
       setIsEditDialogOpen(false);
@@ -147,14 +148,18 @@ export default function UsersManagement() {
     } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to update user",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Error al actualizar usuario",
         variant: "destructive",
       });
     }
   };
 
   const handleDeleteUser = async (user: UserWithProfile) => {
-    if (!confirm(`Are you sure you want to delete ${user.email}?`)) return;
+    if (!confirm(`¿Estás seguro de que quieres eliminar ${user.email}?`))
+      return;
 
     try {
       const response = await fetch(`/api/admin/users/${user.id}`, {
@@ -167,15 +172,16 @@ export default function UsersManagement() {
       }
 
       toast({
-        title: "Success",
-        description: "User deleted successfully",
+        title: "Éxito",
+        description: "Usuario eliminado exitosamente",
       });
 
       fetchUsers();
     } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to delete user",
+        description:
+          error instanceof Error ? error.message : "Error al eliminar usuario",
         variant: "destructive",
       });
     }
@@ -202,8 +208,8 @@ export default function UsersManagement() {
       const data = await response.json();
 
       toast({
-        title: "Success",
-        description: `Password reset successfully. New password: ${data.temporaryPassword}`,
+        title: "Éxito",
+        description: `Contraseña restablecida exitosamente. Nueva contraseña: ${data.temporaryPassword}`,
       });
 
       setIsResetPasswordDialogOpen(false);
@@ -211,7 +217,10 @@ export default function UsersManagement() {
     } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to reset password",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Error al restablecer contraseña",
         variant: "destructive",
       });
     }
@@ -233,7 +242,7 @@ export default function UsersManagement() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Users</CardTitle>
+          <CardTitle>Usuarios</CardTitle>
         </CardHeader>
         <CardContent>
           {/* Search and Create Actions */}
@@ -241,7 +250,7 @@ export default function UsersManagement() {
             <div className="flex items-center space-x-2">
               <Search className="h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search users by name or email..."
+                placeholder="Buscar usuarios por nombre o email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="max-w-sm"
@@ -255,12 +264,12 @@ export default function UsersManagement() {
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
-                  Create User
+                  Crear Usuario
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-md">
                 <DialogHeader>
-                  <DialogTitle>Create New User</DialogTitle>
+                  <DialogTitle>Crear Nuevo Usuario</DialogTitle>
                 </DialogHeader>
                 <CreateUserForm onSubmit={handleCreateUser} />
               </DialogContent>
@@ -285,7 +294,7 @@ export default function UsersManagement() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit User</DialogTitle>
+            <DialogTitle>Editar Usuario</DialogTitle>
           </DialogHeader>
           {selectedUser && (
             <EditUserForm

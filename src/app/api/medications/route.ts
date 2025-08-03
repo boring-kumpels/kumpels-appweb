@@ -21,7 +21,15 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
 
     // Build search conditions
-    const where: any = {
+    const where: {
+      active: boolean;
+      OR?: Array<{
+        [key: string]: {
+          contains: string;
+          mode: string;
+        };
+      }>;
+    } = {
       active: true,
     };
 

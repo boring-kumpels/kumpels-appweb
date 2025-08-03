@@ -46,6 +46,8 @@ export async function GET(request: NextRequest) {
             bed: true,
           },
         },
+        medicationProcess: true,
+        devolutionCause: true,
         supplies: {
           include: {
             medication: true,
@@ -83,6 +85,9 @@ export async function POST(request: NextRequest) {
     const manualReturn = await prisma.manualReturn.create({
       data: {
         patientId: data.patientId,
+        medicationProcessId: data.medicationProcessId,
+        devolutionCauseId: data.devolutionCauseId,
+        type: data.type || "STANDALONE",
         generatedBy: session.user.id,
         cause: data.cause,
         comments: data.comments,
@@ -101,6 +106,8 @@ export async function POST(request: NextRequest) {
             bed: true,
           },
         },
+        medicationProcess: true,
+        devolutionCause: true,
         supplies: {
           include: {
             medication: true,

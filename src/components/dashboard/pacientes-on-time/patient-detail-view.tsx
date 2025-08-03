@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   ArrowRight,
   ClipboardList,
+  Plus,
   ShoppingCart,
   RotateCcw,
   User,
@@ -21,6 +22,7 @@ import {
   Loader2,
   Clock,
   PackageCheck,
+  Download,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -41,7 +43,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/auth-provider";
-import { Checkbox } from "@/components/ui/checkbox";
+
 import { Textarea } from "@/components/ui/textarea";
 import { usePatient } from "@/hooks/use-patients";
 import { useCurrentDailyProcess } from "@/hooks/use-daily-processes";
@@ -55,15 +57,15 @@ import {
 } from "@/hooks/use-process-error-logs";
 import {
   useManualReturns,
-  useCreateManualReturn,
   useApproveManualReturn,
   useRejectManualReturn,
 } from "@/hooks/use-manual-returns";
 import { useQuery, useQueryClient, QueryClient } from "@tanstack/react-query";
+import { useExportStatistics } from "@/hooks/use-statistics";
 import { ProcessStatusButton } from "./process-status-button";
-import { QRGenerator } from "../qr-generator";
 import { QRScanner } from "../qr-scanner";
-import { MedicationSearch } from "./medication-search";
+import { DevolutionForm } from "./devolution-form";
+import { DevolutionApproval } from "./devolution-approval";
 import {
   MedicationProcessStep,
   ProcessStatus,
@@ -833,26 +835,23 @@ export default function PatientDetailView({
   const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
   const [isManualReturnModalOpen, setIsManualReturnModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [isQRGeneratorOpen, setIsQRGeneratorOpen] = useState(false);
+
   const [isQRScannerOpen, setIsQRScannerOpen] = useState(false);
   const [newMessage, setNewMessage] = useState("");
   const [selectedErrorStep, setSelectedErrorStep] = useState<
     MedicationProcessStep | ""
   >("");
 
-  // Manual Returns state
-  const [selectedMedication, setSelectedMedication] = useState<any>(null);
-  const [quantity, setQuantity] = useState("");
-  const [selectedCauses, setSelectedCauses] = useState<string[]>([]);
-  const [comment, setComment] = useState("");
+  // Devolution workflow state
+  const [isDevolutionFormOpen, setIsDevolutionFormOpen] = useState(false);
+  const [pendingDevolutionProcessId, setPendingDevolutionProcessId] = useState<
+    string | null
+  >(null);
 
   // Export Modal State
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [selectedMedications, setSelectedMedications] = useState<string[]>([]);
-  const [selectedUser, setSelectedUser] = useState("Todos los usuarios");
-  const [selectedExportCause, setSelectedExportCause] =
-    useState("Todas las causas");
 
   // Fetch patient data
   const { data: patient, isLoading: patientLoading } = usePatient({
@@ -893,7 +892,8 @@ export default function PatientDetailView({
   // Mutations
   const createErrorLog = useCreateProcessErrorLog();
   const updateMedicationProcess = useUpdateMedicationProcess();
-  const createManualReturn = useCreateManualReturn();
+  const exportStatistics = useExportStatistics();
+
   const approveManualReturn = useApproveManualReturn();
   const rejectManualReturn = useRejectManualReturn();
 
@@ -901,6 +901,23 @@ export default function PatientDetailView({
   const patientProcesses = allMedicationProcesses.filter(
     (p) => p.patientId === patientId
   );
+
+  // Watch for new devolution processes that need manual devolution form
+  // Note: This is now optional - nurses can choose to create manual devolutions during the devolution process
+
+  // Handle export function
+  const handleExport = async () => {
+    if (!startDate || !endDate) return;
+
+    try {
+      await exportStatistics.exportData("general", "CSV", {
+        dateFrom: startDate,
+        dateTo: endDate,
+      });
+    } catch (error) {
+      console.error("Export error:", error);
+    }
+  };
 
   // Calculate button states for optimistic updates
   const buttonStates = useMemo(() => {
@@ -1232,11 +1249,11 @@ export default function PatientDetailView({
     );
   };
 
-  // Check if devolution process is completed to enable manual devolutions
-  const isDevolutionCompleted = allMedicationProcesses.some(
+  // Check if entrega process is completed to enable manual devolutions
+  const isEntregaCompleted = allMedicationProcesses.some(
     (mp) =>
       mp.patientId === patientId &&
-      mp.step === "DEVOLUCION" &&
+      mp.step === "ENTREGA" &&
       mp.status === "COMPLETED"
   );
 
@@ -1260,7 +1277,7 @@ export default function PatientDetailView({
       id: "devoluciones_manuales" as const,
       name: "Devoluciones Manuales",
       icon: <User className="h-4 w-4" />,
-      disabled: !isDevolutionCompleted,
+      disabled: !isEntregaCompleted,
     },
   ];
 
@@ -1346,7 +1363,7 @@ export default function PatientDetailView({
               <CardContent>
                 {activeTab === "devoluciones_manuales" ? (
                   <div className="space-y-6">
-                    {!isDevolutionCompleted ? (
+                    {!isEntregaCompleted ? (
                       <div className="text-center py-12">
                         <Lock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                         <h3 className="text-lg font-semibold text-foreground mb-2">
@@ -1496,37 +1513,50 @@ export default function PatientDetailView({
                                           {manualReturn.status ===
                                             "PENDING" && (
                                             <>
-                                              <Button
-                                                size="sm"
-                                                className="bg-green-500 hover:bg-green-600"
-                                                onClick={() =>
-                                                  approveManualReturn.mutate(
-                                                    manualReturn.id
-                                                  )
-                                                }
-                                                disabled={
-                                                  approveManualReturn.isPending
-                                                }
-                                              >
-                                                <Check className="h-4 w-4 mr-1" />
-                                                Aprobar
-                                              </Button>
-                                              <Button
-                                                size="sm"
-                                                variant="outline"
-                                                className="border-red-500 text-red-500 hover:bg-red-50"
-                                                onClick={() =>
-                                                  rejectManualReturn.mutate(
-                                                    manualReturn.id
-                                                  )
-                                                }
-                                                disabled={
-                                                  rejectManualReturn.isPending
-                                                }
-                                              >
-                                                <AlertTriangle className="h-4 w-4 mr-1" />
-                                                Rechazar
-                                              </Button>
+                                              {/* Only show approve/reject buttons for authorized roles */}
+                                              {profile?.role ===
+                                                "PHARMACY_REGENT" ||
+                                              profile?.role === "SUPERADMIN" ? (
+                                                <>
+                                                  <Button
+                                                    size="sm"
+                                                    className="bg-green-500 hover:bg-green-600"
+                                                    onClick={() =>
+                                                      approveManualReturn.mutate(
+                                                        manualReturn.id
+                                                      )
+                                                    }
+                                                    disabled={
+                                                      approveManualReturn.isPending
+                                                    }
+                                                  >
+                                                    <Check className="h-4 w-4 mr-1" />
+                                                    Aprobar
+                                                  </Button>
+                                                  <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="border-red-500 text-red-500 hover:bg-red-50"
+                                                    onClick={() =>
+                                                      rejectManualReturn.mutate(
+                                                        {
+                                                          id: manualReturn.id,
+                                                        }
+                                                      )
+                                                    }
+                                                    disabled={
+                                                      rejectManualReturn.isPending
+                                                    }
+                                                  >
+                                                    <AlertTriangle className="h-4 w-4 mr-1" />
+                                                    Rechazar
+                                                  </Button>
+                                                </>
+                                              ) : (
+                                                <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+                                                  Pendiente de aprobación
+                                                </span>
+                                              )}
                                             </>
                                           )}
                                         </div>
@@ -1616,6 +1646,70 @@ export default function PatientDetailView({
                         );
                       })}
                     </div>
+
+                    {/* Devolution Approval - Show to all roles but with conditional actions */}
+                    {activeTab === "devoluciones" && (
+                      <div className="mt-6">
+                        <DevolutionApproval
+                          manualReturns={manualReturns}
+                          userRole={profile?.role}
+                          onApprovalChange={() => {
+                            queryClient.invalidateQueries({
+                              queryKey: ["manual-returns"],
+                            });
+                            queryClient.invalidateQueries({
+                              queryKey: ["all-medication-processes"],
+                            });
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Optional Manual Devolution Button for Nurses */}
+                    {activeTab === "devoluciones" &&
+                      profile?.role === "NURSE" && (
+                        <div className="mt-6">
+                          {(() => {
+                            const devolutionProcess = patientProcesses.find(
+                              (p) =>
+                                p.step === MedicationProcessStep.DEVOLUCION &&
+                                p.status === ProcessStatus.IN_PROGRESS
+                            );
+
+                            if (devolutionProcess) {
+                              return (
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <h4 className="text-sm font-medium text-blue-900">
+                                        Devolución Manual Opcional
+                                      </h4>
+                                      <p className="text-xs text-blue-700 mt-1">
+                                        ¿Necesitas crear una devolución manual
+                                        durante este proceso?
+                                      </p>
+                                    </div>
+                                    <Button
+                                      size="sm"
+                                      onClick={() => {
+                                        setPendingDevolutionProcessId(
+                                          devolutionProcess.id
+                                        );
+                                        setIsDevolutionFormOpen(true);
+                                      }}
+                                      className="bg-blue-600 hover:bg-blue-700"
+                                    >
+                                      <Plus className="h-4 w-4 mr-2" />
+                                      Crear Devolución Manual
+                                    </Button>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      )}
 
                     {/* QR Scanner Button for Entrega Tab */}
                     {activeTab === "entrega" &&
@@ -1899,156 +1993,56 @@ export default function PatientDetailView({
         open={isManualReturnModalOpen}
         onOpenChange={setIsManualReturnModalOpen}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Nueva Devolución Manual</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
-                Medicamento
-              </label>
-              <MedicationSearch
-                onSelect={setSelectedMedication}
-                placeholder="Buscar medicamento..."
-              />
-              {selectedMedication && (
-                <div className="p-3 bg-muted rounded-md">
-                  <div className="text-sm font-medium">
-                    {selectedMedication.nombrePreciso ||
-                      selectedMedication.nuevaEstructuraEstandarSemantico ||
-                      selectedMedication.principioActivo}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {selectedMedication.concentracionEstandarizada &&
-                      `${selectedMedication.concentracionEstandarizada} • `}
-                    {selectedMedication.formaFarmaceutica &&
-                      `${selectedMedication.formaFarmaceutica} • `}
-                    {selectedMedication.cumSinCeros &&
-                      `CUM: ${selectedMedication.cumSinCeros}`}
-                  </div>
-                </div>
-              )}
-            </div>
+          <DevolutionForm
+            patientId={patientId}
+            onSuccess={() => {
+              setIsManualReturnModalOpen(false);
+              // Refresh data
+              queryClient.invalidateQueries({ queryKey: ["manual-returns"] });
+            }}
+            onCancel={() => {
+              setIsManualReturnModalOpen(false);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
-                Cantidad
-              </label>
-              <Input
-                placeholder="Cantidad a devolver"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
-                Causa de devolución (selección múltiple)
-              </label>
-              <div className="space-y-2 max-h-32 overflow-y-auto">
-                {[
-                  "Suspensión médica",
-                  "Reacción adversa",
-                  "Dosis incorrecta",
-                  "Medicamento vencido",
-                  "Error de dispensación",
-                ].map((cause) => (
-                  <div key={cause} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={cause}
-                      checked={selectedCauses.includes(cause)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSelectedCauses([...selectedCauses, cause]);
-                        } else {
-                          setSelectedCauses(
-                            selectedCauses.filter((c) => c !== cause)
-                          );
-                        }
-                      }}
-                    />
-                    <label htmlFor={cause} className="text-sm text-foreground">
-                      {cause}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
-                Comentario
-              </label>
-              <Textarea
-                placeholder="Comentario adicional..."
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                className="min-h-[80px]"
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end space-x-2">
-            <Button
-              variant="outline"
-              onClick={() => setIsManualReturnModalOpen(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              className="bg-blue-600 hover:bg-blue-700"
-              onClick={async () => {
-                if (
-                  !patient ||
-                  !selectedMedication ||
-                  !quantity ||
-                  selectedCauses.length === 0
-                )
-                  return;
-
-                try {
-                  await createManualReturn.mutateAsync({
-                    patientId: patient.id,
-                    cause: selectedCauses.join(", "),
-                    comments: comment,
-                    supplies: [
-                      {
-                        medicationId: selectedMedication.id,
-                        supplyCode:
-                          selectedMedication.cumSinCeros ||
-                          selectedMedication.codigoServinte ||
-                          "SUPPLY_" + Date.now(),
-                        supplyName:
-                          selectedMedication.nombrePreciso ||
-                          selectedMedication.nuevaEstructuraEstandarSemantico ||
-                          selectedMedication.principioActivo ||
-                          "Medicamento",
-                        quantityReturned: parseInt(quantity) || 1,
-                      },
-                    ],
-                  });
-
-                  setIsManualReturnModalOpen(false);
-                  // Reset form
-                  setSelectedMedication(null);
-                  setQuantity("");
-                  setSelectedCauses([]);
-                  setComment("");
-                } catch (error) {
-                  console.error("Error creating manual return:", error);
-                }
+      {/* Devolution Form Modal */}
+      <Dialog
+        open={isDevolutionFormOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsDevolutionFormOpen(false);
+            setPendingDevolutionProcessId(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Proceso de Devolución - Crear Devolución Manual
+            </DialogTitle>
+          </DialogHeader>
+          {pendingDevolutionProcessId && (
+            <DevolutionForm
+              patientId={patientId}
+              medicationProcessId={pendingDevolutionProcessId}
+              onSuccess={() => {
+                setIsDevolutionFormOpen(false);
+                setPendingDevolutionProcessId(null);
+                // Refresh data
+                queryClient.invalidateQueries({ queryKey: ["manual-returns"] });
               }}
-              disabled={
-                !selectedMedication ||
-                !quantity ||
-                selectedCauses.length === 0 ||
-                createManualReturn.isPending
-              }
-            >
-              {createManualReturn.isPending ? "Creando..." : "Crear Devolución"}
-            </Button>
-          </div>
+              onCancel={() => {
+                setIsDevolutionFormOpen(false);
+                setPendingDevolutionProcessId(null);
+              }}
+            />
+          )}
         </DialogContent>
       </Dialog>
 
@@ -2058,7 +2052,7 @@ export default function PatientDetailView({
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-2">
               <svg
-                className="h-5 w-5"
+                className="h-5 w-5 text-green-600"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -2070,217 +2064,72 @@ export default function PatientDetailView({
                   d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                 />
               </svg>
-              <span>Exportar Consolidado de Devoluciones Manuales</span>
+              <span>Exportar Estadísticas</span>
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4 max-h-96 overflow-y-auto">
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-sm font-medium text-foreground mb-2">
-                  Rango de Fechas
-                </h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-xs text-muted-foreground">
-                      Fecha Inicio
-                    </label>
-                    <div className="relative">
-                      <Input
-                        placeholder="mm/dd/yyyy"
-                        value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
-                      />
-                      <svg
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs text-muted-foreground">
-                      Fecha Fin
-                    </label>
-                    <div className="relative">
-                      <Input
-                        placeholder="mm/dd/yyyy"
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                      />
-                      <svg
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="text-sm font-medium text-foreground mb-2">
-                  Medicamentos Devueltos
-                </h4>
-                <div className="space-y-2">
-                  {[
-                    "Paracetamol",
-                    "Ibuprofeno",
-                    "Amoxicilina",
-                    "Omeprazol",
-                    "Loratadina",
-                  ].map((med) => (
-                    <div key={med} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={med}
-                        checked={selectedMedications.includes(med)}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setSelectedMedications([
-                              ...selectedMedications,
-                              med,
-                            ]);
-                          } else {
-                            setSelectedMedications(
-                              selectedMedications.filter((m) => m !== med)
-                            );
-                          }
-                        }}
-                      />
-                      <label htmlFor={med} className="text-sm text-foreground">
-                        {med}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">
-                  Usuario que Generó o Aceptó
-                </label>
-                <Select value={selectedUser} onValueChange={setSelectedUser}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Todos los usuarios">
-                      Todos los usuarios
-                    </SelectItem>
-                    <SelectItem value="Usuario 1">Usuario 1</SelectItem>
-                    <SelectItem value="Usuario 2">Usuario 2</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">
-                  Causa de Devolución
-                </label>
-                <Select
-                  value={selectedExportCause}
-                  onValueChange={setSelectedExportCause}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Todas las causas">
-                      Todas las causas
-                    </SelectItem>
-                    <SelectItem value="Suspensión médica">
-                      Suspensión médica
-                    </SelectItem>
-                    <SelectItem value="Reacción adversa">
-                      Reacción adversa
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Fecha de inicio
+              </label>
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Fecha de fin
+              </label>
+              <Input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Medicamentos (opcional)
+              </label>
+              <Input
+                placeholder="Separar por comas (ej: Med1, Med2)"
+                value={selectedMedications.join(", ")}
+                onChange={(e) =>
+                  setSelectedMedications(
+                    e.target.value.split(",").map((m) => m.trim())
+                  )
+                }
+              />
             </div>
           </div>
-
-          <div className="flex justify-between">
+          <div className="flex justify-end space-x-2">
             <Button
               variant="outline"
-              size="sm"
-              onClick={() => {
-                setStartDate("");
-                setEndDate("");
-                setSelectedMedications([]);
-                setSelectedUser("Todos los usuarios");
-                setSelectedExportCause("Todas las causas");
-              }}
+              onClick={() => setIsExportModalOpen(false)}
             >
-              <svg
-                className="h-4 w-4 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-              Limpiar Filtros
+              Cancelar
             </Button>
-            <div className="flex space-x-2">
-              <Button
-                variant="outline"
-                onClick={() => setIsExportModalOpen(false)}
-              >
-                Cancelar
-              </Button>
-              <Button
-                className="bg-blue-600 hover:bg-blue-700"
-                onClick={() => {
-                  // Handle export logic here
-                  setIsExportModalOpen(false);
-                }}
-              >
-                <svg
-                  className="h-4 w-4 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-                </svg>
-                Exportar
-              </Button>
-            </div>
+            <Button
+              onClick={handleExport}
+              disabled={!startDate || !endDate}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {false ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Exportando...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar
+                </>
+              )}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* QR Generator Modal */}
-      <QRGenerator
-        open={isQRGeneratorOpen}
-        onOpenChange={setIsQRGeneratorOpen}
-      />
 
       {/* QR Scanner Modal */}
       <QRScanner

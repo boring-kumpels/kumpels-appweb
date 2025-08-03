@@ -24,12 +24,11 @@ export const useManualReturns = ({
 
       if (filters?.patientId) params.append("patientId", filters.patientId);
       if (filters?.status) params.append("status", filters.status);
-      if (filters?.generatedBy) params.append("generatedBy", filters.generatedBy);
+      if (filters?.generatedBy)
+        params.append("generatedBy", filters.generatedBy);
       if (filters?.reviewedBy) params.append("reviewedBy", filters.reviewedBy);
 
-      const response = await fetch(
-        `/api/manual-returns?${params.toString()}`
-      );
+      const response = await fetch(`/api/manual-returns?${params.toString()}`);
 
       if (!response.ok) {
         throw new Error("Failed to fetch manual returns");
@@ -46,9 +45,7 @@ export const useCreateManualReturn = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (
-      data: CreateManualReturnData
-    ): Promise<ManualReturn> => {
+    mutationFn: async (data: CreateManualReturnData): Promise<ManualReturn> => {
       const response = await fetch("/api/manual-returns", {
         method: "POST",
         headers: {
@@ -153,18 +150,20 @@ export const useRejectManualReturn = () => {
 
   return {
     ...updateManualReturn,
-    mutate: (id: string) =>
+    mutate: ({ id, comments }: { id: string; comments?: string }) =>
       updateManualReturn.mutate({
         id,
         data: {
           status: ManualReturnStatus.REJECTED,
+          ...(comments && { comments }),
         },
       }),
-    mutateAsync: (id: string) =>
+    mutateAsync: ({ id, comments }: { id: string; comments?: string }) =>
       updateManualReturn.mutateAsync({
         id,
         data: {
           status: ManualReturnStatus.REJECTED,
+          ...(comments && { comments }),
         },
       }),
   };

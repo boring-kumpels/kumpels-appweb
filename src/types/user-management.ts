@@ -3,21 +3,24 @@ import type { UserRole } from "@prisma/client";
 
 // User creation form schema
 export const createUserFormSchema = z.object({
-  email: z.string().min(1, "Email is required").email("Invalid email address"),
+  email: z
+    .string()
+    .min(1, "El correo electrónico es requerido")
+    .email("Dirección de correo electrónico inválida"),
   password: z
     .string()
-    .min(7, "Password must be at least 7 characters")
-    .max(100, "Password must be less than 100 characters"),
+    .min(7, "La contraseña debe tener al menos 7 caracteres")
+    .max(100, "La contraseña debe tener menos de 100 caracteres"),
   firstName: z
     .string()
-    .min(2, "First name must be at least 2 characters")
-    .max(30, "First name must be less than 30 characters")
+    .min(2, "El nombre debe tener al menos 2 caracteres")
+    .max(30, "El nombre debe tener menos de 30 caracteres")
     .optional()
     .nullable(),
   lastName: z
     .string()
-    .min(2, "Last name must be at least 2 characters")
-    .max(30, "Last name must be less than 30 characters")
+    .min(2, "El apellido debe tener al menos 2 caracteres")
+    .max(30, "El apellido debe tener menos de 30 caracteres")
     .optional()
     .nullable(),
   role: z.enum([
@@ -33,14 +36,14 @@ export const createUserFormSchema = z.object({
 export const updateUserFormSchema = z.object({
   firstName: z
     .string()
-    .min(2, "First name must be at least 2 characters")
-    .max(30, "First name must be less than 30 characters")
+    .min(2, "El nombre debe tener al menos 2 caracteres")
+    .max(30, "El nombre debe tener menos de 30 caracteres")
     .optional()
     .nullable(),
   lastName: z
     .string()
-    .min(2, "Last name must be at least 2 characters")
-    .max(30, "Last name must be less than 30 characters")
+    .min(2, "El apellido debe tener al menos 2 caracteres")
+    .max(30, "El apellido debe tener menos de 30 caracteres")
     .optional()
     .nullable(),
   role: z.enum([
@@ -56,8 +59,8 @@ export const updateUserFormSchema = z.object({
 export const updateUserPasswordSchema = z.object({
   password: z
     .string()
-    .min(7, "Password must be at least 7 characters")
-    .max(100, "Password must be less than 100 characters"),
+    .min(7, "La contraseña debe tener al menos 7 caracteres")
+    .max(100, "La contraseña debe tener menos de 100 caracteres"),
 });
 
 // Type exports
@@ -107,10 +110,10 @@ export interface UserCreationResponse {
 
 // Role display names
 export const roleDisplayNames: Record<UserRole, string> = {
-  SUPERADMIN: "Super Admin",
-  NURSE: "Nurse",
-  PHARMACY_VALIDATOR: "Pharmacy Validator",
-  PHARMACY_REGENT: "Pharmacy Regent",
+  SUPERADMIN: "Super Administrador",
+  NURSE: "Enfermero/a",
+  PHARMACY_VALIDATOR: "Validador de Farmacia",
+  PHARMACY_REGENT: "Regente de Farmacia",
 };
 
 // Role colors for badges

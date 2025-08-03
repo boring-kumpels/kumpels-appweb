@@ -19,10 +19,35 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Get user profile to check role
+    const profile = await prisma.profile.findUnique({
+      where: { userId: session.user.id },
+    });
+
+    if (!profile) {
+      return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+    }
+
     const data: UpdateManualReturnData = await request.json();
 
-    const updateData: UpdateManualReturnData & { reviewedBy?: string; approvalDate?: Date } = { ...data };
-    
+    // If approving or rejecting, only allow PHARMACY_REGENT and SUPERADMIN
+    if (data.status === "APPROVED" || data.status === "REJECTED") {
+      if (profile.role !== "PHARMACY_REGENT" && profile.role !== "SUPERADMIN") {
+        return NextResponse.json(
+          {
+            error:
+              "Forbidden - Only pharmacy regents can approve/reject manual returns",
+          },
+          { status: 403 }
+        );
+      }
+    }
+
+    const updateData: UpdateManualReturnData & {
+      reviewedBy?: string;
+      approvalDate?: Date;
+    } = { ...data };
+
     // If approving or rejecting, set reviewedBy and approvalDate
     if (data.status === "APPROVED" || data.status === "REJECTED") {
       updateData.reviewedBy = session.user.id;

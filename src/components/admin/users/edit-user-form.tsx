@@ -74,7 +74,7 @@ export default function EditUserForm({
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
         <div className="space-y-2">
-          <label className="text-sm font-medium">Email</label>
+          <label className="text-sm font-medium">Correo Electrónico</label>
           <div className="px-3 py-2 text-sm bg-muted rounded-md">
             {user.email}
           </div>
@@ -86,10 +86,10 @@ export default function EditUserForm({
             name="firstName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>First Name</FormLabel>
+                <FormLabel>Nombre</FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="John"
+                    placeholder="Juan"
                     {...field}
                     value={field.value || ""}
                   />
@@ -104,10 +104,10 @@ export default function EditUserForm({
             name="lastName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Last Name</FormLabel>
+                <FormLabel>Apellido</FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="Doe"
+                    placeholder="Pérez"
                     {...field}
                     value={field.value || ""}
                   />
@@ -123,11 +123,11 @@ export default function EditUserForm({
           name="role"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Role</FormLabel>
+              <FormLabel>Rol</FormLabel>
               <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a role" />
+                    <SelectValue placeholder="Selecciona un rol" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -155,9 +155,9 @@ export default function EditUserForm({
                 />
               </FormControl>
               <div className="space-y-1 leading-none">
-                <FormLabel>Active User</FormLabel>
+                <FormLabel>Usuario Activo</FormLabel>
                 <p className="text-sm text-muted-foreground">
-                  User can sign in and access the application
+                  El usuario puede iniciar sesión y acceder a la aplicación
                 </p>
               </div>
             </FormItem>
@@ -166,10 +166,10 @@ export default function EditUserForm({
 
         <div className="flex justify-end space-x-2 pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
+            Cancelar
           </Button>
           <Button type="submit" disabled={isLoading}>
-            {isLoading ? "Updating..." : "Update User"}
+            {isLoading ? "Actualizando..." : "Actualizar Usuario"}
           </Button>
         </div>
       </form>

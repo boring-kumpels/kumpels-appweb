@@ -191,6 +191,7 @@ model MedicationProcess {
   patient         Patient             @relation(fields: [patientId], references: [id], onDelete: Cascade)
   dailyProcess    DailyProcess?       @relation(fields: [dailyProcessId], references: [id], onDelete: SetNull)
   errorLogs       ProcessErrorLog[]
+  manualReturns   ManualReturn[]      // Manual returns linked to this process
   
   @@unique([patientId, step, dailyProcessId])
   @@index([patientId])
@@ -237,24 +238,37 @@ enum ManualReturnStatus {
   REJECTED
 }
 
+enum ManualReturnType {
+  STANDALONE      // Regular manual return
+  DEVOLUTION_PROCESS  // Part of devolution workflow
+}
+
 model ManualReturn {
-  id              String              @id @default(cuid())
-  patientId       String
-  generatedBy     String              // User ID who generated the return
-  reviewedBy      String?             // User ID who reviewed/approved the return
-  status          ManualReturnStatus  @default(PENDING)
-  approvalDate    DateTime?
-  cause           String
-  comments        String?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  id                    String              @id @default(cuid())
+  patientId             String
+  medicationProcessId   String?             // Link to devolution process if part of workflow
+  devolutionCauseId     String?             // Link to structured devolution cause
+  generatedBy           String              // User ID who generated the return
+  reviewedBy            String?             // User ID who reviewed/approved the return
+  status                ManualReturnStatus  @default(PENDING)
+  type                  ManualReturnType    @default(STANDALONE)
+  approvalDate          DateTime?
+  cause                 String              // Free text cause (for backward compatibility)
+  comments              String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
   
   // Relations
-  patient         Patient             @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  supplies        ManualReturnSupply[]
+  patient               Patient             @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  medicationProcess     MedicationProcess?  @relation(fields: [medicationProcessId], references: [id], onDelete: SetNull)
+  devolutionCause       DevolutionCause?    @relation(fields: [devolutionCauseId], references: [id], onDelete: SetNull)
+  supplies              ManualReturnSupply[]
   
   @@index([patientId])
+  @@index([medicationProcessId])
+  @@index([devolutionCauseId])
   @@index([status])
+  @@index([type])
   @@index([createdAt])
   @@map("manual_returns")
 }
@@ -337,6 +351,22 @@ model Medication {
   @@index([nombrePreciso])
   @@index([active])
   @@map("medications")
+}
+
+model DevolutionCause {
+  id          String   @id @default(cuid())
+  causeId     Int      @unique
+  description String
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  manualReturns ManualReturn[]
+  
+  @@index([causeId])
+  @@index([active])
+  @@map("devolution_causes")
 }
 
 enum QRType {

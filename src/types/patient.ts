@@ -42,6 +42,11 @@ export enum ManualReturnStatus {
   REJECTED = "REJECTED",
 }
 
+export enum ManualReturnType {
+  STANDALONE = "STANDALONE",
+  DEVOLUTION_PROCESS = "DEVOLUTION_PROCESS",
+}
+
 export enum DailyProcessStatus {
   ACTIVE = "ACTIVE",
   COMPLETED = "COMPLETED",
@@ -151,18 +156,32 @@ export interface ProcessErrorLog {
   medicationProcess?: MedicationProcess;
 }
 
+export interface DevolutionCause {
+  id: string;
+  causeId: number;
+  description: string;
+  active: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface ManualReturn {
   id: string;
   patientId: string;
+  medicationProcessId?: string;
+  devolutionCauseId?: string;
   generatedBy: string;
   reviewedBy?: string;
   status: ManualReturnStatus;
+  type: ManualReturnType;
   approvalDate?: Date;
   cause: string;
   comments?: string;
   createdAt: Date;
   updatedAt: Date;
   patient?: Patient;
+  medicationProcess?: MedicationProcess;
+  devolutionCause?: DevolutionCause;
   supplies?: ManualReturnSupply[];
 }
 
@@ -363,6 +382,9 @@ export interface ProcessErrorLogFilters {
 // Manual Return Types
 export interface CreateManualReturnData {
   patientId: string;
+  medicationProcessId?: string;
+  devolutionCauseId?: string;
+  type?: ManualReturnType;
   cause: string;
   comments?: string;
   supplies: {

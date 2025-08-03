@@ -82,9 +82,9 @@ export default function ResetPasswordDialog({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Reset Password</DialogTitle>
+          <DialogTitle>Restablecer Contraseña</DialogTitle>
           <p className="text-sm text-muted-foreground">
-            Reset password for {user.email}
+            Restablecer contraseña para {user.email}
           </p>
         </DialogHeader>
 
@@ -98,11 +98,11 @@ export default function ResetPasswordDialog({
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>New Password</FormLabel>
+                  <FormLabel>Nueva Contraseña</FormLabel>
                   <div className="flex space-x-2">
                     <FormControl>
                       <PasswordInput
-                        placeholder="Enter new password"
+                        placeholder="Ingresa la nueva contraseña"
                         {...field}
                       />
                     </FormControl>
@@ -112,7 +112,7 @@ export default function ResetPasswordDialog({
                       size="sm"
                       onClick={generateRandomPassword}
                     >
-                      Generate
+                      Generar
                     </Button>
                   </div>
                   <FormMessage />
@@ -122,10 +122,10 @@ export default function ResetPasswordDialog({
 
             <div className="flex justify-end space-x-2 pt-4">
               <Button type="button" variant="outline" onClick={handleClose}>
-                Cancel
+                Cancelar
               </Button>
               <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Resetting..." : "Reset Password"}
+                {isLoading ? "Restableciendo..." : "Restablecer Contraseña"}
               </Button>
             </div>
           </form>
