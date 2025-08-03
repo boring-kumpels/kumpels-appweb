@@ -63,6 +63,7 @@ import { useQuery, useQueryClient, QueryClient } from "@tanstack/react-query";
 import { ProcessStatusButton } from "./process-status-button";
 import { QRGenerator } from "../qr-generator";
 import { QRScanner } from "../qr-scanner";
+import { MedicationSearch } from "./medication-search";
 import {
   MedicationProcessStep,
   ProcessStatus,
@@ -840,7 +841,7 @@ export default function PatientDetailView({
   >("");
 
   // Manual Returns state
-  const [selectedSupply, setSelectedSupply] = useState("");
+  const [selectedMedication, setSelectedMedication] = useState<any>(null);
   const [quantity, setQuantity] = useState("");
   const [selectedCauses, setSelectedCauses] = useState<string[]>([]);
   const [comment, setComment] = useState("");
@@ -1905,19 +1906,29 @@ export default function PatientDetailView({
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">
-                Suministro
+                Medicamento
               </label>
-              <Select value={selectedSupply} onValueChange={setSelectedSupply}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar suministro" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="omeprazol">Omeprazol 20mg</SelectItem>
-                  <SelectItem value="paracetamol">Paracetamol 500mg</SelectItem>
-                  <SelectItem value="ibuprofeno">Ibuprofeno 400mg</SelectItem>
-                  <SelectItem value="amoxicilina">Amoxicilina 500mg</SelectItem>
-                </SelectContent>
-              </Select>
+              <MedicationSearch
+                onSelect={setSelectedMedication}
+                placeholder="Buscar medicamento..."
+              />
+              {selectedMedication && (
+                <div className="p-3 bg-muted rounded-md">
+                  <div className="text-sm font-medium">
+                    {selectedMedication.nombrePreciso ||
+                      selectedMedication.nuevaEstructuraEstandarSemantico ||
+                      selectedMedication.principioActivo}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {selectedMedication.concentracionEstandarizada &&
+                      `${selectedMedication.concentracionEstandarizada} • `}
+                    {selectedMedication.formaFarmaceutica &&
+                      `${selectedMedication.formaFarmaceutica} • `}
+                    {selectedMedication.cumSinCeros &&
+                      `CUM: ${selectedMedication.cumSinCeros}`}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -1990,7 +2001,7 @@ export default function PatientDetailView({
               onClick={async () => {
                 if (
                   !patient ||
-                  !selectedSupply ||
+                  !selectedMedication ||
                   !quantity ||
                   selectedCauses.length === 0
                 )
@@ -2003,8 +2014,16 @@ export default function PatientDetailView({
                     comments: comment,
                     supplies: [
                       {
-                        supplyCode: "SUPPLY_" + Date.now(),
-                        supplyName: selectedSupply,
+                        medicationId: selectedMedication.id,
+                        supplyCode:
+                          selectedMedication.cumSinCeros ||
+                          selectedMedication.codigoServinte ||
+                          "SUPPLY_" + Date.now(),
+                        supplyName:
+                          selectedMedication.nombrePreciso ||
+                          selectedMedication.nuevaEstructuraEstandarSemantico ||
+                          selectedMedication.principioActivo ||
+                          "Medicamento",
                         quantityReturned: parseInt(quantity) || 1,
                       },
                     ],
@@ -2012,7 +2031,7 @@ export default function PatientDetailView({
 
                   setIsManualReturnModalOpen(false);
                   // Reset form
-                  setSelectedSupply("");
+                  setSelectedMedication(null);
                   setQuantity("");
                   setSelectedCauses([]);
                   setComment("");
@@ -2021,7 +2040,7 @@ export default function PatientDetailView({
                 }
               }}
               disabled={
-                !selectedSupply ||
+                !selectedMedication ||
                 !quantity ||
                 selectedCauses.length === 0 ||
                 createManualReturn.isPending

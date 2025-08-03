@@ -262,6 +262,7 @@ model ManualReturn {
 model ManualReturnSupply {
   id              String        @id @default(cuid())
   manualReturnId  String
+  medicationId    String?
   supplyCode      String
   supplyName      String
   quantityReturned Int
@@ -269,9 +270,73 @@ model ManualReturnSupply {
   
   // Relations
   manualReturn    ManualReturn  @relation(fields: [manualReturnId], references: [id], onDelete: Cascade)
+  medication      Medication?   @relation(fields: [medicationId], references: [id], onDelete: SetNull)
   
   @@index([manualReturnId])
+  @@index([medicationId])
   @@map("manual_return_supplies")
+}
+
+model Medication {
+  id                              String    @id @default(cuid())
+  codigoPadre                     String?   @map("codigo_padre")
+  codigoServinte                  String?   @map("codigo_servinte")
+  descripcionAntigua              String?   @map("descripcion_antigua")
+  codigoNuevoEstandar             String?   @map("codigo_nuevo_estandar")
+  nuevaEstructuraEstandarSemantico String?  @map("nueva_estructura_estandar_semantico")
+  caracteres                      String?
+  clasificacionArticulo           String?   @map("clasificacion_articulo")
+  mce                             String?
+  psicotropico                    String?
+  marcacionRegulado               String?   @map("marcacion_regulado")
+  vesicantesIrritantes            String?   @map("vesicantes_irritantes")
+  registroInvima                  String?   @map("registro_invima")
+  expediente                      String?
+  consecutivo                     String?
+  cumSinCeros                     String?   @map("cum_sin_ceros")
+  cumConCeros                     String?   @map("cum_con_ceros")
+  cumSinCerosFormulado            String?   @map("cum_sin_ceros_formulado")
+  pbs                             String?
+  ven                             String?
+  atc                             String?
+  codigoUdm                       String?   @map("codigo_udm")
+  descripcionUdm                  String?   @map("descripcion_udm")
+  condicionAlmacenamiento         String?   @map("condicion_almacenamiento")
+  mipresDci                       String?   @map("mipres_dci")
+  altoRiesgo                      String?   @map("alto_riesgo")
+  lasa                            String?
+  gabinete                        String?
+  nivel1EstandarSemantico         String?   @map("nivel1_estandar_semantico")
+  validacionCum                   String?   @map("validacion_cum")
+  inventario24052024              String?   @map("inventario_24052024")
+  observacionReunionCompras20240524 String? @map("observacion_reunion_compras_20240524")
+  validacionCumAdjudicacion       String?   @map("validacion_cum_adjudicacion")
+  principioActivo                 String?   @map("principio_activo")
+  nombreAtc                       String?   @map("nombre_atc")
+  nombrePreciso                   String?   @map("nombre_preciso")
+  concentracionEstandarizada      String?   @map("concentracion_estandarizada")
+  formaFarmaceutica               String?   @map("forma_farmaceutica")
+  marcaComercial                  String?   @map("marca_comercial")
+  titularRegistro                String?   @map("titular_registro")
+  importador                      String?
+  fabricante                      String?
+  viaAdministracion               String?   @map("via_administracion")
+  descripcionCum                  String?   @map("descripcion_cum")
+  active                          Boolean   @default(true)
+  createdAt                       DateTime  @default(now())
+  updatedAt                       DateTime  @updatedAt
+  
+  // Relations
+  manualReturnSupplies            ManualReturnSupply[]
+  
+  @@index([codigoServinte])
+  @@index([codigoNuevoEstandar])
+  @@index([cumSinCeros])
+  @@index([cumConCeros])
+  @@index([principioActivo])
+  @@index([nombrePreciso])
+  @@index([active])
+  @@map("medications")
 }
 
 enum QRType {

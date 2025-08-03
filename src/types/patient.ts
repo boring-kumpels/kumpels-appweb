@@ -169,11 +169,63 @@ export interface ManualReturn {
 export interface ManualReturnSupply {
   id: string;
   manualReturnId: string;
+  medicationId?: string;
   supplyCode: string;
   supplyName: string;
   quantityReturned: number;
   createdAt: Date;
   manualReturn?: ManualReturn;
+  medication?: Medication;
+}
+
+export interface Medication {
+  id: string;
+  codigoPadre?: string;
+  codigoServinte?: string;
+  descripcionAntigua?: string;
+  codigoNuevoEstandar?: string;
+  nuevaEstructuraEstandarSemantico?: string;
+  caracteres?: string;
+  clasificacionArticulo?: string;
+  mce?: string;
+  psicotropico?: string;
+  marcacionRegulado?: string;
+  vesicantesIrritantes?: string;
+  registroInvima?: string;
+  expediente?: string;
+  consecutivo?: string;
+  cumSinCeros?: string;
+  cumConCeros?: string;
+  cumSinCerosFormulado?: string;
+  pbs?: string;
+  ven?: string;
+  atc?: string;
+  codigoUdm?: string;
+  descripcionUdm?: string;
+  condicionAlmacenamiento?: string;
+  mipresDci?: string;
+  altoRiesgo?: string;
+  lasa?: string;
+  gabinete?: string;
+  nivel1EstandarSemantico?: string;
+  validacionCum?: string;
+  inventario24052024?: string;
+  observacionReunionCompras20240524?: string;
+  validacionCumAdjudicacion?: string;
+  principioActivo?: string;
+  nombreAtc?: string;
+  nombrePreciso?: string;
+  concentracionEstandarizada?: string;
+  formaFarmaceutica?: string;
+  marcaComercial?: string;
+  titularRegistro?: string;
+  importador?: string;
+  fabricante?: string;
+  viaAdministracion?: string;
+  descripcionCum?: string;
+  active: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface PatientWithRelations extends Patient {
@@ -314,6 +366,7 @@ export interface CreateManualReturnData {
   cause: string;
   comments?: string;
   supplies: {
+    medicationId?: string;
     supplyCode: string;
     supplyName: string;
     quantityReturned: number;

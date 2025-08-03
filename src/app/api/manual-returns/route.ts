@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import prisma from "@/lib/prisma";
-import { CreateManualReturnData, ManualReturnFilters, ManualReturnStatus } from "@/types/patient";
+import {
+  CreateManualReturnData,
+  ManualReturnFilters,
+  ManualReturnStatus,
+} from "@/types/patient";
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,7 +22,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const filters: ManualReturnFilters = {
       patientId: searchParams.get("patientId") || undefined,
-      status: searchParams.get("status") as ManualReturnStatus || undefined,
+      status: (searchParams.get("status") as ManualReturnStatus) || undefined,
       generatedBy: searchParams.get("generatedBy") || undefined,
       reviewedBy: searchParams.get("reviewedBy") || undefined,
     };
@@ -42,7 +46,11 @@ export async function GET(request: NextRequest) {
             bed: true,
           },
         },
-        supplies: true,
+        supplies: {
+          include: {
+            medication: true,
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",
@@ -79,7 +87,8 @@ export async function POST(request: NextRequest) {
         cause: data.cause,
         comments: data.comments,
         supplies: {
-          create: data.supplies.map(supply => ({
+          create: data.supplies.map((supply) => ({
+            medicationId: supply.medicationId,
             supplyCode: supply.supplyCode,
             supplyName: supply.supplyName,
             quantityReturned: supply.quantityReturned,
@@ -92,7 +101,11 @@ export async function POST(request: NextRequest) {
             bed: true,
           },
         },
-        supplies: true,
+        supplies: {
+          include: {
+            medication: true,
+          },
+        },
       },
     });
 
