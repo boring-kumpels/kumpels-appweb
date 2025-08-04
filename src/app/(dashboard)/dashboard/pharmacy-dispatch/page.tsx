@@ -99,7 +99,7 @@ export default function PharmacyDispatchPage() {
           {/* Right Column - Main Content */}
           <div className="lg:col-span-3 space-y-6">
             {/* Header Card */}
-            <Card className="bg-blue-600 text-white border-0 shadow-lg">
+            <Card className="bg-sidebar text-white border-0 shadow-lg">
               <CardContent className="p-6">
                 <div className="text-center mb-6">
                   <h1 className="text-3xl font-bold mb-2">K PharmacyRegents</h1>
@@ -140,7 +140,7 @@ export default function PharmacyDispatchPage() {
                     }
                     className={`h-24 flex flex-col items-center justify-center gap-2 ${
                       transactionType === "delivery"
-                        ? "bg-blue-600 hover:bg-blue-700 text-white"
+                        ? "bg-sidebar hover:bg-sidebar-accent text-white"
                         : "bg-card hover:bg-muted border"
                     }`}
                     onClick={() => setTransactionType("delivery")}
@@ -160,8 +160,8 @@ export default function PharmacyDispatchPage() {
                     }
                     className={`h-24 flex flex-col items-center justify-center gap-2 ${
                       transactionType === "return"
-                        ? "bg-blue-600 hover:bg-blue-700 text-white"
-                        : "bg-card hover:bg-muted border"
+                        ? "bg-sidebar hover:bg-sidebar-accent text-white"
+                        : "bg-card hover:bg-sidebar-accent border"
                     }`}
                     onClick={() => setTransactionType("return")}
                   >
@@ -224,7 +224,7 @@ export default function PharmacyDispatchPage() {
                       variant={selectedLine === line ? "default" : "outline"}
                       className={`h-16 flex flex-col items-center justify-center gap-1 ${
                         selectedLine === line
-                          ? "bg-blue-600 hover:bg-blue-700 text-white"
+                          ? "bg-sidebar hover:bg-sidebar-accent text-white"
                           : "bg-card hover:bg-muted border"
                       }`}
                       onClick={() => setSelectedLine(line)}
@@ -243,7 +243,7 @@ export default function PharmacyDispatchPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Button
                     onClick={handleRegisterTransaction}
-                    className="h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+                    className="h-12 bg-sidebar hover:bg-sidebar-accent text-white font-semibold rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
                   >
                     Registrar Transacción
                   </Button>

@@ -23,7 +23,7 @@ export default function ExampleEstadoGeneralPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <Badge variant="default" className="bg-blue-600">
+                <Badge variant="default" className="bg-sidebar">
                   Visualización
                 </Badge>
                 <span className="font-medium text-gray-900">
@@ -32,19 +32,19 @@ export default function ExampleEstadoGeneralPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <div className="w-2 h-2 bg-sidebar rounded-full"></div>
                   <span className="text-sm text-gray-700">
                     5 líneas (línea 1, 2, 3, 4, ucis)
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <div className="w-2 h-2 bg-sidebar rounded-full"></div>
                   <span className="text-sm text-gray-700">
                     5 procesos por línea
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <div className="w-2 h-2 bg-sidebar rounded-full"></div>
                   <span className="text-sm text-gray-700">
                     Puntos de conexión entre procesos
                   </span>

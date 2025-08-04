@@ -621,7 +621,7 @@ export function FiltersDialog({
             className={cn(
               "flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium",
               selectedTab === "lineas"
-                ? "bg-blue-600 text-white"
+                ? "bg-sidebar text-white"
                 : "bg-gray-200 text-gray-600"
             )}
           >
@@ -631,7 +631,7 @@ export function FiltersDialog({
             className={cn(
               "flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium",
               selectedTab === "servicios"
-                ? "bg-blue-600 text-white"
+                ? "bg-sidebar text-white"
                 : tempFilters.lineas.length > 0
                   ? "bg-blue-100 text-blue-600"
                   : "bg-gray-200 text-gray-600"
@@ -643,7 +643,7 @@ export function FiltersDialog({
             className={cn(
               "flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium",
               selectedTab === "camas"
-                ? "bg-blue-600 text-white"
+                ? "bg-sidebar text-white"
                 : tempFilters.servicios.length > 0
                   ? "bg-blue-100 text-blue-600"
                   : "bg-gray-200 text-gray-600"
@@ -793,7 +793,7 @@ export function FiltersDialog({
           <Button
             onClick={handleApply}
             disabled={tempFilters.camas.length === 0}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-sidebar hover:bg-sidebar-accent"
           >
             Aplicar Filtros ({tempFilters.camas.length} camas)
           </Button>
@@ -801,7 +801,7 @@ export function FiltersDialog({
           <Button
             onClick={handleNext}
             disabled={!canGoNext()}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-sidebar hover:bg-sidebar-accent"
           >
             Siguiente
           </Button>

@@ -2,88 +2,83 @@
 
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ErrorReportModal } from "@/components/dashboard/pacientes-on-time/error-report-modal";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function ExampleSimpleModalPage() {
-  const [reports, setReports] = useState<string[]>([]);
-
-  const handleReportSubmitted = (data: { stage: string }) => {
-    const report = `Error reportado en etapa: ${data.stage}`;
-    setReports((prev) => [...prev, report]);
-  };
-
-  // Use the function to avoid unused variable warning
-  console.log("Handler ready:", handleReportSubmitted);
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="text-center">
-        <h1 className="text-2xl font-bold mb-2">Ejemplo: Modal Simplificado</h1>
+        <h1 className="text-2xl font-bold mb-2">
+          Ejemplo: Modal Simple con Botón
+        </h1>
         <p className="text-gray-600">
-          Modal simplificado con solo dos opciones: Predespacho o Alistamiento
+          Este es un ejemplo de un modal simple que se abre con un botón
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Modal de Reporte Simplificado</CardTitle>
+          <CardTitle>Modal Simple</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">
-              Haz clic en el botón para abrir el modal:
-            </span>
-            <ErrorReportModal
-              patientName="JESUS PEREZ"
-              patientId="1"
-              errorType="alistamiento"
-            />
-          </div>
-
-          {/* Reportes enviados */}
-          {reports.length > 0 && (
-            <div className="mt-4">
-              <h3 className="font-medium mb-2">Reportes enviados:</h3>
-              <div className="space-y-2">
-                {reports.map((report, index) => (
-                  <div
-                    key={index}
-                    className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700"
-                  >
-                    {report}
-                  </div>
-                ))}
+          <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+              <Button>Abrir Modal</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Modal de Ejemplo</DialogTitle>
+                <DialogDescription>
+                  Este es un modal simple que se puede cerrar haciendo clic en
+                  el botón X o presionando la tecla Escape.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                <p className="text-sm text-gray-600">
+                  Contenido del modal aquí. Puedes agregar cualquier contenido
+                  que necesites.
+                </p>
               </div>
-            </div>
-          )}
+            </DialogContent>
+          </Dialog>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Características del Modal Simplificado</CardTitle>
+          <CardTitle>Características del Modal</CardTitle>
         </CardHeader>
         <CardContent>
           <ul className="space-y-2 text-sm">
             <li className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-              Solo dos opciones: Predespacho y Alistamiento
+              <span className="w-2 h-2 bg-sidebar rounded-full"></span>
+              Se abre con un botón
             </li>
             <li className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-              Diseño limpio y minimalista
+              <span className="w-2 h-2 bg-sidebar rounded-full"></span>
+              Se puede cerrar con el botón X
             </li>
             <li className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-              Botones grandes y fáciles de usar
+              <span className="w-2 h-2 bg-sidebar rounded-full"></span>
+              Se puede cerrar con la tecla Escape
             </li>
             <li className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-              Iconos claros para cada etapa
+              <span className="w-2 h-2 bg-sidebar rounded-full"></span>
+              Se puede cerrar haciendo clic fuera del modal
             </li>
             <li className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-              Proceso de envío simplificado
+              <span className="w-2 h-2 bg-sidebar rounded-full"></span>
+              Diseño responsivo y accesible
             </li>
           </ul>
         </CardContent>

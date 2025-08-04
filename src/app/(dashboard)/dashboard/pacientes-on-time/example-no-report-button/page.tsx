@@ -51,7 +51,7 @@ export default function ExampleNoReportButtonPage() {
             </div>
 
             <div className="flex items-start gap-3">
-              <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+              <div className="w-2 h-2 bg-sidebar rounded-full mt-2"></div>
               <div>
                 <h3 className="font-medium text-gray-900">
                   Funcionalidad Preservada

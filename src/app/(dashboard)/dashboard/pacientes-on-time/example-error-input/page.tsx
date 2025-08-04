@@ -65,23 +65,23 @@ export default function ExampleErrorInputPage() {
         <CardContent>
           <ul className="space-y-2 text-sm">
             <li className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+              <span className="w-2 h-2 bg-sidebar rounded-full"></span>
               Campo de entrada con icono de advertencia
             </li>
             <li className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+              <span className="w-2 h-2 bg-sidebar rounded-full"></span>
               Botón &quot;Reportar&quot; integrado al lado del campo
             </li>
             <li className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+              <span className="w-2 h-2 bg-sidebar rounded-full"></span>
               Modal mejorado con tipos de error y prioridades
             </li>
             <li className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+              <span className="w-2 h-2 bg-sidebar rounded-full"></span>
               Soporte para Enter para agregar mensajes
             </li>
             <li className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+              <span className="w-2 h-2 bg-sidebar rounded-full"></span>
               Diseño responsivo y accesible
             </li>
           </ul>

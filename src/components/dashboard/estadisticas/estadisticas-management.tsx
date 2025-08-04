@@ -180,7 +180,7 @@ export function EstadisticasManagement() {
         {
           type: "Cambio de vía de admon",
           percentage: 50,
-          color: "bg-blue-600",
+          color: "bg-sidebar",
         },
         { type: "Cambio de forma", percentage: 35, color: "bg-blue-400" },
         { type: "Cambio de dosis", percentage: 15, color: "bg-blue-300" },
@@ -344,7 +344,7 @@ export function EstadisticasManagement() {
                     title={`Predespacho: ${line.predespacho}`}
                   />
                   <div
-                    className="bg-blue-600"
+                    className="bg-sidebar"
                     style={{
                       width: `${(line.alistamiento / line.total) * 100}%`,
                     }}
@@ -445,7 +445,7 @@ export function EstadisticasManagement() {
               comparativeStats?.manualReturns.byReason.map((reason) => ({
                 type: reason.reason,
                 percentage: reason.percentage,
-                color: "bg-blue-600", // You can add color logic here
+                color: "bg-sidebar", // You can add color logic here
               })) || mockComparativeData.manualReturns.distribution
             ).map((item) => (
               <div
@@ -511,7 +511,7 @@ export function EstadisticasManagement() {
                 }}
               />
               <div
-                className="bg-blue-600 rounded-r"
+                className="bg-sidebar rounded-r"
                 style={{
                   width: `${mockComparativeData.supplyReturnsByPatient.distribution.total}%`,
                 }}

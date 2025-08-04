@@ -207,7 +207,7 @@ export function DevolutionForm({
         <Button
           onClick={handleSubmit}
           disabled={!isFormValid || createManualReturn.isPending}
-          className="bg-blue-600 hover:bg-blue-700"
+          className="bg-sidebar hover:bg-sidebar-accent"
         >
           {createManualReturn.isPending ? (
             <>

@@ -91,7 +91,7 @@ export function PasswordStrengthIndicator({
     strengthWidth = "100%";
   } else if (metRequirementsCount === 4) {
     strength = "strong";
-    strengthColor = "bg-blue-500";
+    strengthColor = "bg-sidebar";
     strengthWidth = "75%";
   } else if (metRequirementsCount === 3) {
     strength = "medium";

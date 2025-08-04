@@ -1434,7 +1434,7 @@ export default function PatientDetailView({
           <div className="flex items-center space-x-4">
             <Button
               variant="default"
-              className="bg-blue-600 hover:bg-blue-700 rounded-full px-6"
+              className="bg-sidebar hover:bg-sidebar-accent rounded-full px-6"
               onClick={() => router.back()}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -1535,7 +1535,7 @@ export default function PatientDetailView({
                           Exportar Devoluciones
                         </Button>
                         <Button
-                          className="bg-blue-600 hover:bg-blue-700"
+                          className="bg-sidebar hover:bg-sidebar-accent"
                           onClick={() => setIsManualReturnModalOpen(true)}
                         >
                           <svg
@@ -1823,7 +1823,7 @@ export default function PatientDetailView({
                                         // No longer needed - devolutions are independent
                                         setIsDevolutionFormOpen(true);
                                       }}
-                                      className="bg-blue-600 hover:bg-blue-700"
+                                      className="bg-sidebar hover:bg-sidebar-accent"
                                     >
                                       <Plus className="h-4 w-4 mr-2" />
                                       Crear Devolución Manual
@@ -1843,7 +1843,7 @@ export default function PatientDetailView({
                         <div className="mt-6 text-center">
                           <Button
                             onClick={() => setIsQRScannerOpen(true)}
-                            className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transition-all duration-200"
+                            className="w-full h-12 bg-sidebar hover:bg-sidebar-accent text-white font-semibold rounded-xl flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transition-all duration-200"
                           >
                             <Camera className="h-5 w-5" />
                             Escanear Código QR
@@ -1909,7 +1909,7 @@ export default function PatientDetailView({
                           />
                           <Button
                             onClick={handleAddMessage}
-                            className="bg-blue-600 hover:bg-blue-700"
+                            className="bg-sidebar hover:bg-sidebar-accent"
                             disabled={!newMessage.trim()}
                           >
                             <Send className="h-4 w-4 mr-2" />

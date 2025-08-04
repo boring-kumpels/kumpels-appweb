@@ -113,7 +113,7 @@ export default function FloorArrivalPage() {
           {/* Right Column - Main Content */}
           <div className="lg:col-span-3 space-y-6">
             {/* Header Card */}
-            <Card className="bg-blue-600 text-white border-0 shadow-lg">
+            <Card className="bg-sidebar text-white border-0 shadow-lg">
               <CardContent className="p-6">
                 <div className="text-center mb-6">
                   <h1 className="text-3xl font-bold mb-2">K PharmacyRegents</h1>
@@ -131,7 +131,7 @@ export default function FloorArrivalPage() {
                     <User className="h-5 w-5" />
                     <span className="text-sm">SUPERUSER</span>
                   </div>
-                  <div className="flex items-center gap-2 bg-blue-500 rounded-lg p-3">
+                  <div className="flex items-center gap-2 bg-sidebar-accent rounded-lg p-3">
                     <List className="h-5 w-5" />
                     <ArrowRight className="h-4 w-4" />
                     <span className="text-sm">
@@ -157,7 +157,7 @@ export default function FloorArrivalPage() {
                     }
                     className={`h-24 flex flex-col items-center justify-center gap-2 ${
                       arrivalStatus === "delivery"
-                        ? "bg-blue-600 hover:bg-blue-700 text-white"
+                        ? "bg-sidebar hover:bg-sidebar-accent text-white"
                         : "bg-card hover:bg-muted border"
                     }`}
                     onClick={() => setArrivalStatus("delivery")}
@@ -175,7 +175,7 @@ export default function FloorArrivalPage() {
                     variant={arrivalStatus === "return" ? "default" : "outline"}
                     className={`h-24 flex flex-col items-center justify-center gap-2 ${
                       arrivalStatus === "return"
-                        ? "bg-blue-600 hover:bg-blue-700 text-white"
+                        ? "bg-sidebar hover:bg-sidebar-accent text-white"
                         : "bg-card hover:bg-muted border"
                     }`}
                     onClick={() => setArrivalStatus("return")}
@@ -249,7 +249,7 @@ export default function FloorArrivalPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Button
                     onClick={handleRegisterArrival}
-                    className="h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+                    className="h-12 bg-sidebar hover:bg-sidebar-accent text-white font-semibold rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
                   >
                     Registrar Transacción
                   </Button>

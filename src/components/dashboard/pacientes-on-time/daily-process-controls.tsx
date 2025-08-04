@@ -40,7 +40,6 @@ export function DailyProcessControls() {
     return null;
   }
 
-
   const handleCancelDailyProcess = async () => {
     if (!currentProcess) return;
 
@@ -80,7 +79,7 @@ export function DailyProcessControls() {
       case DailyProcessStatus.ACTIVE:
         return <Badge className="bg-green-500">Activo</Badge>;
       case DailyProcessStatus.COMPLETED:
-        return <Badge className="bg-blue-500">Completado</Badge>;
+        return <Badge className="bg-sidebar">Completado</Badge>;
       case DailyProcessStatus.CANCELLED:
         return <Badge className="bg-red-500">Cancelado</Badge>;
       default:

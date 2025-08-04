@@ -65,7 +65,7 @@ export function ErrorMessageInput({
       <Button
         onClick={handleAddMessage}
         disabled={!value.trim()}
-        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2"
+        className="bg-sidebar hover:bg-sidebar-accent text-white px-4 py-2"
       >
         Agregar
       </Button>

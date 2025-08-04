@@ -20,10 +20,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { QrCode, Download, Printer, Loader2, X } from "lucide-react";
 import { useLines } from "@/hooks/use-lines-beds";
-import { 
-  generatePharmacyDispatchQR, 
-  QRCodeType
-} from "@/lib/qr-generator";
+import { generatePharmacyDispatchQR, QRCodeType } from "@/lib/qr-generator";
 import { Line } from "@/types/patient";
 
 interface QRGeneratorProps {
@@ -50,7 +47,6 @@ export function QRGenerator({ open, onOpenChange }: QRGeneratorProps) {
     }
   }, [open]);
 
-
   const handleGenerateQR = async () => {
     if (!qrType) return;
 
@@ -63,10 +59,12 @@ export function QRGenerator({ open, onOpenChange }: QRGeneratorProps) {
         if (!selectedLineId) {
           throw new Error("Debe seleccionar una línea");
         }
-        
-        const selectedLine = lines.find((line: Line) => line.id === selectedLineId);
+
+        const selectedLine = lines.find(
+          (line: Line) => line.id === selectedLineId
+        );
         qrDataURL = await generatePharmacyDispatchQR(selectedLineId);
-        displayText = `Salida de Farmacia - ${selectedLine?.displayName || 'Línea'}`;
+        displayText = `Salida de Farmacia - ${selectedLine?.displayName || "Línea"}`;
       } else {
         throw new Error("Tipo de QR no válido");
       }
@@ -75,7 +73,9 @@ export function QRGenerator({ open, onOpenChange }: QRGeneratorProps) {
       setQrDisplayText(displayText);
     } catch (error) {
       console.error("Error generating QR:", error);
-      alert(error instanceof Error ? error.message : "Error generando código QR");
+      alert(
+        error instanceof Error ? error.message : "Error generando código QR"
+      );
     } finally {
       setIsGenerating(false);
     }
@@ -85,7 +85,7 @@ export function QRGenerator({ open, onOpenChange }: QRGeneratorProps) {
     if (!generatedQR) return;
 
     const link = document.createElement("a");
-    link.download = `${qrDisplayText.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.png`;
+    link.download = `${qrDisplayText.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.png`;
     link.href = generatedQR;
     document.body.appendChild(link);
     link.click();
@@ -133,12 +133,12 @@ export function QRGenerator({ open, onOpenChange }: QRGeneratorProps) {
           <body>
             <div class="qr-container">
               <div class="qr-title">${qrDisplayText}</div>
-              <div class="qr-date">${new Date().toLocaleDateString('es-ES', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
+              <div class="qr-date">${new Date().toLocaleDateString("es-ES", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
               })}</div>
               <img src="${generatedQR}" alt="Código QR" class="qr-image" />
             </div>
@@ -184,7 +184,10 @@ export function QRGenerator({ open, onOpenChange }: QRGeneratorProps) {
             <Label className="text-sm font-medium text-foreground">
               Tipo de Código QR
             </Label>
-            <Select value={qrType} onValueChange={(value) => setQrType(value as QRCodeType)}>
+            <Select
+              value={qrType}
+              onValueChange={(value) => setQrType(value as QRCodeType)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Selecciona el tipo de QR" />
               </SelectTrigger>
@@ -208,8 +211,12 @@ export function QRGenerator({ open, onOpenChange }: QRGeneratorProps) {
                 disabled={linesLoading}
               >
                 <SelectTrigger>
-                  <SelectValue 
-                    placeholder={linesLoading ? "Cargando líneas..." : "Selecciona una línea"} 
+                  <SelectValue
+                    placeholder={
+                      linesLoading
+                        ? "Cargando líneas..."
+                        : "Selecciona una línea"
+                    }
                   />
                 </SelectTrigger>
                 <SelectContent>
@@ -223,12 +230,11 @@ export function QRGenerator({ open, onOpenChange }: QRGeneratorProps) {
             </div>
           )}
 
-
           {/* Generate Button */}
           <Button
             onClick={handleGenerateQR}
             disabled={!canGenerate() || isGenerating}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+            className="w-full bg-sidebar hover:bg-sidebar-accent text-white"
           >
             {isGenerating ? (
               <>
@@ -249,21 +255,21 @@ export function QRGenerator({ open, onOpenChange }: QRGeneratorProps) {
               <div className="text-center">
                 <h3 className="text-lg font-semibold mb-2">{qrDisplayText}</h3>
                 <div className="bg-white p-4 rounded-lg border-2 border-gray-200 inline-block">
-                  <Image 
-                    src={generatedQR} 
-                    alt="Código QR generado" 
+                  <Image
+                    src={generatedQR}
+                    alt="Código QR generado"
                     width={256}
                     height={256}
                     className="mx-auto"
                   />
                 </div>
                 <p className="text-sm text-muted-foreground mt-2">
-                  {new Date().toLocaleDateString('es-ES', { 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
+                  {new Date().toLocaleDateString("es-ES", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
                   })}
                 </p>
               </div>
