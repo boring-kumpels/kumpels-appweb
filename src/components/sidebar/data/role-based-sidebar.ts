@@ -190,7 +190,7 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
     items: [
       {
         title: "Centro de Ayuda",
-        url: "https://kumpels-tickets-dashboard.vercel.app",
+        url: "https://tickets-dashboard.vercel.app",
         icon: HelpCircle,
       },
     ],
