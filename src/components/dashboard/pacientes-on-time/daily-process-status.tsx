@@ -297,7 +297,9 @@ export function DailyProcessStatusCard() {
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    {!isDebug() && (
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    )}
                     <AlertDialogAction
                       onClick={handleResetDailyProcesses}
                       className="bg-red-600 hover:bg-red-700"
