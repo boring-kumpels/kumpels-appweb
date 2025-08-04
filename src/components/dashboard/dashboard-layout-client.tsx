@@ -8,7 +8,6 @@ import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import SkipToMain from "@/components/skip-to-main";
 import { Header } from "@/components/sidebar/header";
 import { Search } from "@/components/sidebar/search";
-import { ThemeSwitch } from "@/components/sidebar/theme-switch";
 import { ProfileDropdown } from "@/components/sidebar/profile-dropdown";
 import { QRScanner } from "@/components/dashboard/qr-scanner";
 import { QrCode } from "lucide-react";
@@ -54,7 +53,6 @@ export function DashboardLayoutClient({ children }: DashboardLayoutProps) {
                   <QrCode className="h-4 w-4" />
                 </Button>
               )}
-              <ThemeSwitch />
               <ProfileDropdown />
             </div>
           </Header>

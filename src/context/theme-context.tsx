@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 
-type Theme = "dark" | "light" | "system";
+type Theme = "light";
 
 type ThemeProviderProps = {
   children: ReactNode;
@@ -22,7 +22,7 @@ type ThemeProviderState = {
 };
 
 const initialState: ThemeProviderState = {
-  theme: "system",
+  theme: "light",
   setTheme: () => null,
 };
 
@@ -30,7 +30,7 @@ const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
 
 export function ThemeProvider({
   children,
-  defaultTheme = "system",
+  defaultTheme = "light",
   storageKey = "ui-theme",
   ...props
 }: ThemeProviderProps) {
@@ -38,30 +38,24 @@ export function ThemeProvider({
 
   useEffect(() => {
     const stored = localStorage.getItem(storageKey);
-    if (stored) setTheme(stored as Theme);
+    if (stored && stored === "light") setTheme(stored as Theme);
   }, [storageKey]);
 
   useEffect(() => {
     const root = window.document.documentElement;
     root.classList.remove("light", "dark");
+    root.classList.add("light");
 
-    if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
-        ? "dark"
-        : "light";
-      root.classList.add(systemTheme);
-    } else {
-      root.classList.add(theme);
-    }
-
-    localStorage.setItem(storageKey, theme);
-  }, [theme, storageKey]);
+    localStorage.setItem(storageKey, "light");
+  }, [storageKey]);
 
   const value = {
     theme,
     setTheme: (theme: Theme) => {
-      setTheme(theme);
+      // Only allow light theme
+      if (theme === "light") {
+        setTheme(theme);
+      }
     },
   };
 
