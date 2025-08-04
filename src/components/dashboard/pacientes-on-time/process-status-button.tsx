@@ -80,7 +80,11 @@ export function ProcessStatusButton({
     actualUserRole === "PHARMACY_REGENT" || actualUserRole === "SUPERADMIN";
 
   // Special handling when no daily process exists
-  if (!currentDailyProcess && step !== MedicationProcessStep.PREDESPACHO) {
+  if (
+    !currentDailyProcess &&
+    step !== MedicationProcessStep.PREDESPACHO &&
+    step !== MedicationProcessStep.DEVOLUCION
+  ) {
     return (
       <div className="flex items-center justify-center">
         <Button
@@ -120,23 +124,24 @@ export function ProcessStatusButton({
     try {
       let dailyProcess = currentDailyProcess;
 
-      // If no daily process exists and this is a regent clicking predespacho, create daily process first
+      // If no daily process exists and this is a regent clicking predespacho OR a nurse clicking devolucion, create daily process first
       if (
         !dailyProcess &&
-        isRegent &&
-        step === MedicationProcessStep.PREDESPACHO
+        ((isRegent && step === MedicationProcessStep.PREDESPACHO) ||
+          (actualUserRole === "NURSE" &&
+            step === MedicationProcessStep.DEVOLUCION))
       ) {
         const today = new Date();
         const createdDailyProcess = await createDailyProcess.mutateAsync({
           date: today,
-          notes: `Proceso diario iniciado automáticamente por ${profile.firstName} ${profile.lastName}`,
+          notes: `Proceso diario iniciado automáticamente por ${profile.firstName} ${profile.lastName} - ${step === MedicationProcessStep.DEVOLUCION ? "Iniciado por devolución" : "Iniciado por predespacho"}`,
         });
 
         dailyProcess = createdDailyProcess;
 
         toast({
           title: "Proceso diario iniciado",
-          description: "Se ha iniciado automáticamente el proceso diario",
+          description: `Se ha iniciado automáticamente el proceso diario ${step === MedicationProcessStep.DEVOLUCION ? "mediante devolución" : "mediante predespacho"}`,
         });
       }
 
@@ -362,14 +367,23 @@ export function ProcessStatusButton({
         }
       }
 
-      // Only invalidate daily process queries if a new one was created
+      // Invalidate daily process queries if a new one was created
       if (
         !currentDailyProcess &&
-        step === MedicationProcessStep.PREDESPACHO &&
-        dailyProcess
+        dailyProcess &&
+        (step === MedicationProcessStep.PREDESPACHO ||
+          step === MedicationProcessStep.DEVOLUCION)
       ) {
-        queryClient.invalidateQueries({ queryKey: ["daily-processes"] });
-        queryClient.invalidateQueries({ queryKey: ["current-daily-process"] });
+        // Add a small delay to ensure server has processed the changes
+        setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ["daily-processes"] });
+          queryClient.invalidateQueries({
+            queryKey: ["current-daily-process"],
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["all-medication-processes"],
+          });
+        }, 100);
       }
 
       toast({

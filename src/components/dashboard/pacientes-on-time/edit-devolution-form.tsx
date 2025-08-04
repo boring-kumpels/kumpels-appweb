@@ -7,6 +7,7 @@ import { Loader2, Edit, Check } from "lucide-react";
 import { useDevolutionCauses } from "@/hooks/use-devolution-causes";
 import { useUpdateManualReturn } from "@/hooks/use-manual-returns";
 import { ManualReturn, ManualReturnStatus } from "@/types/patient";
+import { isDebug } from "@/lib/utils";
 
 interface EditDevolutionFormProps {
   manualReturn: ManualReturn;
@@ -169,13 +170,15 @@ export function EditDevolutionForm({
       </div>
 
       <div className="flex justify-end space-x-2 pt-4 border-t">
-        <Button
-          variant="outline"
-          onClick={onCancel}
-          disabled={updateManualReturn.isPending}
-        >
-          Cancelar
-        </Button>
+        {!isDebug() && (
+          <Button
+            variant="outline"
+            onClick={onCancel}
+            disabled={updateManualReturn.isPending}
+          >
+            Cancelar
+          </Button>
+        )}
         <Button
           onClick={handleSubmit}
           disabled={!isFormValid || updateManualReturn.isPending}

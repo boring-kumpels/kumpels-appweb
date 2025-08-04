@@ -9,6 +9,7 @@ import { MedicationSearch } from "./medication-search";
 import { useDevolutionCauses } from "@/hooks/use-devolution-causes";
 import { useCreateManualReturn } from "@/hooks/use-manual-returns";
 import { ManualReturnType } from "@/types/patient";
+import { isDebug } from "@/lib/utils";
 
 interface DevolutionFormProps {
   patientId: string;
@@ -197,13 +198,15 @@ export function DevolutionForm({
       </div>
 
       <div className="flex justify-end space-x-2 pt-4 border-t">
-        <Button
-          variant="outline"
-          onClick={onCancel}
-          disabled={createManualReturn.isPending}
-        >
-          Cancelar
-        </Button>
+        {!isDebug() && (
+          <Button
+            variant="outline"
+            onClick={onCancel}
+            disabled={createManualReturn.isPending}
+          >
+            Cancelar
+          </Button>
+        )}
         <Button
           onClick={handleSubmit}
           disabled={!isFormValid || createManualReturn.isPending}

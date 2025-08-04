@@ -16,6 +16,7 @@ import {
   ProcessStatus,
 } from "@/types/patient";
 import { toast } from "@/components/ui/use-toast";
+import { isDebug } from "@/lib/utils";
 
 export function DailyProcessControls() {
   const { user } = useAuth();
@@ -89,7 +90,7 @@ export function DailyProcessControls() {
 
   const getStatusText = () => {
     if (!currentProcess) {
-      return "No hay un proceso diario activo para hoy";
+      return "No hay un proceso diario activo para hoy. Los regentes farmacéuticos pueden iniciarlo con predespacho o alistamiento, y las enfermeras pueden iniciarlo con devoluciones.";
     }
 
     const startTime = new Date(currentProcess.startedAt).toLocaleTimeString(
@@ -140,25 +141,26 @@ export function DailyProcessControls() {
           <p className="text-sm text-muted-foreground">{getStatusText()}</p>
 
           <div className="flex items-center gap-2">
-            {currentProcess?.status === DailyProcessStatus.ACTIVE && (
-              <Button
-                onClick={handleCancelDailyProcess}
-                disabled={
-                  cancelProcess.isPending ||
-                  completedPredespachoProcesses.length > 0
-                }
-                variant="destructive"
-                className="flex items-center gap-2"
-                title={
-                  completedPredespachoProcesses.length > 0
-                    ? "No se puede cancelar porque ya se han completado predespachos"
-                    : "Cancelar proceso diario"
-                }
-              >
-                <XCircle className="h-4 w-4" />
-                {cancelProcess.isPending ? "Cancelando..." : "Cancelar"}
-              </Button>
-            )}
+            {currentProcess?.status === DailyProcessStatus.ACTIVE &&
+              !isDebug() && (
+                <Button
+                  onClick={handleCancelDailyProcess}
+                  disabled={
+                    cancelProcess.isPending ||
+                    completedPredespachoProcesses.length > 0
+                  }
+                  variant="destructive"
+                  className="flex items-center gap-2"
+                  title={
+                    completedPredespachoProcesses.length > 0
+                      ? "No se puede cancelar porque ya se han completado predespachos"
+                      : "Cancelar proceso diario"
+                  }
+                >
+                  <XCircle className="h-4 w-4" />
+                  {cancelProcess.isPending ? "Cancelando..." : "Cancelar"}
+                </Button>
+              )}
           </div>
 
           {currentProcess?.notes && (

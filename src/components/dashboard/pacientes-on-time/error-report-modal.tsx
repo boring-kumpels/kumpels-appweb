@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 
 import { AlertTriangle, Send, X } from "lucide-react";
+import { isDebug } from "@/lib/utils";
 
 interface ErrorReportModalProps {
   patientName: string;
@@ -118,14 +119,16 @@ export function ErrorReportModal({
           ))}
         </div>
         <div className="flex justify-end gap-3 pt-4 border-t">
-          <Button
-            variant="outline"
-            onClick={handleCancel}
-            disabled={isSubmitting}
-          >
-            <X className="h-4 w-4 mr-2" />
-            Cancelar
-          </Button>
+          {!isDebug() && (
+            <Button
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isSubmitting}
+            >
+              <X className="h-4 w-4 mr-2" />
+              Cancelar
+            </Button>
+          )}
           <Button
             onClick={handleSubmit}
             disabled={!selectedStage || isSubmitting}

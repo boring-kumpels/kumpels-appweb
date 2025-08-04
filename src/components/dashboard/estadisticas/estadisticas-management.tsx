@@ -21,6 +21,8 @@ import {
 import { Calendar, TrendingUp, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CircularProgress } from "@/components/ui/circular-progress";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { DateRange } from "react-day-picker";
 import {
   useGeneralStatistics,
   useComparativeStatistics,
@@ -89,10 +91,7 @@ interface FilterState {
   serviceId: string;
   personalRole: string;
   groupBy: string;
-  dateRange: {
-    from: Date;
-    to: Date;
-  };
+  dateRange: DateRange | undefined;
 }
 
 const personalOptions = ["PharmacyRegents", "Nurse", "SUPERUSER"];
@@ -110,7 +109,7 @@ export function EstadisticasManagement() {
     dateRange: {
       from: new Date(2025, 5, 22), // June 22, 2025
       to: new Date(2025, 6, 22), // July 22, 2025
-    },
+    } as DateRange,
   });
 
   // Get real data from API
@@ -124,8 +123,8 @@ export function EstadisticasManagement() {
       lineId: filters.lineId || undefined,
       serviceId: filters.serviceId || undefined,
       personalRole: filters.personalRole || undefined,
-      dateFrom: filters.dateRange.from.toISOString(),
-      dateTo: filters.dateRange.to.toISOString(),
+      dateFrom: filters.dateRange?.from?.toISOString(),
+      dateTo: filters.dateRange?.to?.toISOString(),
       dailyProcessId: dailyProcess?.id,
     }),
     [filters, dailyProcess]
@@ -150,21 +149,21 @@ export function EstadisticasManagement() {
       change: 10,
       lines: [
         {
-          name: "Línea 1",
+          name: "Line 1",
           predespacho: 30,
           alistamiento: 16,
           verificacion: 30,
           total: 76,
         },
         {
-          name: "Línea 2",
+          name: "Line 2",
           predespacho: 14,
           alistamiento: 60,
           verificacion: 30,
           total: 104,
         },
         {
-          name: "Línea 3",
+          name: "Line 3",
           predespacho: 14,
           alistamiento: 35,
           verificacion: 40,
@@ -226,6 +225,13 @@ export function EstadisticasManagement() {
     }));
   };
 
+  const handleDateRangeChange = (dateRange: DateRange | undefined) => {
+    setFilters((prev) => ({
+      ...prev,
+      dateRange,
+    }));
+  };
+
   const handleLineChange = (lineId: string) => {
     setFilters((prev) => ({
       ...prev,
@@ -237,12 +243,6 @@ export function EstadisticasManagement() {
   const getAvailableServices = () => {
     if (!filters.lineId || !services) return [];
     return services.filter((service) => service.lineId === filters.lineId);
-  };
-
-  const formatDateRange = () => {
-    const from = filters.dateRange.from;
-    const to = filters.dateRange.to;
-    return `${from.getDate()} de ${from.toLocaleDateString("es-ES", { month: "long" })} de ${from.getFullYear()} - ${to.getDate()} de ${to.toLocaleDateString("es-ES", { month: "long" })} de ${to.getFullYear()}`;
   };
 
   const hasData =
@@ -623,7 +623,7 @@ export function EstadisticasManagement() {
               <SelectContent>
                 {lines?.map((line) => (
                   <SelectItem key={line.id} value={line.id}>
-                    {line.name}
+                    {line.displayName}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -706,48 +706,11 @@ export function EstadisticasManagement() {
             <Calendar className="h-4 w-4" />
             Rango de fechas
           </label>
-          <div className="flex items-center gap-2">
-            <div className="flex-1 relative">
-              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                value={formatDateRange()}
-                readOnly
-                className="w-full pl-10 pr-4 py-2 border border-input rounded-md bg-background text-sm text-foreground"
-                placeholder="Selecciona rango de fechas"
-              />
-            </div>
-            <Button variant="outline" size="sm">
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z"
-                />
-              </svg>
-            </Button>
-            <Button variant="outline" size="sm">
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
-            </Button>
-          </div>
+          <DateRangePicker
+            dateRange={filters.dateRange}
+            onDateRangeChange={handleDateRangeChange}
+            placeholder="Selecciona rango de fechas"
+          />
         </div>
 
         {/* Action Buttons */}
@@ -771,7 +734,7 @@ export function EstadisticasManagement() {
                 dateRange: {
                   from: new Date(2025, 5, 22),
                   to: new Date(2025, 6, 22),
-                },
+                } as DateRange,
               });
             }}
           >
@@ -854,7 +817,7 @@ export function EstadisticasManagement() {
                   <SelectContent>
                     {lines?.map((line) => (
                       <SelectItem key={line.id} value={line.id}>
-                        {line.name}
+                        {line.displayName}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -867,48 +830,11 @@ export function EstadisticasManagement() {
                   <Calendar className="h-4 w-4" />
                   Rango de fechas
                 </label>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 relative">
-                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <input
-                      type="text"
-                      value={formatDateRange()}
-                      readOnly
-                      className="w-full pl-10 pr-4 py-2 border border-input rounded-md bg-background text-sm text-foreground"
-                      placeholder="Selecciona rango de fechas"
-                    />
-                  </div>
-                  <Button variant="outline" size="sm">
-                    <svg
-                      className="h-4 w-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z"
-                      />
-                    </svg>
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <svg
-                      className="h-4 w-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                  </Button>
-                </div>
+                <DateRangePicker
+                  dateRange={filters.dateRange}
+                  onDateRangeChange={handleDateRangeChange}
+                  placeholder="Selecciona rango de fechas"
+                />
               </div>
             </div>
           </CardContent>

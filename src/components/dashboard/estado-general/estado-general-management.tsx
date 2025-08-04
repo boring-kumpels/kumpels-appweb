@@ -410,7 +410,9 @@ const LineSection: React.FC<{
     <Card className="mb-6">
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900">{line.name}</h3>
+          <h3 className="text-lg font-semibold text-gray-900">
+            {line.displayName}
+          </h3>
           <Button
             variant="outline"
             size="sm"

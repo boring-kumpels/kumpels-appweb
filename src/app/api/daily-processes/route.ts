@@ -185,13 +185,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Only PHARMACY_REGENT can start daily processes
+    // Only PHARMACY_REGENT, SUPERADMIN, and NURSE can start daily processes
+    // NURSE can only start daily processes when initiating devoluciones
     if (
       userProfile.role !== "PHARMACY_REGENT" &&
-      userProfile.role !== "SUPERADMIN"
+      userProfile.role !== "SUPERADMIN" &&
+      userProfile.role !== "NURSE"
     ) {
       return NextResponse.json(
-        { error: "Only pharmacy regents can start daily processes" },
+        { error: "Only pharmacy regents and nurses can start daily processes" },
         { status: 403 }
       );
     }

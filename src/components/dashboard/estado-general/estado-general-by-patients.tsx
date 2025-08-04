@@ -43,9 +43,7 @@ import {
   PatientStatus,
   MedicationProcessStep,
   ProcessStatus,
-  LineName,
 } from "@/types/patient";
-import { getLineDisplayName } from "@/lib/lines";
 
 interface QRScanRecord {
   id: string;
@@ -66,6 +64,7 @@ interface QRScanRecord {
       line: {
         id: string;
         name: string;
+        displayName: string;
       };
     };
   };
@@ -906,6 +905,7 @@ export default function EstadoGeneralByPatients() {
           line: {
             id: string;
             name: string;
+            displayName: string;
           };
           services: Record<
             string,
@@ -926,6 +926,7 @@ export default function EstadoGeneralByPatients() {
                   line?: {
                     id: string;
                     name: string;
+                    displayName: string;
                   };
                 };
                 service: {
@@ -1156,7 +1157,7 @@ export default function EstadoGeneralByPatients() {
       return {
         id: line.id,
         name: line.name,
-        displayName: getLineDisplayName(line.name as LineName),
+        displayName: line.displayName,
         patientCount: allLinePatients.length,
         showDetails: showDetails[line.id] || false,
         stages,

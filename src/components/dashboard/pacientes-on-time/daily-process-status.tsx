@@ -127,7 +127,7 @@ export function DailyProcessStatusCard() {
         title: "Proceso diario no iniciado",
         description: isRegent
           ? "Como regente farmacéutico, puedes iniciar el proceso diario haciendo clic en cualquier botón de predespacho o alistamiento."
-          : "El proceso diario de medicación aún no ha sido iniciado por el regente farmacéutico.",
+          : "El proceso diario de medicación aún no ha sido iniciado. Los regentes farmacéuticos pueden iniciarlo con predespacho o alistamiento, y las enfermeras pueden iniciarlo con devoluciones.",
         variant: "destructive" as const,
         showActions: false,
       };
@@ -252,25 +252,26 @@ export function DailyProcessStatusCard() {
 
           {statusInfo.showActions && (
             <div className="flex items-center gap-2">
-              {currentProcess?.status === DailyProcessStatus.ACTIVE && (
-                <Button
-                  onClick={handleCancelDailyProcess}
-                  disabled={
-                    cancelProcess.isPending ||
-                    completedPredespachoProcesses.length > 0
-                  }
-                  variant="destructive"
-                  className="flex items-center gap-2"
-                  title={
-                    completedPredespachoProcesses.length > 0
-                      ? "No se puede cancelar porque ya se han completado predespachos"
-                      : "Cancelar proceso diario"
-                  }
-                >
-                  <XCircle className="h-4 w-4" />
-                  {cancelProcess.isPending ? "Cancelando..." : "Cancelar"}
-                </Button>
-              )}
+              {currentProcess?.status === DailyProcessStatus.ACTIVE &&
+                !isDebug() && (
+                  <Button
+                    onClick={handleCancelDailyProcess}
+                    disabled={
+                      cancelProcess.isPending ||
+                      completedPredespachoProcesses.length > 0
+                    }
+                    variant="destructive"
+                    className="flex items-center gap-2"
+                    title={
+                      completedPredespachoProcesses.length > 0
+                        ? "No se puede cancelar porque ya se han completado predespachos"
+                        : "Cancelar proceso diario"
+                    }
+                  >
+                    <XCircle className="h-4 w-4" />
+                    {cancelProcess.isPending ? "Cancelando..." : "Cancelar"}
+                  </Button>
+                )}
 
               <AlertDialog>
                 <AlertDialogTrigger asChild>

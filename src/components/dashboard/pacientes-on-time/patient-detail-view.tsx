@@ -41,7 +41,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
+import { cn, isDebug } from "@/lib/utils";
 import { useAuth } from "@/providers/auth-provider";
 
 import { Textarea } from "@/components/ui/textarea";
@@ -76,7 +76,7 @@ import {
   DailyProcess,
 } from "@/types/patient";
 import { UserRole } from "@prisma/client";
-import { getLineDisplayName } from "@/lib/lines";
+
 import { getStatusColorClass } from "@/lib/medication-process-permissions";
 import { toast } from "@/components/ui/use-toast";
 
@@ -838,8 +838,43 @@ function QRStepButton({
       // Handle nursing request initiation
       setIsProcessing(true);
       try {
-        if (!currentDailyProcess?.id) {
-          throw new Error("No active daily process found");
+        let dailyProcess = currentDailyProcess;
+
+        // If no daily process exists, create one for devolucion
+        if (!dailyProcess) {
+          const today = new Date();
+          const createResponse = await fetch("/api/daily-processes", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              date: today,
+              notes: "Proceso diario iniciado automáticamente por devolución",
+            }),
+          });
+
+          if (!createResponse.ok) {
+            throw new Error("Failed to create daily process for devolucion");
+          }
+
+          dailyProcess = await createResponse.json();
+
+          // Invalidate daily process queries
+          if (queryClient) {
+            // Add a small delay to ensure server has processed the changes
+            setTimeout(() => {
+              queryClient.invalidateQueries({
+                queryKey: ["current-daily-process"],
+              });
+              queryClient.invalidateQueries({
+                queryKey: ["daily-processes"],
+              });
+              queryClient.invalidateQueries({
+                queryKey: ["all-medication-processes"],
+              });
+            }, 100);
+          }
         }
 
         // Check if devolucion process already exists
@@ -870,6 +905,10 @@ function QRStepButton({
           }
         } else {
           // Create new devolucion process with IN_PROGRESS status
+          if (!dailyProcess?.id) {
+            throw new Error("No daily process available for devolucion");
+          }
+
           response = await fetch("/api/medication-processes", {
             method: "POST",
             headers: {
@@ -879,7 +918,7 @@ function QRStepButton({
               patientId: patientId,
               step: "DEVOLUCION",
               status: "IN_PROGRESS",
-              dailyProcessId: currentDailyProcess.id,
+              dailyProcessId: dailyProcess.id,
             }),
           });
         }
@@ -890,18 +929,29 @@ function QRStepButton({
 
         // Invalidate queries to refresh the UI
         if (queryClient) {
-          queryClient.invalidateQueries({
-            queryKey: ["all-medication-processes"],
-          });
-          queryClient.invalidateQueries({
-            queryKey: ["patients"],
-          });
+          // Add a small delay to ensure server has processed the changes
+          setTimeout(() => {
+            queryClient.invalidateQueries({
+              queryKey: ["all-medication-processes"],
+            });
+            queryClient.invalidateQueries({
+              queryKey: ["patients"],
+            });
+            queryClient.invalidateQueries({
+              queryKey: ["current-daily-process"],
+            });
+            queryClient.invalidateQueries({
+              queryKey: ["daily-processes"],
+            });
+          }, 100);
         }
 
         // Show success toast
         toast({
           title: "Devolución iniciada",
-          description: "Se ha iniciado el proceso de devolución",
+          description: currentDailyProcess
+            ? "Se ha iniciado el proceso de devolución"
+            : "Se ha iniciado el proceso diario y la devolución",
         });
       } catch (error) {
         console.error("Error starting devolucion process:", error);
@@ -1971,9 +2021,7 @@ export default function PatientDetailView({
                   </span>
                   {" - "}
                   <span className="font-medium">
-                    {patient.bed?.line?.name
-                      ? getLineDisplayName(patient.bed.line.name)
-                      : "N/A"}
+                    {patient.bed?.line?.displayName || "N/A"}
                   </span>
                 </p>
               </div>
@@ -2089,16 +2137,18 @@ export default function PatientDetailView({
           </div>
 
           <div className="flex justify-end space-x-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsEmergencyModalOpen(false);
-                setNewMessage("");
-                setSelectedErrorStep("");
-              }}
-            >
-              Cancelar
-            </Button>
+            {!isDebug() && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsEmergencyModalOpen(false);
+                  setNewMessage("");
+                  setSelectedErrorStep("");
+                }}
+              >
+                Cancelar
+              </Button>
+            )}
             <Button
               className="bg-red-600 hover:bg-red-700"
               onClick={handleReportError}
@@ -2224,12 +2274,14 @@ export default function PatientDetailView({
             </div>
           </div>
           <div className="flex justify-end space-x-2">
-            <Button
-              variant="outline"
-              onClick={() => setIsExportModalOpen(false)}
-            >
-              Cancelar
-            </Button>
+            {!isDebug() && (
+              <Button
+                variant="outline"
+                onClick={() => setIsExportModalOpen(false)}
+              >
+                Cancelar
+              </Button>
+            )}
             <Button
               onClick={handleExport}
               disabled={!startDate || !endDate}
