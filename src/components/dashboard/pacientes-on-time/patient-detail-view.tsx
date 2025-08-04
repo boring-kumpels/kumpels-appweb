@@ -151,6 +151,14 @@ function DevolutionReceptionButton({
       queryClient.invalidateQueries({
         queryKey: ["all-medication-processes"],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["patients"],
+      });
+
+      // Force immediate refetch
+      await queryClient.refetchQueries({
+        queryKey: ["all-medication-processes"],
+      });
     } catch (error) {
       console.error("Error completing devolution reception:", error);
     } finally {
@@ -160,14 +168,33 @@ function DevolutionReceptionButton({
 
   const getButtonText = () => {
     if (isSyncing) return "Completando...";
+    if (devolutionProcess?.status === ProcessStatus.COMPLETED)
+      return "Completada";
     if (step.status === ProcessStatus.COMPLETED) return "Completada";
     if (step.status === ProcessStatus.IN_PROGRESS) return "Recepción";
     return "Pendiente";
   };
 
   const buttonText = getButtonText();
+
+  // For "Confirmar Recepción", check if the devolution process is completed
+  const isCompleted = devolutionProcess?.status === ProcessStatus.COMPLETED;
+  const statusToUse = isCompleted
+    ? ProcessStatus.COMPLETED
+    : step.status || ProcessStatus.PENDING;
+
+  // Debug logging
+  console.log("DevolutionReceptionButton Debug:", {
+    stepId: step.id,
+    stepStatus: step.status,
+    devolutionProcessStatus: devolutionProcess?.status,
+    isCompleted,
+    statusToUse,
+    isClickable: isClickable(),
+  });
+
   const colorClass = getStatusColorClass(
-    step.status || ProcessStatus.PENDING,
+    statusToUse,
     isClickable(),
     MedicationProcessStep.DEVOLUCION
   );
@@ -289,7 +316,7 @@ function calculateButtonState(
     );
     if (entregaProcess?.status === ProcessStatus.COMPLETED) {
       // If we reach here, no devolution process exists yet (handled above if it exists)
-      return ProcessStatus.PENDING; // Ready to start devolution
+      return null; // Show as not initialized (outlined) - ready to start devolution
     }
     return null; // Delivery not completed yet, show as disabled
   }
@@ -506,7 +533,6 @@ function QRStepButton({
     if (isCompleted) {
       return "bg-green-500 text-white border-0 hover:bg-green-600";
     }
-
     // For nursing reception, check if both QR codes are scanned
     if (step.qrType === "NURSING_RECEPTION") {
       const bothQRCodesScanned =
@@ -516,7 +542,6 @@ function QRStepButton({
         qrScanRecords.some(
           (record) => record.qrCode.type === "SERVICE_ARRIVAL"
         );
-
       if (bothQRCodesScanned) {
         if (isNursePanel) {
           return "bg-transparent text-orange-500 border-2 border-dashed border-orange-500 hover:bg-orange-50";
@@ -528,7 +553,6 @@ function QRStepButton({
         return "bg-transparent text-gray-500 border-2 border-gray-300 hover:bg-gray-50";
       }
     }
-
     // Devolutions styling
     if (step.qrType === "NURSING_REQUEST") {
       const devolucionExists = allMedicationProcesses.some(
@@ -548,19 +572,19 @@ function QRStepButton({
       }
       return "bg-transparent text-gray-500 border-2 border-gray-300 hover:bg-gray-50";
     }
-
+    // Orange-dotted for llegada a farmacia (PHARMACY_DISPATCH_DEVOLUTION)
+    if (step.qrType === "PHARMACY_DISPATCH_DEVOLUTION") {
+      return "bg-transparent text-orange-500 border-2 border-dashed border-orange-500 hover:bg-orange-50";
+    }
     if (
       step.qrType === "FLOOR_ARRIVAL" ||
-      step.qrType === "PHARMACY_RECEPTION" ||
-      step.qrType === "PHARMACY_DISPATCH_DEVOLUTION"
+      step.qrType === "PHARMACY_RECEPTION"
     ) {
       return "bg-transparent text-red-500 border-2 border-dashed border-red-500 hover:bg-red-50";
     }
-
     if (step.qrType === "PHARMACY_DISPATCH") {
       return "bg-transparent text-orange-500 border-2 border-dashed border-orange-500 hover:bg-orange-50";
     }
-
     return "bg-transparent text-orange-500 border-2 border-dashed border-orange-500 hover:bg-orange-50";
   };
 
@@ -1234,7 +1258,7 @@ export default function PatientDetailView({
       },
       {
         id: "salida-farmacia-entregas",
-        name: "Salida Farmacia (Entregas)",
+        name: "Salida Farmacia",
         icon: <ArrowRight className="h-4 w-4" />,
         status: qrScanRecords.some(
           (record) =>
@@ -1258,7 +1282,7 @@ export default function PatientDetailView({
       },
       {
         id: "llegada-servicio-devolucion",
-        name: "Llegada Servicio + Devolución",
+        name: "Llegada Servicio",
         icon: <MapPin className="h-4 w-4" />,
         status: qrScanRecords.some(
           (record) =>
@@ -1278,28 +1302,6 @@ export default function PatientDetailView({
         qrType: "SERVICE_ARRIVAL",
         description:
           "Segundo QR: Escanear código del servicio y seleccionar devolución",
-      },
-      {
-        id: "llegada-farmacia",
-        name: "Llegada a Farmacia",
-        icon: <Truck className="h-4 w-4" />,
-        status: qrScanRecords.some(
-          (record) =>
-            record.qrCode.type === "PHARMACY_DISPATCH_DEVOLUTION" &&
-            record.transactionType === "DEVOLUCION"
-        )
-          ? ProcessStatus.COMPLETED
-          : qrScanRecords.some(
-                (record) =>
-                  record.qrCode.type === "SERVICE_ARRIVAL" &&
-                  record.transactionType === "DEVOLUCION"
-              )
-            ? ProcessStatus.PENDING
-            : ProcessStatus.PENDING,
-        step: MedicationProcessStep.DEVOLUCION,
-        isQRStep: true,
-        qrType: "PHARMACY_DISPATCH_DEVOLUTION",
-        description: "Tercer QR: Escanear código de llegada a farmacia",
       },
       {
         id: "confirmar-recepcion",
@@ -1346,6 +1348,28 @@ export default function PatientDetailView({
         qrType: "PHARMACY_RECEPTION",
         description:
           "Paso final: Regente de farmacia confirma recepción completa de devolución",
+      },
+      {
+        id: "llegada-farmacia",
+        name: "Llegada a Farmacia",
+        icon: <Truck className="h-4 w-4" />,
+        status: qrScanRecords.some(
+          (record) =>
+            record.qrCode.type === "PHARMACY_DISPATCH_DEVOLUTION" &&
+            record.transactionType === "DEVOLUCION"
+        )
+          ? ProcessStatus.COMPLETED
+          : qrScanRecords.some(
+                (record) =>
+                  record.qrCode.type === "SERVICE_ARRIVAL" &&
+                  record.transactionType === "DEVOLUCION"
+              )
+            ? ProcessStatus.PENDING
+            : ProcessStatus.PENDING,
+        step: MedicationProcessStep.DEVOLUCION,
+        isQRStep: true,
+        qrType: "PHARMACY_DISPATCH_DEVOLUTION",
+        description: "Tercer QR: Escanear código de llegada a farmacia",
       },
     ],
     devoluciones_manuales: [],

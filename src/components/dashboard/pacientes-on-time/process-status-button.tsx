@@ -433,11 +433,29 @@ export function ProcessStatusButton({
   // Never fall back to individual calculations as this causes gradual button enabling
   const buttonStatus = preCalculatedState;
 
-  const isStepEnabledByWorkflow = buttonStatus !== null;
+  // For devolution, we want it to be enabled even when not initialized (null)
+  // For other steps, only enable when there's a status
+  const isStepEnabledByWorkflow =
+    step === MedicationProcessStep.DEVOLUCION
+      ? true // Always enabled for devolution
+      : buttonStatus !== null;
 
-  const colorClass = buttonStatus
-    ? getStatusColorClass(buttonStatus, isStepEnabledByWorkflow, step)
-    : getStatusColorClass(ProcessStatus.PENDING, false, step); // Use false for disabled state
+  const colorClass = getStatusColorClass(
+    buttonStatus ?? null,
+    isStepEnabledByWorkflow,
+    step
+  );
+
+  // Debug logging for devolution
+  if (step === MedicationProcessStep.DEVOLUCION) {
+    console.log(`[DEBUG] ProcessStatusButton - Patient ${patient.id}:`, {
+      buttonStatus,
+      isStepEnabledByWorkflow,
+      colorClass,
+      step,
+      actualUserRole,
+    });
+  }
 
   // Determine if button should be clickable
   const isClickable = (() => {
@@ -542,7 +560,9 @@ export function ProcessStatusButton({
     // Special text for devolution step based on status and role
     if (step === MedicationProcessStep.DEVOLUCION) {
       if (actualUserRole === "NURSE") {
-        if (buttonStatus === null || buttonStatus === ProcessStatus.PENDING) {
+        if (buttonStatus === null) {
+          return "No Iniciado";
+        } else if (buttonStatus === ProcessStatus.PENDING) {
           return "Iniciar Devolución";
         } else if (buttonStatus === ProcessStatus.IN_PROGRESS) {
           return "En Proceso";
@@ -554,10 +574,9 @@ export function ProcessStatusButton({
           return "Recepción";
         } else if (buttonStatus === ProcessStatus.COMPLETED) {
           return "Completada";
-        } else if (
-          buttonStatus === null ||
-          buttonStatus === ProcessStatus.PENDING
-        ) {
+        } else if (buttonStatus === null) {
+          return "No Iniciado";
+        } else if (buttonStatus === ProcessStatus.PENDING) {
           return "Esperando Inicio";
         } else if (buttonStatus === ProcessStatus.IN_PROGRESS) {
           return "En Proceso";

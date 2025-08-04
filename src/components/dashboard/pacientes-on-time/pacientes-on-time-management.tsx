@@ -152,9 +152,9 @@ function calculateButtonState(
         return devolucionProcess.status;
       }
     } else {
-      // No DEVOLUCION process yet - show as pending (orange) for nurses to start
+      // No DEVOLUCION process yet - show as not initialized (outlined) for nurses to start
       // Devolutions are now independent and don't require ENTREGA completion
-      return ProcessStatus.PENDING;
+      return null;
     }
   }
 
@@ -361,12 +361,25 @@ export default function PacientesOnTimeManagement() {
           MedicationProcessStep.DEVOLUCION,
         ].forEach((step) => {
           const process = patientProcesses.find((p) => p.step === step);
-          patientStates[step] = calculateButtonState(
+          const calculatedState = calculateButtonState(
             patient,
             step,
             process,
             allMedicationProcesses
           );
+          patientStates[step] = calculatedState;
+
+          // Debug logging for devolution
+          if (step === MedicationProcessStep.DEVOLUCION) {
+            console.log(
+              `[DEBUG] Management - Patient ${patient.id} DEVOLUCION:`,
+              {
+                processStatus: process?.status,
+                calculatedState,
+                patientStates: patientStates,
+              }
+            );
+          }
         });
 
         statesMap.set(patient.id, patientStates);

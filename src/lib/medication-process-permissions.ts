@@ -46,10 +46,15 @@ export function getStatusDisplayName(status: ProcessStatus): string {
  * Get the CSS color class for a process status
  */
 export function getStatusColorClass(
-  status: ProcessStatus,
+  status: ProcessStatus | null,
   isEnabled: boolean = true,
   step?: MedicationProcessStep
 ): string {
+  // Special case for null status (not initialized) - show as outlined like pre-despacho
+  if (status === null) {
+    return "bg-transparent text-gray-900 border-2 border-black hover:bg-gray-50";
+  }
+
   if (!isEnabled) {
     return "bg-transparent text-gray-900 border-2 border-black hover:bg-gray-50";
   }
