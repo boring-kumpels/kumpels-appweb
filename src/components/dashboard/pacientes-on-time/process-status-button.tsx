@@ -220,10 +220,7 @@ export function ProcessStatusButton({
         const optimisticProcess: MedicationProcess = {
           id: optimisticId,
           patientId: patient.id,
-          dailyProcessId:
-            step === MedicationProcessStep.DEVOLUCION
-              ? undefined
-              : dailyProcess?.id,
+          dailyProcessId: dailyProcess?.id, // API will handle auto-creation if undefined
           step: step,
           status: expectedFinalStatus,
           notes: undefined,
@@ -233,13 +230,11 @@ export function ProcessStatusButton({
 
         // Update the cache optimistically
         // For devolutions, we need to handle the case where there's no daily process
-        const cacheKey =
-          step === MedicationProcessStep.DEVOLUCION
-            ? ["all-medication-processes"]
-            : [
-                "all-medication-processes",
-                dailyProcess?.id || "no-daily-process",
-              ];
+        // Use consistent cache key since API handles daily process auto-creation
+        const cacheKey = [
+          "all-medication-processes",
+          dailyProcess?.id || "no-daily-process",
+        ];
 
         const currentProcesses =
           queryClient.getQueryData<MedicationProcess[]>(cacheKey) || [];
@@ -251,14 +246,11 @@ export function ProcessStatusButton({
 
         try {
           // Now perform the actual operations in the background
-          // For devolutions, we don't require a daily process ID
+          // For devolutions and entregas, let the API auto-create daily process if needed
           const createdProcess = await createProcess.mutateAsync({
             patientId: patient.id,
             step,
-            dailyProcessId:
-              step === MedicationProcessStep.DEVOLUCION
-                ? undefined
-                : dailyProcess?.id,
+            dailyProcessId: dailyProcess?.id, // Let API handle auto-creation if undefined
             status: expectedFinalStatus, // Pass the status directly
           });
 
@@ -292,14 +284,11 @@ export function ProcessStatusButton({
         }
       } else {
         // Update existing process optimistically
-        // For devolutions, we need to handle the case where there's no daily process
-        const cacheKey =
-          step === MedicationProcessStep.DEVOLUCION
-            ? ["all-medication-processes"]
-            : [
-                "all-medication-processes",
-                dailyProcess?.id || "no-daily-process",
-              ];
+        // Use consistent cache key since API handles daily process auto-creation
+        const cacheKey = [
+          "all-medication-processes",
+          dailyProcess?.id || "no-daily-process",
+        ];
 
         const currentProcesses =
           queryClient.getQueryData<MedicationProcess[]>(cacheKey) || [];
@@ -369,24 +358,30 @@ export function ProcessStatusButton({
         }
       }
 
-      // Invalidate daily process queries if a new one was created
-      if (
-        !currentDailyProcess &&
-        dailyProcess &&
-        (step === MedicationProcessStep.PREDESPACHO ||
-          step === MedicationProcessStep.DEVOLUCION)
-      ) {
-        // Add a small delay to ensure server has processed the changes
-        setTimeout(() => {
+      // Invalidate queries to refresh the UI with the latest data
+      // Add a small delay to ensure server has processed the changes
+      setTimeout(() => {
+        // Invalidate medication processes queries
+        queryClient.invalidateQueries({
+          queryKey: ["all-medication-processes"],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["all-medication-processes", currentDailyProcess?.id],
+        });
+
+        // Invalidate daily process queries if a new one was created
+        if (
+          !currentDailyProcess &&
+          dailyProcess &&
+          (step === MedicationProcessStep.PREDESPACHO ||
+            step === MedicationProcessStep.DEVOLUCION)
+        ) {
           queryClient.invalidateQueries({ queryKey: ["daily-processes"] });
           queryClient.invalidateQueries({
             queryKey: ["current-daily-process"],
           });
-          queryClient.invalidateQueries({
-            queryKey: ["all-medication-processes"],
-          });
-        }, 100);
-      }
+        }
+      }, 100);
 
       toast({
         title: "Proceso actualizado",

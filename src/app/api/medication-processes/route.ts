@@ -103,10 +103,42 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Patient not found" }, { status: 404 });
     }
 
-    // Check if daily process exists if provided
-    if (dailyProcessId) {
+    // Handle daily process creation/validation
+    let finalDailyProcessId = dailyProcessId;
+    
+    // Auto-create daily process for ENTREGA and DEVOLUCION if none exists
+    if (
+      (step === MedicationProcessStep.ENTREGA || 
+       step === MedicationProcessStep.DEVOLUCION) &&
+      !dailyProcessId
+    ) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // Check if a daily process already exists for today
+      let existingDailyProcess = await prisma.dailyProcess.findUnique({
+        where: { date: today },
+      });
+      
+      if (!existingDailyProcess) {
+        // Create a new daily process for today
+        existingDailyProcess = await prisma.dailyProcess.create({
+          data: {
+            date: today,
+            startedBy: session.user.id,
+            status: "ACTIVE",
+            notes: `Iniciado automáticamente por ${step === MedicationProcessStep.ENTREGA ? 'entrega' : 'devolución'}`,
+          },
+        });
+      }
+      
+      finalDailyProcessId = existingDailyProcess.id;
+    }
+    
+    // Check if daily process exists if provided or auto-created
+    if (finalDailyProcessId) {
       const dailyProcess = await prisma.dailyProcess.findUnique({
-        where: { id: dailyProcessId },
+        where: { id: finalDailyProcessId },
       });
 
       if (!dailyProcess) {
@@ -122,7 +154,7 @@ export async function POST(request: NextRequest) {
       where: {
         patientId,
         step: step as MedicationProcessStep,
-        dailyProcessId: dailyProcessId || null,
+        dailyProcessId: finalDailyProcessId || null,
       },
     });
 
@@ -150,7 +182,7 @@ export async function POST(request: NextRequest) {
     } = {
       patientId,
       step: step as MedicationProcessStep,
-      dailyProcessId: dailyProcessId || null,
+      dailyProcessId: finalDailyProcessId || null,
       status: (status as ProcessStatus) || ProcessStatus.PENDING,
       notes: notes || null,
     };
