@@ -206,7 +206,7 @@ export default function PacientesOnTimeManagement() {
   );
 
   // Pre-fetch all medication processes for the current daily process
-  // Note: This will return empty array if no daily process exists, which is correct
+  // Also includes independent devolutions that don't have a daily process
   const {
     data: allMedicationProcesses = [],
     isLoading: medicationProcessesLoading,

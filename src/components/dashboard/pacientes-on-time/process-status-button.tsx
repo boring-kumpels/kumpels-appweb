@@ -124,28 +124,31 @@ export function ProcessStatusButton({
     try {
       let dailyProcess = currentDailyProcess;
 
-      // If no daily process exists and this is a regent clicking predespacho OR a nurse clicking devolucion, create daily process first
+      // If no daily process exists and this is a regent clicking predespacho, create daily process first
+      // Note: Devolutions are independent and don't require a daily process
       if (
         !dailyProcess &&
-        ((isRegent && step === MedicationProcessStep.PREDESPACHO) ||
-          (actualUserRole === "NURSE" &&
-            step === MedicationProcessStep.DEVOLUCION))
+        isRegent &&
+        step === MedicationProcessStep.PREDESPACHO
       ) {
         const today = new Date();
         const createdDailyProcess = await createDailyProcess.mutateAsync({
           date: today,
-          notes: `Proceso diario iniciado automáticamente por ${profile.firstName} ${profile.lastName} - ${step === MedicationProcessStep.DEVOLUCION ? "Iniciado por devolución" : "Iniciado por predespacho"}`,
+          notes: `Proceso diario iniciado automáticamente por ${profile.firstName} ${profile.lastName} - Iniciado por predespacho`,
         });
 
         dailyProcess = createdDailyProcess;
 
         toast({
           title: "Proceso diario iniciado",
-          description: `Se ha iniciado automáticamente el proceso diario ${step === MedicationProcessStep.DEVOLUCION ? "mediante devolución" : "mediante predespacho"}`,
+          description:
+            "Se ha iniciado automáticamente el proceso diario mediante predespacho",
         });
       }
 
-      if (!dailyProcess) {
+      // For devolutions, we don't require a daily process - they are independent
+      // For other steps that require a daily process, check if it exists
+      if (!dailyProcess && step !== MedicationProcessStep.DEVOLUCION) {
         toast({
           title: "Error",
           description: "No se pudo iniciar el proceso diario",
@@ -176,14 +179,14 @@ export function ProcessStatusButton({
         expectedFinalStatus = ProcessStatus.COMPLETED; // Entrega auto-completes
       } else if (
         step === MedicationProcessStep.DEVOLUCION &&
-        actualUserRole === "NURSE"
+        (actualUserRole === "NURSE" || actualUserRole === "SUPERADMIN")
       ) {
         if (!process) {
           expectedFinalStatus = ProcessStatus.IN_PROGRESS; // First click starts devolution
         } else if (process.status === ProcessStatus.PENDING) {
           expectedFinalStatus = ProcessStatus.IN_PROGRESS; // Start it
         } else {
-          return; // No further action needed for nurses on devolution
+          return; // No further action needed for nurses or superadmin on devolution
         }
       } else if (
         step === MedicationProcessStep.DEVOLUCION &&
@@ -217,7 +220,10 @@ export function ProcessStatusButton({
         const optimisticProcess: MedicationProcess = {
           id: optimisticId,
           patientId: patient.id,
-          dailyProcessId: dailyProcess.id,
+          dailyProcessId:
+            step === MedicationProcessStep.DEVOLUCION
+              ? undefined
+              : dailyProcess?.id,
           step: step,
           status: expectedFinalStatus,
           notes: undefined,
@@ -226,72 +232,77 @@ export function ProcessStatusButton({
         };
 
         // Update the cache optimistically
-        const currentProcesses =
-          queryClient.getQueryData<MedicationProcess[]>([
-            "all-medication-processes",
-            dailyProcess.id,
-          ]) || [];
+        // For devolutions, we need to handle the case where there's no daily process
+        const cacheKey =
+          step === MedicationProcessStep.DEVOLUCION
+            ? ["all-medication-processes"]
+            : [
+                "all-medication-processes",
+                dailyProcess?.id || "no-daily-process",
+              ];
 
-        queryClient.setQueryData(
-          ["all-medication-processes", dailyProcess.id],
-          [...currentProcesses, optimisticProcess]
-        );
+        const currentProcesses =
+          queryClient.getQueryData<MedicationProcess[]>(cacheKey) || [];
+
+        queryClient.setQueryData(cacheKey, [
+          ...currentProcesses,
+          optimisticProcess,
+        ]);
 
         try {
           // Now perform the actual operations in the background
+          // For devolutions, we don't require a daily process ID
           const createdProcess = await createProcess.mutateAsync({
             patientId: patient.id,
             step,
-            dailyProcessId: dailyProcess.id,
+            dailyProcessId:
+              step === MedicationProcessStep.DEVOLUCION
+                ? undefined
+                : dailyProcess?.id,
+            status: expectedFinalStatus, // Pass the status directly
           });
 
           // Continue with the workflow based on expected status
           let finalProcess = createdProcess;
-          if (expectedFinalStatus === ProcessStatus.IN_PROGRESS) {
-            finalProcess = await startProcess.mutateAsync(createdProcess.id);
-          } else if (expectedFinalStatus === ProcessStatus.COMPLETED) {
+          if (expectedFinalStatus === ProcessStatus.COMPLETED) {
+            // For completed processes, we need to start and then complete
             await startProcess.mutateAsync(createdProcess.id);
             finalProcess = await completeProcess.mutateAsync(createdProcess.id);
           }
+          // For IN_PROGRESS, the process is already created with the correct status
 
           // Update the optimistic process with the real data once all operations complete
           const finalCurrentProcesses =
-            queryClient.getQueryData<MedicationProcess[]>([
-              "all-medication-processes",
-              dailyProcess.id,
-            ]) || [];
+            queryClient.getQueryData<MedicationProcess[]>(cacheKey) || [];
 
           const finalProcesses = finalCurrentProcesses.map((p) =>
             p.id === optimisticId ? finalProcess : p
           );
-          queryClient.setQueryData(
-            ["all-medication-processes", dailyProcess.id],
-            finalProcesses
-          );
+          queryClient.setQueryData(cacheKey, finalProcesses);
         } catch (error) {
           // Remove the optimistic process on error
           const revertProcesses =
-            queryClient.getQueryData<MedicationProcess[]>([
-              "all-medication-processes",
-              dailyProcess.id,
-            ]) || [];
+            queryClient.getQueryData<MedicationProcess[]>(cacheKey) || [];
 
           const filteredProcesses = revertProcesses.filter(
             (p) => p.id !== optimisticId
           );
-          queryClient.setQueryData(
-            ["all-medication-processes", dailyProcess.id],
-            filteredProcesses
-          );
+          queryClient.setQueryData(cacheKey, filteredProcesses);
           throw error; // Re-throw to be caught by outer error handler
         }
       } else {
         // Update existing process optimistically
+        // For devolutions, we need to handle the case where there's no daily process
+        const cacheKey =
+          step === MedicationProcessStep.DEVOLUCION
+            ? ["all-medication-processes"]
+            : [
+                "all-medication-processes",
+                dailyProcess?.id || "no-daily-process",
+              ];
+
         const currentProcesses =
-          queryClient.getQueryData<MedicationProcess[]>([
-            "all-medication-processes",
-            dailyProcess.id,
-          ]) || [];
+          queryClient.getQueryData<MedicationProcess[]>(cacheKey) || [];
 
         const originalProcess = currentProcesses.find(
           (p) => p.id === process.id
@@ -301,10 +312,7 @@ export function ProcessStatusButton({
             ? { ...p, status: expectedFinalStatus, updatedAt: new Date() }
             : p
         );
-        queryClient.setQueryData(
-          ["all-medication-processes", dailyProcess.id],
-          updatedProcesses
-        );
+        queryClient.setQueryData(cacheKey, updatedProcesses);
 
         try {
           // Perform actual server operations and update with real data
@@ -334,32 +342,26 @@ export function ProcessStatusButton({
 
           // Update the cache with the real data once operations complete
           const finalUpdatedProcesses =
-            queryClient.getQueryData<MedicationProcess[]>([
-              "all-medication-processes",
-              dailyProcess.id,
-            ]) || [];
+            queryClient.getQueryData<MedicationProcess[]>(cacheKey) || [];
 
           const completedProcesses = finalUpdatedProcesses.map((p) =>
             p.id === process.id ? finalProcess : p
           );
-          queryClient.setQueryData(
-            ["all-medication-processes", dailyProcess.id],
-            completedProcesses
-          );
+          queryClient.setQueryData(cacheKey, completedProcesses);
         } catch (error) {
           // Revert the optimistic update on error
           if (originalProcess) {
             const revertProcesses =
               queryClient.getQueryData<MedicationProcess[]>([
                 "all-medication-processes",
-                dailyProcess.id,
+                dailyProcess?.id,
               ]) || [];
 
             const revertedProcesses = revertProcesses.map((p) =>
               p.id === process.id ? originalProcess : p
             );
             queryClient.setQueryData(
-              ["all-medication-processes", dailyProcess.id],
+              ["all-medication-processes", dailyProcess?.id],
               revertedProcesses
             );
           }

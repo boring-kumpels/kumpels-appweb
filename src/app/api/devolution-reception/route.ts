@@ -25,10 +25,10 @@ export async function POST(request: NextRequest) {
       where: { userId: user.id },
     });
 
-    if (!profile || profile.role !== "PHARMACY_REGENT") {
+    if (!profile || (profile.role !== "PHARMACY_REGENT" && profile.role !== "SUPERADMIN")) {
       return NextResponse.json(
         {
-          error: "Solo los regentes de farmacia pueden completar la recepción",
+          error: "Solo los regentes de farmacia y superadministradores pueden completar la recepción",
         },
         { status: 403 }
       );

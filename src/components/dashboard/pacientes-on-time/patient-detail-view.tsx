@@ -195,7 +195,7 @@ function DevolutionReceptionButton({
 
   const colorClass = getStatusColorClass(
     statusToUse,
-    isClickable(),
+    true, // Always enable styling - let the button's disabled prop handle clickability
     MedicationProcessStep.DEVOLUCION
   );
 
@@ -445,10 +445,9 @@ function QRStepButton({
     if (isCompleted || isProcessing) return false;
 
     if (step.qrType === "NURSING_RECEPTION") {
-      // Nursing reception can only be completed by nurses in the nurse panel, and only if both QR codes are scanned
+      // Nursing reception can only be completed by nurses in the nurse panel, or SUPERADMIN, and only if both QR codes are scanned
       return (
-        isNurse &&
-        isNursePanel &&
+        ((isNurse && isNursePanel) || userRole === "SUPERADMIN") &&
         qrScanRecords.some(
           (record) => record.qrCode.type === "PHARMACY_DISPATCH"
         ) &&
@@ -458,17 +457,11 @@ function QRStepButton({
 
     // Devolutions steps
     if (step.qrType === "NURSING_REQUEST") {
-      // Nursing request can only be started by nurses after delivery is confirmed
-      const entregaCompleted = allMedicationProcesses.some(
-        (mp) =>
-          mp.patientId === patientId &&
-          mp.step === "ENTREGA" &&
-          mp.status === "COMPLETED"
-      );
+      // Nursing request can be started independently by nurses or SUPERADMIN
       const devolucionExists = allMedicationProcesses.some(
         (mp) => mp.patientId === patientId && mp.step === "DEVOLUCION"
       );
-      return isNurse && entregaCompleted && !devolucionExists;
+      return (isNurse || userRole === "SUPERADMIN") && !devolucionExists;
     }
 
     if (step.qrType === "FLOOR_ARRIVAL") {
@@ -479,7 +472,7 @@ function QRStepButton({
           mp.step === "DEVOLUCION" &&
           mp.status === "IN_PROGRESS"
       );
-      return isRegent && devolucionStarted;
+      return (isRegent || userRole === "SUPERADMIN") && devolucionStarted;
     }
 
     if (step.qrType === "PHARMACY_RECEPTION") {
@@ -490,7 +483,7 @@ function QRStepButton({
           mp.step === "DEVOLUCION" &&
           mp.status === "DELIVERED_TO_SERVICE"
       );
-      return isRegent && !!devolutionProcess;
+      return (isRegent || userRole === "SUPERADMIN") && !!devolutionProcess;
     }
 
     if (step.qrType === "PHARMACY_DISPATCH_DEVOLUTION") {
@@ -506,7 +499,11 @@ function QRStepButton({
           record.transactionType === "DEVOLUCION" &&
           record.qrCode.type === "PHARMACY_DISPATCH_DEVOLUTION"
       );
-      return isRegent && devolucionStarted && !alreadyScanned;
+      return (
+        (isRegent || userRole === "SUPERADMIN") &&
+        devolucionStarted &&
+        !alreadyScanned
+      );
     }
 
     if (step.qrType === "PHARMACY_DISPATCH") {
@@ -521,11 +518,15 @@ function QRStepButton({
           record.transactionType === "DEVOLUCION" &&
           record.qrCode.type === "PHARMACY_DISPATCH"
       );
-      return isRegent && firstDevolutionScanned && !alreadyScanned;
+      return (
+        (isRegent || userRole === "SUPERADMIN") &&
+        firstDevolutionScanned &&
+        !alreadyScanned
+      );
     }
 
-    // QR scan steps can only be done by regents
-    return isRegent;
+    // QR scan steps can only be done by regents or SUPERADMIN
+    return isRegent || userRole === "SUPERADMIN";
   };
 
   // Get button styling based on status
@@ -561,16 +562,8 @@ function QRStepButton({
       if (devolucionExists) {
         return "bg-green-500 text-white border-0 hover:bg-green-600";
       }
-      const entregaCompleted = allMedicationProcesses.some(
-        (mp) =>
-          mp.patientId === patientId &&
-          mp.step === "ENTREGA" &&
-          mp.status === "COMPLETED"
-      );
-      if (entregaCompleted) {
-        return "bg-transparent text-red-500 border-2 border-dashed border-red-500 hover:bg-red-50";
-      }
-      return "bg-transparent text-gray-500 border-2 border-gray-300 hover:bg-gray-50";
+      // Devolution can always be started independently - show as available
+      return "bg-transparent text-red-500 border-2 border-dashed border-red-500 hover:bg-red-50";
     }
     // Orange-dotted for llegada a farmacia (PHARMACY_DISPATCH_DEVOLUTION)
     if (step.qrType === "PHARMACY_DISPATCH_DEVOLUTION") {
@@ -862,44 +855,8 @@ function QRStepButton({
       // Handle nursing request initiation
       setIsProcessing(true);
       try {
-        let dailyProcess = currentDailyProcess;
-
-        // If no daily process exists, create one for devolucion
-        if (!dailyProcess) {
-          const today = new Date();
-          const createResponse = await fetch("/api/daily-processes", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              date: today,
-              notes: "Proceso diario iniciado automáticamente por devolución",
-            }),
-          });
-
-          if (!createResponse.ok) {
-            throw new Error("Failed to create daily process for devolucion");
-          }
-
-          dailyProcess = await createResponse.json();
-
-          // Invalidate daily process queries
-          if (queryClient) {
-            // Add a small delay to ensure server has processed the changes
-            setTimeout(() => {
-              queryClient.invalidateQueries({
-                queryKey: ["current-daily-process"],
-              });
-              queryClient.invalidateQueries({
-                queryKey: ["daily-processes"],
-              });
-              queryClient.invalidateQueries({
-                queryKey: ["all-medication-processes"],
-              });
-            }, 100);
-          }
-        }
+        // Devolutions are independent and don't require a daily process
+        // We can proceed without creating a daily process
 
         // Check if devolucion process already exists
         const existingDevolucion = allMedicationProcesses.find(
@@ -929,10 +886,7 @@ function QRStepButton({
           }
         } else {
           // Create new devolucion process with IN_PROGRESS status
-          if (!dailyProcess?.id) {
-            throw new Error("No daily process available for devolucion");
-          }
-
+          // Devolutions don't require a daily process ID
           response = await fetch("/api/medication-processes", {
             method: "POST",
             headers: {
@@ -942,7 +896,7 @@ function QRStepButton({
               patientId: patientId,
               step: "DEVOLUCION",
               status: "IN_PROGRESS",
-              dailyProcessId: dailyProcess.id,
+              dailyProcessId: null, // Devolutions are independent
             }),
           });
         }
@@ -973,9 +927,7 @@ function QRStepButton({
         // Show success toast
         toast({
           title: "Devolución iniciada",
-          description: currentDailyProcess
-            ? "Se ha iniciado el proceso de devolución"
-            : "Se ha iniciado el proceso diario y la devolución",
+          description: "Se ha iniciado el proceso de devolución independiente",
         });
       } catch (error) {
         console.error("Error starting devolucion process:", error);
@@ -1242,14 +1194,7 @@ export default function PatientDetailView({
               mp.status === "COMPLETED")
         )
           ? ProcessStatus.COMPLETED
-          : allMedicationProcesses.some(
-                (mp) =>
-                  mp.patientId === patientId &&
-                  mp.step === "ENTREGA" &&
-                  mp.status === "COMPLETED"
-              )
-            ? ProcessStatus.PENDING
-            : ProcessStatus.PENDING,
+          : ProcessStatus.PENDING,
         step: MedicationProcessStep.DEVOLUCION,
         isQRStep: false,
         qrType: "NURSING_REQUEST",
@@ -1869,7 +1814,8 @@ export default function PatientDetailView({
 
                     {/* Optional Manual Devolution Button for Nurses */}
                     {activeTab === "devoluciones" &&
-                      profile?.role === "NURSE" && (
+                      (profile?.role === "NURSE" ||
+                        profile?.role === "SUPERADMIN") && (
                         <div className="mt-6">
                           {(() => {
                             const devolutionProcess = patientProcesses.find(
@@ -1913,7 +1859,8 @@ export default function PatientDetailView({
 
                     {/* QR Scanner Button for Entrega Tab */}
                     {activeTab === "entrega" &&
-                      profile?.role === "PHARMACY_REGENT" && (
+                      (profile?.role === "PHARMACY_REGENT" ||
+                        profile?.role === "SUPERADMIN") && (
                         <div className="mt-6 text-center">
                           <Button
                             onClick={() => setIsQRScannerOpen(true)}
@@ -1932,7 +1879,8 @@ export default function PatientDetailView({
                     {/* QR Scanner Button for Devoluciones Tab */}
                     {activeTab === "devoluciones" &&
                       (profile?.role === "NURSE" ||
-                        profile?.role === "PHARMACY_REGENT") && (
+                        profile?.role === "PHARMACY_REGENT" ||
+                        profile?.role === "SUPERADMIN") && (
                         <div className="mt-6 text-center">
                           <Button
                             onClick={() => setIsQRScannerOpen(true)}
@@ -1963,7 +1911,7 @@ export default function PatientDetailView({
                       )}
                     </div>
 
-                    {/* Error Message Input - Show in Dispensación tab for all roles EXCEPT NURSE */}
+                    {/* Error Message Input - Show in Dispensación tab for all roles EXCEPT NURSE (SUPERADMIN has full access) */}
                     {activeTab === "dispensacion" &&
                       profile?.role !== "NURSE" && (
                         <div className="flex items-center space-x-3">
@@ -1992,9 +1940,10 @@ export default function PatientDetailView({
                         </div>
                       )}
 
-                    {/* Error Message Input - Show in Devoluciones tab ONLY for NURSE role */}
+                    {/* Error Message Input - Show in Devoluciones tab ONLY for NURSE role (SUPERADMIN has full access) */}
                     {activeTab === "devoluciones" &&
-                      profile?.role === "NURSE" && (
+                      (profile?.role === "NURSE" ||
+                        profile?.role === "SUPERADMIN") && (
                         <div className="flex items-center space-x-3">
                           <div className="flex-shrink-0">
                             <AlertTriangle className="h-5 w-5 text-orange-500" />

@@ -19,6 +19,7 @@ interface UseMedicationProcessOptions {
 }
 
 // Pre-fetch all medication processes for all patients in current daily process
+// Also includes independent devolutions that don't have a daily process
 export const useAllMedicationProcesses = (dailyProcessId?: string) => {
   return useQuery({
     queryKey: ["all-medication-processes", dailyProcessId],
@@ -38,7 +39,7 @@ export const useAllMedicationProcesses = (dailyProcessId?: string) => {
 
       return response.json();
     },
-    enabled: !!dailyProcessId,
+    enabled: true, // Always enabled to include independent devolutions
     staleTime: 30000, // 30 seconds
     gcTime: 5 * 60 * 1000, // 5 minutes
   });

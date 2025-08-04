@@ -21,11 +21,11 @@ export async function POST(request: NextRequest) {
       where: { userId: user.id },
     });
 
-    if (!profile || profile.role !== "PHARMACY_REGENT") {
+    if (!profile || (profile.role !== "PHARMACY_REGENT" && profile.role !== "SUPERADMIN")) {
       return NextResponse.json(
         {
           error:
-            "Forbidden - Only PHARMACY_REGENT can scan service arrival QRs",
+            "Forbidden - Only PHARMACY_REGENT and SUPERADMIN can scan service arrival QRs",
         },
         { status: 403 }
       );

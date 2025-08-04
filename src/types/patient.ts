@@ -306,6 +306,7 @@ export interface CreateMedicationProcessData {
   patientId: string;
   step: MedicationProcessStep;
   dailyProcessId?: string;
+  status?: ProcessStatus;
   notes?: string;
 }
 

@@ -3,7 +3,10 @@ import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import prisma from "@/lib/prisma";
 import { ProcessStatus, MedicationProcessStep } from "@/types/patient";
-import { LogType as PrismaLogType, MedicationProcessStep as PrismaMedicationProcessStep } from "@prisma/client";
+import {
+  LogType as PrismaLogType,
+  MedicationProcessStep as PrismaMedicationProcessStep,
+} from "@prisma/client";
 
 // GET /api/medication-processes - Get medication processes with filters
 export async function GET(request: NextRequest) {
@@ -81,7 +84,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { patientId, step, dailyProcessId, notes } = body;
+    const { patientId, step, dailyProcessId, notes, status } = body;
 
     // Validate required fields
     if (!patientId || !step) {
@@ -136,14 +139,30 @@ export async function POST(request: NextRequest) {
     });
 
     // Create the medication process
+    const processData: {
+      patientId: string;
+      step: MedicationProcessStep;
+      dailyProcessId: string | null;
+      status: ProcessStatus;
+      notes: string | null;
+      startedAt?: Date;
+      startedBy?: string;
+    } = {
+      patientId,
+      step: step as MedicationProcessStep,
+      dailyProcessId: dailyProcessId || null,
+      status: (status as ProcessStatus) || ProcessStatus.PENDING,
+      notes: notes || null,
+    };
+
+    // If creating with IN_PROGRESS status, set started fields
+    if (status === ProcessStatus.IN_PROGRESS) {
+      processData.startedAt = new Date();
+      processData.startedBy = session.user.id;
+    }
+
     const process = await prisma.medicationProcess.create({
-      data: {
-        patientId,
-        step: step as MedicationProcessStep,
-        dailyProcessId: dailyProcessId || null,
-        status: ProcessStatus.PENDING,
-        notes: notes || null,
-      },
+      data: processData,
       include: {
         patient: {
           include: {
