@@ -108,9 +108,9 @@ function DevolutionReceptionButton({
     if (userRole !== "PHARMACY_REGENT" && userRole !== "SUPERADMIN")
       return false;
     if (!devolutionProcess) return false;
-    
+
     if (!qrScanRecords) return false;
-    
+
     // Check if all three QR codes have been scanned for devolution
     const hasPharmacyDispatchQR = qrScanRecords.some(
       (record) =>
@@ -127,10 +127,14 @@ function DevolutionReceptionButton({
         record.qrCode.type === "PHARMACY_DISPATCH_DEVOLUTION" &&
         record.transactionType === "DEVOLUCION"
     );
-    
+
     // Only clickable when all three QRs are scanned and process is ready
-    return hasPharmacyDispatchQR && hasServiceArrivalQR && hasPharmacyArrivalQR && 
-           devolutionProcess.status === ProcessStatus.DELIVERED_TO_SERVICE;
+    return (
+      hasPharmacyDispatchQR &&
+      hasServiceArrivalQR &&
+      hasPharmacyArrivalQR &&
+      devolutionProcess.status === ProcessStatus.DELIVERED_TO_SERVICE
+    );
   };
 
   const handleClick = async () => {
@@ -173,7 +177,7 @@ function DevolutionReceptionButton({
       <Button
         variant="ghost"
         size="sm"
-        className={`px-3 py-1 h-8 min-w-[80px] rounded-full text-xs font-medium ${colorClass} ${!isClickable() ? "cursor-not-allowed" : "cursor-pointer"} ${isSyncing ? "opacity-75" : ""}`}
+        className={`px-2 py-1 h-7 min-w-[60px] rounded-full text-xs font-medium ${colorClass} ${!isClickable() ? "cursor-not-allowed" : "cursor-pointer"} ${isSyncing ? "opacity-75" : ""}`}
         onClick={isClickable() ? handleClick : undefined}
         disabled={!isClickable() || isSyncing}
       >
@@ -920,7 +924,7 @@ function QRStepButton({
     <Button
       variant="ghost"
       size="sm"
-      className={`px-3 py-1 h-8 min-w-[80px] rounded-full text-xs font-medium ${getButtonStyle()} ${!canInteract() ? "cursor-not-allowed" : "cursor-pointer"}`}
+      className={`px-2 py-1 h-7 min-w-[60px] rounded-full text-xs font-medium ${getButtonStyle()} ${!canInteract() ? "cursor-not-allowed" : "cursor-pointer"}`}
       onClick={canInteract() ? handleButtonClick : undefined}
       disabled={!canInteract()}
     >
@@ -1179,7 +1183,7 @@ export default function PatientDetailView({
           "Enfermería inicia el proceso de devolución desde la gestión de pacientes",
       },
       {
-        id: "salida-farmacia-entregas", 
+        id: "salida-farmacia-entregas",
         name: "Salida Farmacia (Entregas)",
         icon: <ArrowRight className="h-4 w-4" />,
         status: qrScanRecords.some(
@@ -1199,7 +1203,8 @@ export default function PatientDetailView({
         step: MedicationProcessStep.DEVOLUCION,
         isQRStep: true,
         qrType: "PHARMACY_DISPATCH",
-        description: "Primer QR: Escanear código de salida de farmacia (entregas)",
+        description:
+          "Primer QR: Escanear código de salida de farmacia (entregas)",
       },
       {
         id: "llegada-servicio-devolucion",
@@ -1274,12 +1279,16 @@ export default function PatientDetailView({
                   record.qrCode.type === "PHARMACY_DISPATCH_DEVOLUTION" &&
                   record.transactionType === "DEVOLUCION"
               );
-              
+
               // Only show as IN_PROGRESS when all three QRs are scanned
-              if (hasPharmacyDispatchQR && hasServiceArrivalQR && hasPharmacyArrivalQR) {
+              if (
+                hasPharmacyDispatchQR &&
+                hasServiceArrivalQR &&
+                hasPharmacyArrivalQR
+              ) {
                 return ProcessStatus.IN_PROGRESS;
               }
-              
+
               return ProcessStatus.PENDING;
             })(),
         step: MedicationProcessStep.DEVOLUCION,
@@ -1714,7 +1723,8 @@ export default function PatientDetailView({
                                   currentDailyProcess={currentDailyProcess}
                                   isNursePanel={isNursePanel}
                                 />
-                              ) : step.id === "recepcion-farmacia" || step.id === "confirmar-recepcion" ? (
+                              ) : step.id === "recepcion-farmacia" ||
+                                step.id === "confirmar-recepcion" ? (
                                 <DevolutionReceptionButton
                                   patient={patient}
                                   step={step}

@@ -86,6 +86,9 @@ const SidebarMenuLink = ({
   pathname: string;
 }) => {
   const { setOpenMobile } = useSidebar();
+  const isExternalLink =
+    item.url.startsWith("http://") || item.url.startsWith("https://");
+
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
@@ -93,11 +96,24 @@ const SidebarMenuLink = ({
         isActive={checkIsActive(pathname, item)}
         tooltip={item.title}
       >
-        <Link href={item.url} onClick={() => setOpenMobile(false)}>
-          {item.icon && <item.icon />}
-          <span>{item.title}</span>
-          {item.badge && <NavBadge>{item.badge}</NavBadge>}
-        </Link>
+        {isExternalLink ? (
+          <a
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setOpenMobile(false)}
+          >
+            {item.icon && <item.icon />}
+            <span>{item.title}</span>
+            {item.badge && <NavBadge>{item.badge}</NavBadge>}
+          </a>
+        ) : (
+          <Link href={item.url} onClick={() => setOpenMobile(false)}>
+            {item.icon && <item.icon />}
+            <span>{item.title}</span>
+            {item.badge && <NavBadge>{item.badge}</NavBadge>}
+          </Link>
+        )}
       </SidebarMenuButton>
     </SidebarMenuItem>
   );
@@ -130,20 +146,40 @@ const SidebarMenuCollapsible = ({
           <SidebarMenuSub>
             {item.items.map((subItem: NavItem) => {
               if (isNavLink(subItem)) {
+                const isExternalLink =
+                  subItem.url.startsWith("http://") ||
+                  subItem.url.startsWith("https://");
                 return (
                   <SidebarMenuSubItem key={subItem.title}>
                     <SidebarMenuSubButton
                       asChild
                       isActive={checkIsActive(pathname, subItem)}
                     >
-                      <Link
-                        href={subItem.url}
-                        onClick={() => setOpenMobile(false)}
-                      >
-                        {subItem.icon && <subItem.icon />}
-                        <span>{subItem.title}</span>
-                        {subItem.badge && <NavBadge>{subItem.badge}</NavBadge>}
-                      </Link>
+                      {isExternalLink ? (
+                        <a
+                          href={subItem.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => setOpenMobile(false)}
+                        >
+                          {subItem.icon && <subItem.icon />}
+                          <span>{subItem.title}</span>
+                          {subItem.badge && (
+                            <NavBadge>{subItem.badge}</NavBadge>
+                          )}
+                        </a>
+                      ) : (
+                        <Link
+                          href={subItem.url}
+                          onClick={() => setOpenMobile(false)}
+                        >
+                          {subItem.icon && <subItem.icon />}
+                          <span>{subItem.title}</span>
+                          {subItem.badge && (
+                            <NavBadge>{subItem.badge}</NavBadge>
+                          )}
+                        </Link>
+                      )}
                     </SidebarMenuSubButton>
                   </SidebarMenuSubItem>
                 );
@@ -185,16 +221,35 @@ const SidebarMenuCollapsedDropdown = ({
           <DropdownMenuSeparator />
           {item.items.map((sub: NavItem) => {
             if (isNavLink(sub)) {
+              const isExternalLink =
+                sub.url.startsWith("http://") || sub.url.startsWith("https://");
               return (
                 <DropdownMenuItem key={`${sub.title}-${sub.url}`} asChild>
-                  <Link
-                    href={sub.url}
-                    className={`${checkIsActive(pathname, sub) ? "bg-secondary" : ""}`}
-                  >
-                    {sub.icon && <sub.icon />}
-                    <span className="max-w-52 text-wrap">{sub.title}</span>
-                    {sub.badge && <span className="ml-auto text-xs">{sub.badge}</span>}
-                  </Link>
+                  {isExternalLink ? (
+                    <a
+                      href={sub.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`${checkIsActive(pathname, sub) ? "bg-secondary" : ""}`}
+                    >
+                      {sub.icon && <sub.icon />}
+                      <span className="max-w-52 text-wrap">{sub.title}</span>
+                      {sub.badge && (
+                        <span className="ml-auto text-xs">{sub.badge}</span>
+                      )}
+                    </a>
+                  ) : (
+                    <Link
+                      href={sub.url}
+                      className={`${checkIsActive(pathname, sub) ? "bg-secondary" : ""}`}
+                    >
+                      {sub.icon && <sub.icon />}
+                      <span className="max-w-52 text-wrap">{sub.title}</span>
+                      {sub.badge && (
+                        <span className="ml-auto text-xs">{sub.badge}</span>
+                      )}
+                    </Link>
+                  )}
                 </DropdownMenuItem>
               );
             }

@@ -438,7 +438,6 @@ export function ProcessStatusButton({
       return false;
     }
 
-
     // Special case for predespacho: always clickable for regents when empty or in progress
     if (step === MedicationProcessStep.PREDESPACHO && isRegent) {
       return (
@@ -541,7 +540,10 @@ export function ProcessStatusButton({
           return "Recepción";
         } else if (buttonStatus === ProcessStatus.COMPLETED) {
           return "Completada";
-        } else if (buttonStatus === null || buttonStatus === ProcessStatus.PENDING) {
+        } else if (
+          buttonStatus === null ||
+          buttonStatus === ProcessStatus.PENDING
+        ) {
           return "Esperando Inicio";
         } else if (buttonStatus === ProcessStatus.IN_PROGRESS) {
           return "En Proceso";
@@ -551,7 +553,24 @@ export function ProcessStatusButton({
       }
     }
 
-    return stepName;
+    // For all other steps, show descriptive status text instead of step name
+    if (buttonStatus === null) {
+      return "No Iniciado";
+    } else if (buttonStatus === ProcessStatus.PENDING) {
+      return "Pendiente";
+    } else if (buttonStatus === ProcessStatus.IN_PROGRESS) {
+      return "En Proceso";
+    } else if (buttonStatus === ProcessStatus.COMPLETED) {
+      return "Completado";
+    } else if (buttonStatus === ProcessStatus.DISPATCHED_FROM_PHARMACY) {
+      return "Enviado";
+    } else if (buttonStatus === ProcessStatus.DELIVERED_TO_SERVICE) {
+      return "Entregado";
+    } else if (buttonStatus === ProcessStatus.ERROR) {
+      return "Error";
+    }
+
+    return "Desconocido";
   };
 
   const buttonText = getButtonText();
@@ -561,7 +580,7 @@ export function ProcessStatusButton({
       <Button
         variant="ghost"
         size="sm"
-        className={`px-3 py-1 h-8 min-w-[80px] rounded-full text-xs font-medium ${colorClass} ${!isClickable ? "cursor-not-allowed" : "cursor-pointer"} ${isSyncing ? "opacity-75" : ""}`}
+        className={`px-2 py-1 h-7 min-w-[60px] rounded-full text-xs font-medium ${colorClass} ${!isClickable ? "cursor-not-allowed" : "cursor-pointer"} ${isSyncing ? "opacity-75" : ""}`}
         onClick={isClickable ? handleButtonClick : undefined}
         disabled={!isClickable || preCalculatedState === undefined || isSyncing}
       >

@@ -41,7 +41,7 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
           title: "Operaciones Médicas",
           items: [
             {
-              title: "pacientes On-Time",
+              title: "Pacientes On-Time",
               url: "/dashboard/pacientes-on-time",
               icon: Clock,
             },
@@ -81,7 +81,7 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
           title: "Operaciones Médicas",
           items: [
             {
-              title: "pacientes On-Time",
+              title: "Pacientes On-Time",
               url: "/nurse/pacientes-on-time",
               icon: Clock,
             },
@@ -106,7 +106,7 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
           title: "Operaciones Médicas",
           items: [
             {
-              title: "pacientes On-Time",
+              title: "Pacientes On-Time",
               url: "/pharmacy/pacientes-on-time",
               icon: Clock,
             },
@@ -131,7 +131,7 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
           title: "Operaciones Médicas",
           items: [
             {
-              title: "pacientes On-Time",
+              title: "Pacientes On-Time",
               url: "/regent/pacientes-on-time",
               icon: Clock,
             },
@@ -180,14 +180,21 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
           icon: Settings,
           url: "/settings",
         },
-        {
-          title: "Centro de Ayuda",
-          url: "/help-center",
-          icon: HelpCircle,
-        },
       ],
     });
   }
+
+  // Add Centro de Ayuda for all roles
+  baseSidebar.navGroups.push({
+    title: "Soporte",
+    items: [
+      {
+        title: "Centro de Ayuda",
+        url: "https://kumpels-tickets-dashboard.vercel.app",
+        icon: HelpCircle,
+      },
+    ],
+  });
 
   return baseSidebar;
 };

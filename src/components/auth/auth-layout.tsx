@@ -1,20 +1,28 @@
+import Image from "next/image";
+
 interface Props {
   children: React.ReactNode;
 }
 
 export default function AuthLayout({ children }: Props) {
   return (
-    <div className="container grid h-svh flex-col items-center justify-center bg-primary-foreground lg:max-w-none lg:px-0">
+    <div
+      className="container grid h-svh flex-col items-center justify-center lg:max-w-none lg:px-0"
+      style={{
+        background:
+          "linear-gradient(135deg, #012876 0%, #001a4a 50%, #000f2e 100%)",
+      }}
+    >
       <div className="mx-auto flex w-full flex-col justify-center space-y-2 sm:w-[480px] lg:p-8">
         <div className="mb-8 flex items-center justify-center">
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-8">
+            {/* Kumpels Logo - White */}
             <div className="w-48 h-48 flex items-center justify-center">
               <svg
                 viewBox="0 0 1540 600"
                 className="w-full h-full"
                 style={{
-                  filter:
-                    "brightness(0) saturate(100%) invert(15%) sepia(100%) saturate(2000%) hue-rotate(200deg) brightness(0.8) contrast(1.2)",
+                  filter: "brightness(0) saturate(100%) invert(100%)",
                 }}
               >
                 <path
@@ -60,6 +68,20 @@ export default function AuthLayout({ children }: Props) {
                   />
                 </g>
               </svg>
+            </div>
+
+            {/* Divider Line */}
+            <div className="w-px h-32 bg-gradient-to-b from-transparent via-white/30 to-transparent"></div>
+
+            {/* Cardio Logo */}
+            <div className="w-32 h-32 flex items-center justify-center">
+              <Image
+                src="/logos/cardioBlanco.png"
+                alt="LaCardio Logo"
+                width={128}
+                height={128}
+                className="w-full h-full object-contain"
+              />
             </div>
           </div>
         </div>

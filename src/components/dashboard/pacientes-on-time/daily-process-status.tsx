@@ -37,8 +37,11 @@ import {
   ProcessStatus,
 } from "@/types/patient";
 import { toast } from "@/components/ui/use-toast";
+import { isProduction, isDebug } from "@/lib/utils";
+import { useState, useEffect } from "react";
 
 export function DailyProcessStatusCard() {
+  const [shouldRender, setShouldRender] = useState(true);
   const { profile } = useAuth();
   const { data: currentProcess, isLoading } = useCurrentDailyProcess();
   const cancelProcess = useCancelDailyProcess();
@@ -54,9 +57,20 @@ export function DailyProcessStatusCard() {
     enabled: !!currentProcess?.id,
   });
 
+  // Check environment on client side only to avoid hydration mismatch
+  useEffect(() => {
+    if (isProduction()) {
+      setShouldRender(false);
+    }
+  }, []);
+
+  // Hide the card completely in production
+  if (!shouldRender) {
+    return null;
+  }
+
   const isRegent =
     profile?.role === "PHARMACY_REGENT" || profile?.role === "SUPERADMIN";
-
 
   const handleCancelDailyProcess = async () => {
     if (!currentProcess) return;
@@ -226,8 +240,8 @@ export function DailyProcessStatusCard() {
             </div>
           </Alert>
 
-          {/* Debug info - remove this after testing */}
-          {process.env.NODE_ENV === "development" && (
+          {/* Debug info - only show in debug mode */}
+          {isDebug() && (
             <div className="text-xs text-gray-500 bg-gray-100 p-2 rounded">
               Debug: Profile role: {profile?.role || "No profile"} | Is Regent:{" "}
               {isRegent ? "Yes" : "No"} | Show Actions:{" "}
@@ -267,15 +281,18 @@ export function DailyProcessStatusCard() {
                     title="Resetear todos los procesos diarios y de medicación"
                   >
                     <RotateCcw className="h-4 w-4" />
-                    {resetProcesses.isPending ? "Reseteando..." : "Resetear Procesos"}
+                    {resetProcesses.isPending
+                      ? "Reseteando..."
+                      : "Resetear Procesos"}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Esta acción eliminará TODOS los procesos diarios y de medicación.
-                      Esta operación no se puede deshacer y afectará a todos los pacientes.
+                      Esta acción eliminará TODOS los procesos diarios y de
+                      medicación. Esta operación no se puede deshacer y afectará
+                      a todos los pacientes.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>

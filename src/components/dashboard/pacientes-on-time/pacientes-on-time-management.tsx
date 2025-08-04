@@ -606,7 +606,7 @@ export default function PacientesOnTimeManagement() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-full">
       {/* Daily Process Status */}
       <DailyProcessStatusCard />
 
@@ -882,8 +882,8 @@ export default function PacientesOnTimeManagement() {
       </Card>
 
       {/* Patients Table Section */}
-      <Card>
-        <CardHeader>
+      <Card className="w-full">
+        <CardHeader className="p-4">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">
               Pacientes Activos ({patients.length} pacientes)
@@ -891,7 +891,7 @@ export default function PacientesOnTimeManagement() {
             <div className="flex items-center gap-2"></div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4">
           {/* Show ready indicator briefly */}
           {buttonStatesMap.size > 0 && (
             <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
@@ -905,18 +905,20 @@ export default function PacientesOnTimeManagement() {
             </div>
           )}
 
-          <PatientsTable
-            patients={patients}
-            isLoading={false} // Don't show loading since we already handled it above
-            onOpenPatientDetail={handleOpenPatientDetail}
-            preloadedMedicationProcesses={
-              (allMedicationProcesses as MedicationProcess[]) || []
-            }
-            currentDailyProcessId={currentDailyProcess?.id}
-            buttonStatesMap={buttonStatesMap}
-            isButtonStatesReady={isButtonStatesReady}
-            qrScanRecords={allQRScanRecords}
-          />
+          <div className="w-full">
+            <PatientsTable
+              patients={patients}
+              isLoading={false} // Don't show loading since we already handled it above
+              onOpenPatientDetail={handleOpenPatientDetail}
+              preloadedMedicationProcesses={
+                (allMedicationProcesses as MedicationProcess[]) || []
+              }
+              currentDailyProcessId={currentDailyProcess?.id}
+              buttonStatesMap={buttonStatesMap}
+              isButtonStatesReady={isButtonStatesReady}
+              qrScanRecords={allQRScanRecords}
+            />
+          </div>
         </CardContent>
       </Card>
     </div>

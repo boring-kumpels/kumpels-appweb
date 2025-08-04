@@ -29,6 +29,7 @@ import { useQRScanner } from "@/hooks/use-qr-scanner";
 import { toast } from "@/components/ui/use-toast";
 
 import { QRCheckInModal } from "./qr-checkin-modal";
+import { isProduction } from "@/lib/utils";
 
 interface QRScannerProps {
   open: boolean;
@@ -54,6 +55,7 @@ export function QRScanner({ open, onOpenChange, currentTab }: QRScannerProps) {
     serviceId?: string;
     serviceName?: string;
   } | null>(null);
+  const [isProductionEnv, setIsProductionEnv] = useState(false);
   const lastScannedRef = useRef<string | null>(null);
   const scanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -103,6 +105,11 @@ export function QRScanner({ open, onOpenChange, currentTab }: QRScannerProps) {
     if (typeof window !== "undefined") {
       setIsSecureContext(window.isSecureContext);
     }
+  }, []);
+
+  // Check environment on client side only to avoid hydration mismatch
+  useEffect(() => {
+    setIsProductionEnv(isProduction());
   }, []);
 
   // Debug logging
@@ -573,97 +580,101 @@ export function QRScanner({ open, onOpenChange, currentTab }: QRScannerProps) {
               )}
 
               {/* Development Simulation Buttons */}
-              <div className="border-t pt-4 space-y-3">
-                <p className="text-xs text-muted-foreground text-center mb-3">
-                  Botones de simulación para desarrollo:
-                </p>
+              {!isProductionEnv && (
+                <div className="border-t pt-4 space-y-3">
+                  <p className="text-xs text-muted-foreground text-center mb-3">
+                    Botones de simulación para desarrollo:
+                  </p>
 
-                {/* Delivery QR buttons */}
-                {(!currentTab || currentTab === "entrega") && (
-                  <>
-                    <Button
-                      onClick={handleSimulatePharmacyDispatch}
-                      disabled={isProcessing}
-                      variant="outline"
-                      className="w-full h-12 flex items-center justify-center gap-2"
-                    >
-                      <ArrowRight className="h-4 w-4" />
-                      Simular Salida de Farmacia
-                    </Button>
-                    <Button
-                      onClick={handleSimulateServiceArrival}
-                      disabled={isProcessing}
-                      variant="outline"
-                      className="w-full h-12 flex items-center justify-center gap-2"
-                    >
-                      <QrCode className="h-4 w-4" />
-                      Simular Llegada a Servicio
-                    </Button>
-                  </>
-                )}
+                  {/* Delivery QR buttons */}
+                  {(!currentTab || currentTab === "entrega") && (
+                    <>
+                      <Button
+                        onClick={handleSimulatePharmacyDispatch}
+                        disabled={isProcessing}
+                        variant="outline"
+                        className="w-full h-12 flex items-center justify-center gap-2"
+                      >
+                        <ArrowRight className="h-4 w-4" />
+                        Simular Salida de Farmacia
+                      </Button>
+                      <Button
+                        onClick={handleSimulateServiceArrival}
+                        disabled={isProcessing}
+                        variant="outline"
+                        className="w-full h-12 flex items-center justify-center gap-2"
+                      >
+                        <QrCode className="h-4 w-4" />
+                        Simular Llegada a Servicio
+                      </Button>
+                    </>
+                  )}
 
-                {/* Devolution QR buttons */}
-                {currentTab === "devoluciones" && (
-                  <>
-                    <Button
-                      onClick={handleSimulatePharmacyDispatchDevolution}
-                      disabled={isProcessing}
-                      variant="outline"
-                      className="w-full h-12 flex items-center justify-center gap-2 border-red-300 text-red-600 hover:bg-red-50"
-                    >
-                      <ArrowRight className="h-4 w-4" />
-                      Simular Salida Farmacia (Devolución)
-                    </Button>
-                    <Button
-                      onClick={handleSimulatePharmacyDispatch}
-                      disabled={isProcessing}
-                      variant="outline"
-                      className="w-full h-12 flex items-center justify-center gap-2 border-orange-300 text-orange-600 hover:bg-orange-50"
-                    >
-                      <ArrowRight className="h-4 w-4" />
-                      Simular Salida Farmacia (Entrega)
-                    </Button>
-                  </>
-                )}
+                  {/* Devolution QR buttons */}
+                  {currentTab === "devoluciones" && (
+                    <>
+                      <Button
+                        onClick={handleSimulatePharmacyDispatchDevolution}
+                        disabled={isProcessing}
+                        variant="outline"
+                        className="w-full h-12 flex items-center justify-center gap-2 border-red-300 text-red-600 hover:bg-red-50"
+                      >
+                        <ArrowRight className="h-4 w-4" />
+                        Simular Salida Farmacia (Devolución)
+                      </Button>
+                      <Button
+                        onClick={handleSimulatePharmacyDispatch}
+                        disabled={isProcessing}
+                        variant="outline"
+                        className="w-full h-12 flex items-center justify-center gap-2 border-orange-300 text-orange-600 hover:bg-orange-50"
+                      >
+                        <ArrowRight className="h-4 w-4" />
+                        Simular Salida Farmacia (Entrega)
+                      </Button>
+                    </>
+                  )}
 
-                {/* Show all buttons if no specific tab */}
-                {!currentTab && (
-                  <>
-                    <Button
-                      onClick={handleSimulateDevolutionPickup}
-                      disabled={isProcessing}
-                      variant="outline"
-                      className="w-full h-12 flex items-center justify-center gap-2 border-red-300 text-red-600 hover:bg-red-50"
-                    >
-                      <ArrowRight className="h-4 w-4" />
-                      Simular Recogida de Devolución
-                    </Button>
-                    <Button
-                      onClick={handleSimulateDevolutionReturn}
-                      disabled={isProcessing}
-                      variant="outline"
-                      className="w-full h-12 flex items-center justify-center gap-2 border-red-300 text-red-600 hover:bg-red-50"
-                    >
-                      <QrCode className="h-4 w-4" />
-                      Simular Recepción en Farmacia
-                    </Button>
-                  </>
-                )}
-              </div>
+                  {/* Show all buttons if no specific tab */}
+                  {!currentTab && (
+                    <>
+                      <Button
+                        onClick={handleSimulateDevolutionPickup}
+                        disabled={isProcessing}
+                        variant="outline"
+                        className="w-full h-12 flex items-center justify-center gap-2 border-red-300 text-red-600 hover:bg-red-50"
+                      >
+                        <ArrowRight className="h-4 w-4" />
+                        Simular Recogida de Devolución
+                      </Button>
+                      <Button
+                        onClick={handleSimulateDevolutionReturn}
+                        disabled={isProcessing}
+                        variant="outline"
+                        className="w-full h-12 flex items-center justify-center gap-2 border-red-300 text-red-600 hover:bg-red-50"
+                      >
+                        <QrCode className="h-4 w-4" />
+                        Simular Recepción en Farmacia
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Info text */}
-            <div className="text-center text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <Smartphone className="h-4 w-4" />
-                <span className="font-medium">Instrucciones de uso</span>
+            {!isProductionEnv && (
+              <div className="text-center text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <Smartphone className="h-4 w-4" />
+                  <span className="font-medium">Instrucciones de uso</span>
+                </div>
+                <p>
+                  {currentTab === "devoluciones"
+                    ? "Posiciona el código QR dentro del marco de escaneo. El sistema procesará automáticamente todos los pacientes elegibles para el proceso de devolución."
+                    : "Posiciona el código QR dentro del marco de escaneo. El sistema procesará automáticamente todos los pacientes elegibles para salida de farmacia."}
+                </p>
               </div>
-              <p>
-                {currentTab === "devoluciones"
-                  ? "Posiciona el código QR dentro del marco de escaneo. El sistema procesará automáticamente todos los pacientes elegibles para el proceso de devolución."
-                  : "Posiciona el código QR dentro del marco de escaneo. El sistema procesará automáticamente todos los pacientes elegibles para salida de farmacia."}
-              </p>
-            </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

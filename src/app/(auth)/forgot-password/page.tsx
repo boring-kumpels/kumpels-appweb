@@ -12,23 +12,25 @@ export const metadata: Metadata = {
 export default function ForgotPasswordPage() {
   return (
     <AuthLayout>
-      <Card className="p-6">
-        <div className="flex flex-col space-y-2 text-left">
-          <h1 className="text-2xl font-semibold tracking-tight">
+      <Card className="p-8 bg-white/5 backdrop-blur-md border-white/10 shadow-2xl shadow-blue-900/20">
+        <div className="flex flex-col space-y-3 text-left">
+          <h1 className="text-3xl font-bold tracking-tight text-white">
             Restablecer Contraseña
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-blue-100/80">
             Ingresa tu correo electrónico para recibir un enlace de
             restablecimiento de contraseña.{" "}
             <Link
               href="/sign-in"
-              className="underline underline-offset-4 hover:text-primary"
+              className="underline underline-offset-4 hover:text-blue-200 text-blue-100/80 transition-colors"
             >
               Volver a Iniciar Sesión
             </Link>
           </p>
         </div>
-        <ForgotPasswordForm />
+        <div className="[&_input]:text-white [&_input]:border-white/20 [&_input]:bg-white/10 [&_input]:placeholder:text-white/50 [&_input]:focus:border-white/40 [&_input]:focus:bg-white/15 [&_label]:text-white [&_button]:text-white/70 [&_button]:hover:text-white [&_a]:text-blue-100/80 [&_a]:hover:text-blue-200">
+          <ForgotPasswordForm />
+        </div>
       </Card>
     </AuthLayout>
   );
