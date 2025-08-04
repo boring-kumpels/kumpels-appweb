@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 
-type Theme = "light";
+type Theme = "light" | "dark" | "system";
 
 type ThemeProviderProps = {
   children: ReactNode;
@@ -38,24 +38,35 @@ export function ThemeProvider({
 
   useEffect(() => {
     const stored = localStorage.getItem(storageKey);
-    if (stored && stored === "light") setTheme(stored as Theme);
+    if (
+      stored &&
+      (stored === "light" || stored === "dark" || stored === "system")
+    ) {
+      setTheme(stored as Theme);
+    }
   }, [storageKey]);
 
   useEffect(() => {
     const root = window.document.documentElement;
     root.classList.remove("light", "dark");
-    root.classList.add("light");
 
-    localStorage.setItem(storageKey, "light");
-  }, [storageKey]);
+    if (theme === "system") {
+      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
+        .matches
+        ? "dark"
+        : "light";
+      root.classList.add(systemTheme);
+    } else {
+      root.classList.add(theme);
+    }
+
+    localStorage.setItem(storageKey, theme);
+  }, [theme, storageKey]);
 
   const value = {
     theme,
     setTheme: (theme: Theme) => {
-      // Only allow light theme
-      if (theme === "light") {
-        setTheme(theme);
-      }
+      setTheme(theme);
     },
   };
 
