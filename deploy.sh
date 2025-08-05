@@ -200,6 +200,12 @@ $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml build
 echo "Starting containers..."
 $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml up -d
 
+# Show logs immediately to help with debugging
+echo "📋 Showing container logs for debugging..."
+echo "=========================================="
+$DOCKER_COMPOSE_CMD -f docker-compose.prod.yml logs --tail=50
+echo "=========================================="
+
 # Wait for services to be ready
 echo "⏳ Waiting for services to be ready..."
 sleep 30
@@ -209,8 +215,22 @@ echo "🏥 Checking service health..."
 if curl -f http://localhost/api/health > /dev/null 2>&1; then
     echo "✅ Application is healthy!"
 else
-    echo "❌ Application health check failed. Check logs with:"
-    echo "   $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml logs"
+    echo "❌ Application health check failed."
+    echo ""
+    echo "🔍 Debugging information:"
+    echo "=========================================="
+    echo "Container status:"
+    $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml ps
+    echo ""
+    echo "Recent logs:"
+    $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml logs --tail=100
+    echo "=========================================="
+    echo ""
+    echo "📋 Manual debugging commands:"
+    echo "   - View all logs: $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml logs -f"
+    echo "   - View specific service logs: $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml logs -f [service-name]"
+    echo "   - Check container status: $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml ps"
+    echo "   - Restart services: $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml restart"
     exit 1
 fi
 
