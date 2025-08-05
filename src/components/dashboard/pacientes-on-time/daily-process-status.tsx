@@ -196,8 +196,8 @@ export function DailyProcessStatusCard() {
 
   return (
     <Card className="mb-6">
-      <CardHeader>
-        <div className="flex items-center justify-between">
+      <CardHeader className="p-4 md:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
             <CardTitle className="text-lg">Estado del Proceso Diario</CardTitle>
@@ -224,7 +224,7 @@ export function DailyProcessStatusCard() {
           )}
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-4 md:p-6">
         <div className="space-y-4">
           <Alert variant={statusInfo.variant}>
             <div className="flex items-start gap-3">
@@ -251,7 +251,7 @@ export function DailyProcessStatusCard() {
           )}
 
           {statusInfo.showActions && (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
               {currentProcess?.status === DailyProcessStatus.ACTIVE &&
                 !isDebug() && (
                   <Button
@@ -261,7 +261,7 @@ export function DailyProcessStatusCard() {
                       completedPredespachoProcesses.length > 0
                     }
                     variant="destructive"
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 w-full sm:w-auto"
                     title={
                       completedPredespachoProcesses.length > 0
                         ? "No se puede cancelar porque ya se han completado predespachos"
@@ -278,7 +278,7 @@ export function DailyProcessStatusCard() {
                   <Button
                     disabled={resetProcesses.isPending}
                     variant="outline"
-                    className="flex items-center gap-2 border-orange-500 text-orange-600 hover:bg-orange-50"
+                    className="flex items-center gap-2 border-orange-500 text-orange-600 hover:bg-orange-50 w-full sm:w-auto"
                     title="Resetear todos los procesos diarios y de medicación"
                   >
                     <RotateCcw className="h-4 w-4" />
@@ -287,7 +287,7 @@ export function DailyProcessStatusCard() {
                       : "Resetear Procesos"}
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent>
+                <AlertDialogContent className="w-[95vw] max-w-md">
                   <AlertDialogHeader>
                     <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
                     <AlertDialogDescription>
@@ -296,13 +296,15 @@ export function DailyProcessStatusCard() {
                       a todos los pacientes.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
-                  <AlertDialogFooter>
+                  <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
                     {!isDebug() && (
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogCancel className="w-full sm:w-auto">
+                        Cancelar
+                      </AlertDialogCancel>
                     )}
                     <AlertDialogAction
                       onClick={handleResetDailyProcesses}
-                      className="bg-red-600 hover:bg-red-700"
+                      className="bg-red-600 hover:bg-red-700 w-full sm:w-auto"
                     >
                       Sí, resetear procesos
                     </AlertDialogAction>
@@ -310,7 +312,7 @@ export function DailyProcessStatusCard() {
                 </AlertDialogContent>
               </AlertDialog>
 
-              <div className="text-sm text-muted-foreground">
+              <div className="text-sm text-muted-foreground text-center sm:text-left">
                 <User className="h-4 w-4 inline mr-1" />
                 Solo regentes farmacéuticos pueden gestionar el proceso
               </div>

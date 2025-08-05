@@ -13,6 +13,7 @@ import { QRScanner } from "@/components/dashboard/qr-scanner";
 import { QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/providers/auth-provider";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -21,6 +22,7 @@ interface DashboardLayoutProps {
 export function DashboardLayoutClient({ children }: DashboardLayoutProps) {
   const [qrScannerOpen, setQrScannerOpen] = useState(false);
   const { profile } = useAuth();
+  const isMobile = useIsMobile();
 
   return (
     <SearchProvider>
@@ -40,18 +42,26 @@ export function DashboardLayoutClient({ children }: DashboardLayoutProps) {
           )}
         >
           <Header>
-            <div className="ml-auto flex items-center space-x-4">
+            <div className="ml-auto flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
               <Search />
-              {(profile?.role === "PHARMACY_REGENT" || profile?.role === "SUPERADMIN") && (
+              {(profile?.role === "PHARMACY_REGENT" ||
+                profile?.role === "SUPERADMIN") && (
                 <Button
                   variant="outline"
-                  size="sm"
+                  size={isMobile ? "default" : "sm"}
                   onClick={() => setQrScannerOpen(true)}
-                  className="h-8 px-3 py-1 flex items-center gap-2"
+                  className={cn(
+                    "flex items-center gap-2",
+                    isMobile
+                      ? "h-10 px-4 py-2 w-full sm:w-auto"
+                      : "h-8 px-3 py-1"
+                  )}
                   title="Escáner QR"
                 >
-                  <span className="text-sm">Escanear</span>
-                  <QrCode className="h-4 w-4" />
+                  <span className={cn("text-sm", isMobile && "text-base")}>
+                    {isMobile ? "Escanear QR" : "Escanear"}
+                  </span>
+                  <QrCode className={cn("h-4 w-4", isMobile && "h-5 w-5")} />
                 </Button>
               )}
               <ProfileDropdown />

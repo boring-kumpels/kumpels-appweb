@@ -16,14 +16,28 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/providers/auth-provider";
 import { Badge } from "@/components/ui/badge";
 import { UserRole } from "@prisma/client";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 
 export function ProfileDropdown() {
   const { profile, user, isLoading } = useAuth();
+  const isMobile = useIsMobile();
 
   if (isLoading) {
     return (
-      <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-        <div className="h-8 w-8 rounded-full bg-primary/10 animate-pulse" />
+      <Button
+        variant="ghost"
+        className={cn(
+          "relative rounded-full",
+          isMobile ? "h-10 w-10" : "h-8 w-8"
+        )}
+      >
+        <div
+          className={cn(
+            "rounded-full bg-primary/10 animate-pulse",
+            isMobile ? "h-10 w-10" : "h-8 w-8"
+          )}
+        />
       </Button>
     );
   }
@@ -56,8 +70,19 @@ export function ProfileDropdown() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          <Avatar className="h-8 w-8 ring-2 ring-primary/10">
+        <Button
+          variant="ghost"
+          className={cn(
+            "relative rounded-full",
+            isMobile ? "h-10 w-10" : "h-8 w-8"
+          )}
+        >
+          <Avatar
+            className={cn(
+              "ring-2 ring-primary/10",
+              isMobile ? "h-10 w-10" : "h-8 w-8"
+            )}
+          >
             <AvatarImage
               src={profile.avatarUrl || ""}
               alt={displayName || user.email || "User"}
@@ -68,7 +93,13 @@ export function ProfileDropdown() {
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="end" forceMount>
+      <DropdownMenuContent
+        className={cn("w-56", isMobile && "w-64")}
+        align="end"
+        forceMount
+        side={isMobile ? "bottom" : "bottom"}
+        alignOffset={isMobile ? 8 : 0}
+      >
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
             <div className="flex items-center justify-between">

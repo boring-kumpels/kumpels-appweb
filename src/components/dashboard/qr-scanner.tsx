@@ -19,6 +19,7 @@ import {
   AlertCircle,
   Smartphone,
 } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   parseQRData,
   QRCodeType,
@@ -27,6 +28,7 @@ import {
 } from "@/lib/qr-generator";
 import { useQRScanner } from "@/hooks/use-qr-scanner";
 import { toast } from "@/components/ui/use-toast";
+import { cn } from "@/lib/utils";
 
 import { QRCheckInModal } from "./qr-checkin-modal";
 import { isProduction } from "@/lib/utils";
@@ -58,6 +60,7 @@ export function QRScanner({ open, onOpenChange, currentTab }: QRScannerProps) {
   const [isProductionEnv, setIsProductionEnv] = useState(false);
   const lastScannedRef = useRef<string | null>(null);
   const scanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isMobile = useIsMobile();
 
   // QR Scanner hook
   const {
@@ -347,9 +350,19 @@ export function QRScanner({ open, onOpenChange, currentTab }: QRScannerProps) {
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-lg bg-background border-0 shadow-2xl">
+        <DialogContent
+          className={cn(
+            "bg-background border-0 shadow-2xl",
+            isMobile ? "w-[95vw] max-w-none" : "sm:max-w-lg"
+          )}
+        >
           <DialogHeader className="relative">
-            <DialogTitle className="text-center text-2xl font-bold text-foreground">
+            <DialogTitle
+              className={cn(
+                "text-center font-bold text-foreground",
+                isMobile ? "text-xl" : "text-2xl"
+              )}
+            >
               Escáner QR
             </DialogTitle>
             <DialogDescription className="text-center text-muted-foreground mt-2">
@@ -357,15 +370,18 @@ export function QRScanner({ open, onOpenChange, currentTab }: QRScannerProps) {
             </DialogDescription>
             <Button
               variant="ghost"
-              size="sm"
+              size={isMobile ? "default" : "sm"}
               onClick={() => onOpenChange(false)}
-              className="absolute right-0 top-0 h-8 w-8 p-0"
+              className={cn(
+                "absolute right-0 top-0 p-0",
+                isMobile ? "h-10 w-10" : "h-8 w-8"
+              )}
             >
-              <X className="h-4 w-4" />
+              <X className={cn("h-4 w-4", isMobile && "h-5 w-5")} />
             </Button>
           </DialogHeader>
 
-          <div className="space-y-6">
+          <div className="space-y-4 md:space-y-6">
             {/* Camera View */}
             <div className="relative bg-muted rounded-xl overflow-hidden shadow-lg">
               <div className="aspect-square relative">
@@ -385,7 +401,12 @@ export function QRScanner({ open, onOpenChange, currentTab }: QRScannerProps) {
                     <div className="text-center">
                       {hasPermission === false ? (
                         <>
-                          <AlertCircle className="h-16 w-16 text-destructive mx-auto mb-2" />
+                          <AlertCircle
+                            className={cn(
+                              "text-destructive mx-auto mb-2",
+                              isMobile ? "h-12 w-12" : "h-16 w-16"
+                            )}
+                          />
                           <p className="text-sm text-destructive font-medium mb-2">
                             Acceso a cámara denegado
                           </p>
@@ -395,7 +416,12 @@ export function QRScanner({ open, onOpenChange, currentTab }: QRScannerProps) {
                         </>
                       ) : (
                         <>
-                          <Camera className="h-16 w-16 text-muted-foreground mx-auto mb-2" />
+                          <Camera
+                            className={cn(
+                              "text-muted-foreground mx-auto mb-2",
+                              isMobile ? "h-12 w-12" : "h-16 w-16"
+                            )}
+                          />
                           <p className="text-sm text-muted-foreground">
                             {hasPermission === null
                               ? "Iniciando cámara..."
@@ -410,11 +436,13 @@ export function QRScanner({ open, onOpenChange, currentTab }: QRScannerProps) {
                 {/* Camera Status Indicator */}
                 <div className="absolute top-3 left-3">
                   <div
-                    className={`bg-background/80 backdrop-blur-sm text-xs px-3 py-1.5 rounded-full flex items-center gap-2 shadow-lg border ${
+                    className={cn(
+                      "bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-full flex items-center gap-2 shadow-lg border",
                       isScanning
                         ? "text-green-700 border-green-200"
-                        : "text-foreground"
-                    }`}
+                        : "text-foreground",
+                      isMobile ? "text-xs" : "text-xs"
+                    )}
                   >
                     {isScanning ? (
                       <>
@@ -445,7 +473,12 @@ export function QRScanner({ open, onOpenChange, currentTab }: QRScannerProps) {
 
                 {/* Scanning Frame */}
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-56 h-56 border-2 border-background rounded-xl relative shadow-2xl">
+                  <div
+                    className={cn(
+                      "border-2 border-background rounded-xl relative shadow-2xl",
+                      isMobile ? "w-48 h-48" : "w-56 h-56"
+                    )}
+                  >
                     {/* Corner brackets with animation */}
                     <div className="absolute top-0 left-0 w-8 h-8 border-l-4 border-t-4 border-background rounded-tl-lg"></div>
                     <div className="absolute top-0 right-0 w-8 h-8 border-r-4 border-t-4 border-background rounded-tr-lg"></div>
@@ -457,7 +490,12 @@ export function QRScanner({ open, onOpenChange, currentTab }: QRScannerProps) {
 
                     {/* Center icon */}
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <QrCode className="h-10 w-10 text-background opacity-60" />
+                      <QrCode
+                        className={cn(
+                          "text-background opacity-60",
+                          isMobile ? "h-8 w-8" : "h-10 w-10"
+                        )}
+                      />
                     </div>
                   </div>
                 </div>
@@ -535,8 +573,11 @@ export function QRScanner({ open, onOpenChange, currentTab }: QRScannerProps) {
                   <Button
                     onClick={resetPermissions}
                     variant="outline"
-                    size="sm"
-                    className="w-full h-10 text-red-700 border-red-300 hover:bg-red-100"
+                    size={isMobile ? "default" : "sm"}
+                    className={cn(
+                      "w-full text-red-700 border-red-300 hover:bg-red-100",
+                      isMobile ? "h-12 text-sm" : "h-10"
+                    )}
                   >
                     <Camera className="h-4 w-4 mr-2" />
                     Reintentar acceso a cámara
@@ -555,8 +596,11 @@ export function QRScanner({ open, onOpenChange, currentTab }: QRScannerProps) {
                   <Button
                     onClick={resetPermissions}
                     variant="outline"
-                    size="sm"
-                    className="w-full h-10 text-yellow-700 border-yellow-300 hover:bg-yellow-100"
+                    size={isMobile ? "default" : "sm"}
+                    className={cn(
+                      "w-full text-yellow-700 border-yellow-300 hover:bg-yellow-100",
+                      isMobile ? "h-12 text-sm" : "h-10"
+                    )}
                   >
                     <Camera className="h-4 w-4 mr-2" />
                     Activar cámara manualmente
@@ -593,7 +637,10 @@ export function QRScanner({ open, onOpenChange, currentTab }: QRScannerProps) {
                         onClick={handleSimulatePharmacyDispatch}
                         disabled={isProcessing}
                         variant="outline"
-                        className="w-full h-12 flex items-center justify-center gap-2"
+                        className={cn(
+                          "w-full flex items-center justify-center gap-2",
+                          isMobile ? "h-14 text-sm" : "h-12"
+                        )}
                       >
                         <ArrowRight className="h-4 w-4" />
                         Simular Salida de Farmacia
@@ -602,7 +649,10 @@ export function QRScanner({ open, onOpenChange, currentTab }: QRScannerProps) {
                         onClick={handleSimulateServiceArrival}
                         disabled={isProcessing}
                         variant="outline"
-                        className="w-full h-12 flex items-center justify-center gap-2"
+                        className={cn(
+                          "w-full flex items-center justify-center gap-2",
+                          isMobile ? "h-14 text-sm" : "h-12"
+                        )}
                       >
                         <QrCode className="h-4 w-4" />
                         Simular Llegada a Servicio
@@ -617,7 +667,10 @@ export function QRScanner({ open, onOpenChange, currentTab }: QRScannerProps) {
                         onClick={handleSimulatePharmacyDispatchDevolution}
                         disabled={isProcessing}
                         variant="outline"
-                        className="w-full h-12 flex items-center justify-center gap-2 border-red-300 text-red-600 hover:bg-red-50"
+                        className={cn(
+                          "w-full flex items-center justify-center gap-2 border-red-300 text-red-600 hover:bg-red-50",
+                          isMobile ? "h-14 text-sm" : "h-12"
+                        )}
                       >
                         <ArrowRight className="h-4 w-4" />
                         Simular Salida Farmacia (Devolución)
@@ -626,7 +679,10 @@ export function QRScanner({ open, onOpenChange, currentTab }: QRScannerProps) {
                         onClick={handleSimulatePharmacyDispatch}
                         disabled={isProcessing}
                         variant="outline"
-                        className="w-full h-12 flex items-center justify-center gap-2 border-orange-300 text-orange-600 hover:bg-orange-50"
+                        className={cn(
+                          "w-full flex items-center justify-center gap-2 border-orange-300 text-orange-600 hover:bg-orange-50",
+                          isMobile ? "h-14 text-sm" : "h-12"
+                        )}
                       >
                         <ArrowRight className="h-4 w-4" />
                         Simular Salida Farmacia (Entrega)
@@ -641,7 +697,10 @@ export function QRScanner({ open, onOpenChange, currentTab }: QRScannerProps) {
                         onClick={handleSimulateDevolutionPickup}
                         disabled={isProcessing}
                         variant="outline"
-                        className="w-full h-12 flex items-center justify-center gap-2 border-red-300 text-red-600 hover:bg-red-50"
+                        className={cn(
+                          "w-full flex items-center justify-center gap-2 border-red-300 text-red-600 hover:bg-red-50",
+                          isMobile ? "h-14 text-sm" : "h-12"
+                        )}
                       >
                         <ArrowRight className="h-4 w-4" />
                         Simular Recogida de Devolución
@@ -650,7 +709,10 @@ export function QRScanner({ open, onOpenChange, currentTab }: QRScannerProps) {
                         onClick={handleSimulateDevolutionReturn}
                         disabled={isProcessing}
                         variant="outline"
-                        className="w-full h-12 flex items-center justify-center gap-2 border-red-300 text-red-600 hover:bg-red-50"
+                        className={cn(
+                          "w-full flex items-center justify-center gap-2 border-red-300 text-red-600 hover:bg-red-50",
+                          isMobile ? "h-14 text-sm" : "h-12"
+                        )}
                       >
                         <QrCode className="h-4 w-4" />
                         Simular Recepción en Farmacia

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface HeaderProps extends React.HTMLAttributes<HTMLElement> {
   fixed?: boolean;
@@ -14,6 +15,7 @@ interface HeaderProps extends React.HTMLAttributes<HTMLElement> {
 export function Header({ className, fixed, children, ...props }: HeaderProps) {
   const [offset, setOffset] = React.useState(0);
   const pathname = usePathname();
+  const isMobile = useIsMobile();
 
   // Convert pathname to breadcrumb-like display
   const formattedPath = pathname
@@ -44,9 +46,17 @@ export function Header({ className, fixed, children, ...props }: HeaderProps) {
       )}
       {...props}
     >
-      <SidebarTrigger variant="outline" className="scale-125 sm:scale-100" />
+      <SidebarTrigger
+        variant="outline"
+        className={cn("scale-125 sm:scale-100", isMobile && "h-10 w-10")}
+      />
       <Separator orientation="vertical" className="h-6" />
-      <span className="text-sm font-medium text-muted-foreground">
+      <span
+        className={cn(
+          "text-sm font-medium text-muted-foreground",
+          isMobile && "text-xs truncate flex-1"
+        )}
+      >
         {formattedPath || "Dashboard"}
       </span>
 

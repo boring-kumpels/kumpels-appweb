@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   MedicationProcessStep,
   ProcessStatus,
@@ -26,6 +27,7 @@ import { useCreateDailyProcess } from "@/hooks/use-daily-processes";
 import { toast } from "@/components/ui/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { QRScanRecord } from "./patient-detail-view";
+import { cn } from "@/lib/utils";
 
 interface ProcessStatusButtonProps {
   patient: PatientWithRelations;
@@ -48,6 +50,7 @@ export function ProcessStatusButton({
   const { user, profile } = useAuth();
   const { data: currentDailyProcess } = useCurrentDailyProcess();
   const createDailyProcess = useCreateDailyProcess();
+  const isMobile = useIsMobile();
 
   // Use the actual user role from profile, or fallback to the passed userRole
   const actualUserRole = profile?.role || userRole;
@@ -89,8 +92,11 @@ export function ProcessStatusButton({
       <div className="flex items-center justify-center">
         <Button
           variant="ghost"
-          size="sm"
-          className="px-3 py-1 h-8 w-8 rounded-full text-xs font-medium bg-transparent text-gray-900 border-2 border-black cursor-not-allowed"
+          size={isMobile ? "default" : "sm"}
+          className={cn(
+            "rounded-full text-xs font-medium bg-transparent text-gray-900 border-2 border-black cursor-not-allowed",
+            isMobile ? "px-4 py-2 h-10 w-10" : "px-3 py-1 h-8 w-8"
+          )}
           disabled
         ></Button>
       </div>
@@ -196,7 +202,8 @@ export function ProcessStatusButton({
         }
       } else if (
         step === MedicationProcessStep.DEVOLUCION &&
-        (actualUserRole === "PHARMACY_REGENT" || actualUserRole === "SUPERADMIN")
+        (actualUserRole === "PHARMACY_REGENT" ||
+          actualUserRole === "SUPERADMIN")
       ) {
         if (!process) {
           expectedFinalStatus = ProcessStatus.IN_PROGRESS; // First click starts devolution
@@ -323,10 +330,12 @@ export function ProcessStatusButton({
           // Special case for devolution reception by nurse, pharmacy regent, or superadmin
           if (
             step === MedicationProcessStep.DEVOLUCION &&
-            (actualUserRole === "NURSE" || actualUserRole === "PHARMACY_REGENT" || actualUserRole === "SUPERADMIN") &&
+            (actualUserRole === "NURSE" ||
+              actualUserRole === "PHARMACY_REGENT" ||
+              actualUserRole === "SUPERADMIN") &&
             (process.status === ProcessStatus.IN_PROGRESS ||
-             process.status === ProcessStatus.DISPATCHED_FROM_PHARMACY ||
-             process.status === ProcessStatus.DELIVERED_TO_SERVICE) &&
+              process.status === ProcessStatus.DISPATCHED_FROM_PHARMACY ||
+              process.status === ProcessStatus.DELIVERED_TO_SERVICE) &&
             expectedFinalStatus === ProcessStatus.COMPLETED
           ) {
             const receptionResult =
@@ -527,14 +536,17 @@ export function ProcessStatusButton({
 
         // If process is COMPLETED, nurse cannot interact anymore
         return buttonStatus !== ProcessStatus.COMPLETED;
-      } else if (actualUserRole === "PHARMACY_REGENT" || actualUserRole === "SUPERADMIN") {
+      } else if (
+        actualUserRole === "PHARMACY_REGENT" ||
+        actualUserRole === "SUPERADMIN"
+      ) {
         // Pharmacy regents and superadmins can both start devolutions AND complete reception
         // 1. No process exists yet (buttonStatus === null) - allow starting
         // 2. Process exists but is PENDING - allow starting
         if (buttonStatus === null || buttonStatus === ProcessStatus.PENDING) {
           return true; // Allow starting devolution
         }
-        
+
         // They can also complete devolution reception when process reaches certain states
         // This is independent of the 3rd QR code scan - they can happen in parallel
         if (
@@ -544,7 +556,7 @@ export function ProcessStatusButton({
         ) {
           return true; // Allow final reception step once devolution is in progress
         }
-        
+
         // If process is COMPLETED, they cannot interact anymore
         return buttonStatus !== ProcessStatus.COMPLETED;
       }
@@ -605,7 +617,10 @@ export function ProcessStatusButton({
         } else if (buttonStatus === ProcessStatus.COMPLETED) {
           return "Completada";
         }
-      } else if (actualUserRole === "PHARMACY_REGENT" || actualUserRole === "SUPERADMIN") {
+      } else if (
+        actualUserRole === "PHARMACY_REGENT" ||
+        actualUserRole === "SUPERADMIN"
+      ) {
         if (buttonStatus === null) {
           return "No Iniciado"; // Can start devolution
         } else if (buttonStatus === ProcessStatus.PENDING) {
@@ -650,14 +665,26 @@ export function ProcessStatusButton({
     <div className="flex items-center gap-1">
       <Button
         variant="ghost"
-        size="sm"
-        className={`px-2 py-1 h-7 min-w-[60px] rounded-full text-xs font-medium ${colorClass} ${!isClickable ? "cursor-not-allowed" : "cursor-pointer"} ${isSyncing ? "opacity-75" : ""}`}
+        size={isMobile ? "default" : "sm"}
+        className={cn(
+          "rounded-full text-xs font-medium",
+          colorClass,
+          !isClickable ? "cursor-not-allowed" : "cursor-pointer",
+          isSyncing ? "opacity-75" : "",
+          isMobile
+            ? "px-3 py-2 h-10 min-w-[80px] text-sm"
+            : "px-2 py-1 h-7 min-w-[60px]"
+        )}
         onClick={isClickable ? handleButtonClick : undefined}
         disabled={!isClickable || preCalculatedState === undefined || isSyncing}
       >
         <div className="flex items-center gap-1">
-          {isSyncing && <Loader2 className="h-3 w-3 animate-spin" />}
-          <span>{buttonText}</span>
+          {isSyncing && (
+            <Loader2
+              className={cn("animate-spin", isMobile ? "h-4 w-4" : "h-3 w-3")}
+            />
+          )}
+          <span className={cn(isMobile && "text-sm")}>{buttonText}</span>
         </div>
       </Button>
     </div>

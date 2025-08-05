@@ -238,10 +238,8 @@ export default function PacientesOnTimeManagement() {
       if (currentDailyProcess?.id) {
         params.append("dailyProcessId", currentDailyProcess.id);
       }
-      
-      const response = await fetch(
-        `/api/qr-scan-records?${params.toString()}`
-      );
+
+      const response = await fetch(`/api/qr-scan-records?${params.toString()}`);
       if (!response.ok) return [];
       return response.json();
     },
@@ -624,16 +622,16 @@ export default function PacientesOnTimeManagement() {
   }
 
   return (
-    <div className="space-y-6 w-full max-w-full">
+    <div className="space-y-4 md:space-y-6 w-full max-w-full">
       {/* Daily Process Status */}
       <DailyProcessStatusCard />
 
-      {/* Enhanced Filters Card */}
+      {/* Enhanced Filters Card - Mobile Optimized */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
+        <CardHeader className="p-4 md:p-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <CardTitle className="text-lg">Filtros</CardTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               {/* Reset All Filters Button */}
               {(selectedLineId ||
                 selectedServiceId ||
@@ -643,13 +641,13 @@ export default function PacientesOnTimeManagement() {
                   variant="outline"
                   size="sm"
                   onClick={resetFilters}
-                  className="text-xs"
+                  className="text-xs w-full sm:w-auto"
                 >
                   Limpiar todos los filtros
                 </Button>
               )}
               {/* Search Section */}
-              <div className="flex-1 max-w-md ml-4">
+              <div className="flex-1 min-w-0">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
@@ -663,8 +661,8 @@ export default function PacientesOnTimeManagement() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Line Filter */}
+        <CardContent className="p-4 md:p-6 space-y-4">
+          {/* Line Filter - Mobile Optimized */}
           <div>
             <h4 className="text-sm font-medium mb-2">Filtro por Línea</h4>
             <div className="flex flex-wrap gap-2">
@@ -675,7 +673,7 @@ export default function PacientesOnTimeManagement() {
                   setSelectedLineId("");
                   resetServiceAndBeds();
                 }}
-                className="rounded-full"
+                className="rounded-full text-xs"
               >
                 Todas las líneas
               </Button>
@@ -688,7 +686,7 @@ export default function PacientesOnTimeManagement() {
                     setSelectedLineId(line.id);
                     resetServiceAndBeds();
                   }}
-                  className="rounded-full"
+                  className="rounded-full text-xs"
                 >
                   {line.displayName}
                 </Button>
@@ -696,7 +694,7 @@ export default function PacientesOnTimeManagement() {
             </div>
           </div>
 
-          {/* Service Filter - Enhanced */}
+          {/* Service Filter - Enhanced Mobile */}
           {selectedLineId && (
             <div>
               <h4 className="text-sm font-medium mb-2">
@@ -715,7 +713,7 @@ export default function PacientesOnTimeManagement() {
                     setSelectedServiceId("");
                     resetBeds();
                   }}
-                  className="rounded-full"
+                  className="rounded-full text-xs"
                 >
                   Todos los servicios
                 </Button>
@@ -730,7 +728,7 @@ export default function PacientesOnTimeManagement() {
                       setSelectedServiceId(service.id);
                       resetBeds();
                     }}
-                    className="rounded-full"
+                    className="rounded-full text-xs"
                   >
                     {service.name}
                   </Button>
@@ -739,7 +737,7 @@ export default function PacientesOnTimeManagement() {
             </div>
           )}
 
-          {/* Enhanced Bed Filter */}
+          {/* Enhanced Bed Filter - Mobile Optimized */}
           <div>
             <h4 className="text-sm font-medium mb-2">
               Filtro por Cama
@@ -769,7 +767,7 @@ export default function PacientesOnTimeManagement() {
                     : "Seleccionar camas"}
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-4xl max-h-[80vh]">
+              <DialogContent className="max-w-4xl max-h-[80vh] w-[95vw]">
                 <DialogHeader>
                   <DialogTitle>
                     Camas Disponibles
@@ -792,7 +790,7 @@ export default function PacientesOnTimeManagement() {
                   </DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div className="text-sm text-muted-foreground">
                       <p>
                         Selecciona una o múltiples camas
@@ -809,12 +807,13 @@ export default function PacientesOnTimeManagement() {
                         </p>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={handleDeselectAllBeds}
                         disabled={selectedBeds.length === 0}
+                        className="text-xs"
                       >
                         Deseleccionar todo
                       </Button>
@@ -823,6 +822,7 @@ export default function PacientesOnTimeManagement() {
                         size="sm"
                         onClick={handleSelectAllBeds}
                         disabled={availableBeds.length === 0}
+                        className="text-xs"
                       >
                         Seleccionar todo
                       </Button>
@@ -830,10 +830,15 @@ export default function PacientesOnTimeManagement() {
                         variant="outline"
                         size="sm"
                         onClick={handleBedSelectionClear}
+                        className="text-xs"
                       >
                         Limpiar
                       </Button>
-                      <Button size="sm" onClick={handleBedSelectionApply}>
+                      <Button
+                        size="sm"
+                        onClick={handleBedSelectionApply}
+                        className="text-xs"
+                      >
                         Aplicar ({selectedBeds.length})
                       </Button>
                     </div>
@@ -847,7 +852,7 @@ export default function PacientesOnTimeManagement() {
                       </p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-6 gap-2 max-h-[60vh] overflow-y-auto">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 max-h-[60vh] overflow-y-auto">
                       {availableBeds.map((bed) => (
                         <Button
                           key={bed.id}
@@ -858,7 +863,7 @@ export default function PacientesOnTimeManagement() {
                           }
                           size="sm"
                           onClick={() => handleBedSelection(bed.id)}
-                          className="h-10"
+                          className="h-10 text-xs"
                         >
                           {bed.number}
                         </Button>
@@ -870,10 +875,10 @@ export default function PacientesOnTimeManagement() {
             </Dialog>
           </div>
 
-          {/* Filter Summary */}
+          {/* Filter Summary - Mobile Optimized */}
           {(selectedLineId || selectedServiceId || selectedBeds.length > 0) && (
             <div className="pt-2 border-t">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                 <span>Filtros activos:</span>
                 {selectedLineId && (
                   <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
@@ -899,17 +904,17 @@ export default function PacientesOnTimeManagement() {
         </CardContent>
       </Card>
 
-      {/* Patients Table Section */}
+      {/* Patients Table Section - Mobile Optimized */}
       <Card className="w-full">
-        <CardHeader className="p-4">
-          <div className="flex items-center justify-between">
+        <CardHeader className="p-4 md:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <CardTitle className="text-lg">
               Pacientes Activos ({patients.length} pacientes)
             </CardTitle>
             <div className="flex items-center gap-2"></div>
           </div>
         </CardHeader>
-        <CardContent className="p-4">
+        <CardContent className="p-4 md:p-6">
           {/* Show ready indicator briefly */}
           {buttonStatesMap.size > 0 && (
             <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">

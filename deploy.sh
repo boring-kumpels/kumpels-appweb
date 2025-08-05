@@ -48,6 +48,18 @@ if ! command -v git &> /dev/null; then
     sudo apt-get install -y git
 fi
 
+# Install monitoring tools
+echo "📊 Installing monitoring tools..."
+if ! command -v htop &> /dev/null; then
+    echo "Installing htop..."
+    sudo apt-get install -y htop
+fi
+
+if ! command -v jq &> /dev/null; then
+    echo "Installing jq..."
+    sudo apt-get install -y jq
+fi
+
 # Check and install Docker
 echo "🐳 Checking Docker installation..."
 if ! command -v docker &> /dev/null; then
@@ -185,6 +197,106 @@ else
     DOCKER_COMPOSE_CMD="docker-compose"
 fi
 
+# Create monitoring script
+echo "📊 Creating monitoring script..."
+sudo tee /opt/kumpels-app/monitor.sh > /dev/null <<'EOF'
+#!/bin/bash
+
+# Kumpels App Monitoring Script
+# This script monitors the application and restarts services if needed
+
+LOG_FILE="/opt/kumpels-app/monitor.log"
+DOCKER_COMPOSE_CMD="docker-compose"
+
+# Function to log messages
+log_message() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
+}
+
+# Function to check if a service is healthy
+check_service_health() {
+    local service_name=$1
+    local health_status
+    
+    health_status=$($DOCKER_COMPOSE_CMD -f docker-compose.prod.yml ps --format json | jq -r ".[] | select(.Service==\"$service_name\") | .Health")
+    
+    if [ "$health_status" = "healthy" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Function to restart a service
+restart_service() {
+    local service_name=$1
+    log_message "Restarting $service_name service..."
+    $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml restart "$service_name"
+    sleep 30
+}
+
+# Function to check application health via HTTP
+check_app_http() {
+    if curl -f -s http://localhost/api/health > /dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Function to check nginx health via HTTP
+check_nginx_http() {
+    if curl -f -s http://localhost/health > /dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Main monitoring logic
+log_message "Starting monitoring cycle..."
+
+# Check if we're in the right directory
+if [ ! -f "docker-compose.prod.yml" ]; then
+    log_message "ERROR: docker-compose.prod.yml not found. Exiting."
+    exit 1
+fi
+
+# Check app service health
+if ! check_service_health "app"; then
+    log_message "WARNING: App service is not healthy"
+    restart_service "app"
+fi
+
+# Check nginx service health
+if ! check_service_health "nginx"; then
+    log_message "WARNING: Nginx service is not healthy"
+    restart_service "nginx"
+fi
+
+# Check HTTP health endpoints
+if ! check_app_http; then
+    log_message "WARNING: App HTTP health check failed"
+    restart_service "app"
+fi
+
+if ! check_nginx_http; then
+    log_message "WARNING: Nginx HTTP health check failed"
+    restart_service "nginx"
+fi
+
+# Check if containers are running
+if [ "$($DOCKER_COMPOSE_CMD -f docker-compose.prod.yml ps -q | wc -l)" -eq 0 ]; then
+    log_message "ERROR: No containers are running. Starting all services..."
+    $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml up -d
+fi
+
+log_message "Monitoring cycle completed"
+EOF
+
+# Make monitoring script executable
+sudo chmod +x /opt/kumpels-app/monitor.sh
+
 # Build and start the application
 echo "🔨 Building and starting the application..."
 if [ "$($DOCKER_COMPOSE_CMD -f docker-compose.prod.yml ps -q 2>/dev/null | wc -l)" -gt 0 ]; then
@@ -265,7 +377,7 @@ else
     echo "Unattended-upgrades is already installed"
 fi
 
-# Create systemd service for auto-start
+# Create systemd service for auto-start with enhanced restart policy
 echo "🔧 Setting up auto-start service..."
 if [ ! -f "/etc/systemd/system/kumpels-app.service" ]; then
     echo "Creating systemd service..."
@@ -274,6 +386,7 @@ if [ ! -f "/etc/systemd/system/kumpels-app.service" ]; then
 Description=Kumpels App Docker Compose
 Requires=docker.service
 After=docker.service
+StartLimitIntervalSec=0
 
 [Service]
 Type=oneshot
@@ -282,7 +395,10 @@ WorkingDirectory=/opt/kumpels-app
 EnvironmentFile=/opt/kumpels-app/.env
 ExecStart=/usr/local/bin/docker-compose -f docker-compose.prod.yml up -d
 ExecStop=/usr/local/bin/docker-compose -f docker-compose.prod.yml down
+ExecReload=/usr/local/bin/docker-compose -f docker-compose.prod.yml restart
 TimeoutStartSec=0
+Restart=always
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
@@ -304,11 +420,86 @@ else
     fi
 fi
 
+# Create monitoring service
+echo "📊 Setting up monitoring service..."
+sudo tee /etc/systemd/system/kumpels-monitor.service > /dev/null <<EOF
+[Unit]
+Description=Kumpels App Monitoring Service
+After=kumpels-app.service
+Wants=kumpels-app.service
+
+[Service]
+Type=simple
+User=$USER
+WorkingDirectory=/opt/kumpels-app
+ExecStart=/opt/kumpels-app/monitor.sh
+Restart=always
+RestartSec=60
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Create monitoring timer for periodic checks
+sudo tee /etc/systemd/system/kumpels-monitor.timer > /dev/null <<EOF
+[Unit]
+Description=Run Kumpels App monitoring every 2 minutes
+Requires=kumpels-monitor.service
+
+[Timer]
+Unit=kumpels-monitor.service
+OnCalendar=*:0/2
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+
+# Enable and start monitoring
+sudo systemctl enable kumpels-monitor.timer
+sudo systemctl start kumpels-monitor.timer
+echo "Monitoring service configured!"
+
+# Configure nginx auto-restart
+echo "🌐 Configuring nginx auto-restart..."
+sudo tee /etc/systemd/system/nginx.service.d/override.conf > /dev/null <<EOF
+[Service]
+Restart=always
+RestartSec=10
+EOF
+
+# Reload systemd and restart nginx
+sudo systemctl daemon-reload
+sudo systemctl restart nginx
+echo "Nginx auto-restart configured!"
+
+# Create log rotation for monitoring logs
+echo "📋 Setting up log rotation..."
+sudo tee /etc/logrotate.d/kumpels-monitor > /dev/null <<EOF
+/opt/kumpels-app/monitor.log {
+    daily
+    missingok
+    rotate 7
+    compress
+    delaycompress
+    notifempty
+    create 644 $USER $USER
+}
+EOF
+
 echo "🎉 Deployment completed successfully!"
 echo ""
 echo "📊 Application Status:"
 echo "   - Web Interface: http://$(curl -s ifconfig.me)"
 echo "   - Health Check: http://$(curl -s ifconfig.me)/api/health"
+echo ""
+echo "🔧 Auto-Restart Features:"
+echo "   - Docker containers: restart=unless-stopped (in docker-compose)"
+echo "   - Systemd service: Restart=always with 10s delay"
+echo "   - Monitoring service: Checks every 2 minutes"
+echo "   - Nginx: Restart=always with 10s delay"
 echo ""
 echo "📝 Useful Commands:"
 echo "   - View logs: $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml logs -f"
@@ -316,6 +507,9 @@ echo "   - Restart app: sudo systemctl restart kumpels-app"
 echo "   - Stop app: sudo systemctl stop kumpels-app"
 echo "   - Update app: cd /opt/kumpels-app && git pull && $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml up -d --build"
 echo "   - Check status: sudo systemctl status kumpels-app"
+echo "   - View monitoring logs: tail -f /opt/kumpels-app/monitor.log"
+echo "   - Check monitoring status: sudo systemctl status kumpels-monitor.timer"
+echo "   - Manual monitoring run: /opt/kumpels-app/monitor.sh"
 echo ""
 echo "🔐 SSL Certificate:"
 echo "   - For production, replace the self-signed certificate in /opt/kumpels-app/ssl/"
