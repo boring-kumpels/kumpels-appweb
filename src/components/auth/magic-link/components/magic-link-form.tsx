@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -31,8 +31,15 @@ type MagicLinkFormProps = React.HTMLAttributes<HTMLDivElement>;
 
 export function MagicLinkForm({ className, ...props }: MagicLinkFormProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const supabase = createClientComponentClient();
+  const [emailSent, setEmailSent] = useState(false);
+
+  // Lazy-load Supabase client to prevent build-time initialization
+  const supabase = useMemo(() => {
+    if (typeof window !== "undefined") {
+      return createClientComponentClient();
+    }
+    return null;
+  }, []);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -61,7 +68,7 @@ export function MagicLinkForm({ className, ...props }: MagicLinkFormProps) {
         throw error;
       }
 
-      setIsSuccess(true);
+      setEmailSent(true);
       toast({
         title: "Revisa tu correo",
         description: "Te hemos enviado un enlace mágico para iniciar sesión.",
@@ -80,7 +87,7 @@ export function MagicLinkForm({ className, ...props }: MagicLinkFormProps) {
 
   return (
     <div className={cn("grid gap-6", className)} {...props}>
-      {isSuccess ? (
+      {emailSent ? (
         <div className="text-center">
           <h3 className="mb-1 text-lg font-medium">Revisa tu correo</h3>
           <p className="text-sm text-muted-foreground">

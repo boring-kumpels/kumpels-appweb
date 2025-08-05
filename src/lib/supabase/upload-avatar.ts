@@ -1,55 +1,73 @@
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
-const STORAGE_BUCKET =
-  process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || "avatars";
-const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
-const ACCEPTED_IMAGE_TYPES = [
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/gif",
-];
+// Lazy-load Supabase client to prevent build-time initialization
+let supabaseInstance: ReturnType<typeof createClientComponentClient> | null =
+  null;
 
-export async function uploadAvatar(file: File, userId: string) {
-  // Validate file before upload
-  if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-    throw new Error(
-      "Invalid file type. Please upload a JPEG, PNG or GIF image."
-    );
+const getSupabaseClient = () => {
+  if (!supabaseInstance && typeof window !== "undefined") {
+    supabaseInstance = createClientComponentClient();
   }
+  return supabaseInstance;
+};
 
-  if (file.size > MAX_FILE_SIZE) {
-    throw new Error(
-      "File size too large. Please upload an image smaller than 2MB."
-    );
-  }
-
+export async function uploadAvatar(
+  file: File,
+  userId: string
+): Promise<{ url: string; error: string | null }> {
   try {
-    const supabase = createClientComponentClient();
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+      return { url: "", error: "Supabase client not initialized" };
+    }
 
-    // Upload the file to Supabase storage
+    // Validate file type
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      return {
+        url: "",
+        error: "Invalid file type. Please upload a JPEG, PNG, or WebP image.",
+      };
+    }
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      return {
+        url: "",
+        error: "File size too large. Please upload an image smaller than 5MB.",
+      };
+    }
+
+    // Generate unique filename
     const fileExt = file.name.split(".").pop();
-    const fileName = `${userId}-${Math.random()}.${fileExt}`;
-    const filePath = `${fileName}`;
+    const fileName = `${userId}-${Date.now()}.${fileExt}`;
+    const filePath = `avatars/${fileName}`;
 
-    // Upload file
-    const { error: uploadError } = await supabase.storage
-      .from(STORAGE_BUCKET)
+    // Upload file to Supabase Storage
+    const { data, error } = await supabase.storage
+      .from("avatars")
       .upload(filePath, file, {
         cacheControl: "3600",
         upsert: false,
       });
 
-    if (uploadError) throw uploadError;
+    if (error) {
+      console.error("Upload error:", error);
+      return { url: "", error: "Failed to upload image" };
+    }
 
-    // Get the public URL
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(filePath);
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from("avatars")
+      .getPublicUrl(filePath);
 
-    return publicUrl;
+    return { url: urlData.publicUrl, error: null };
   } catch (error) {
-    console.error("Error uploading avatar:", error);
-    throw error;
+    console.error("Avatar upload error:", error);
+    return {
+      url: "",
+      error: "An unexpected error occurred while uploading the image",
+    };
   }
 }

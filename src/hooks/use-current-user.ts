@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import type { User } from "@supabase/supabase-js";
 import type { Profile } from "@prisma/client";
@@ -18,9 +18,18 @@ export function useCurrentUser(): CurrentUserData {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const supabase = createClientComponentClient();
+
+  // Lazy-load Supabase client to prevent build-time initialization
+  const supabase = useMemo(() => {
+    if (typeof window !== "undefined") {
+      return createClientComponentClient();
+    }
+    return null;
+  }, []);
 
   const fetchUserData = useCallback(async () => {
+    if (!supabase) return;
+
     try {
       setIsLoading(true);
       setError(null);
@@ -52,9 +61,11 @@ export function useCurrentUser(): CurrentUserData {
     } finally {
       setIsLoading(false);
     }
-  }, [supabase.auth]);
+  }, [supabase]);
 
   useEffect(() => {
+    if (!supabase) return;
+
     fetchUserData();
 
     // Listen for auth state changes
@@ -85,7 +96,7 @@ export function useCurrentUser(): CurrentUserData {
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, [supabase.auth, fetchUserData]);
+  }, [supabase, fetchUserData]);
 
   return { user, profile, isLoading, error, refetch: fetchUserData };
 }

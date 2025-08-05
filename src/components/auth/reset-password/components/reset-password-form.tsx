@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -50,7 +50,14 @@ export function ResetPasswordForm({
   const [isLoading, setIsLoading] = useState(false);
   const [password, setPassword] = useState("");
   const router = useRouter();
-  const supabase = createClientComponentClient();
+
+  // Lazy-load Supabase client to prevent build-time initialization
+  const supabase = useMemo(() => {
+    if (typeof window !== "undefined") {
+      return createClientComponentClient();
+    }
+    return null;
+  }, []);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -66,6 +73,15 @@ export function ResetPasswordForm({
   };
 
   async function onSubmit(data: FormValues) {
+    if (!supabase) {
+      toast({
+        title: "Error",
+        description: "Supabase client not initialized",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setIsLoading(true);
 

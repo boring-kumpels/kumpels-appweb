@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useMemo } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import type { User, Session } from "@supabase/auth-helpers-nextjs";
 import { useRouter } from "next/navigation";
@@ -32,7 +32,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
-  const supabase = createClientComponentClient();
+
+  // Lazy-load Supabase client to prevent build-time initialization
+  const supabase = useMemo(() => {
+    if (typeof window !== "undefined") {
+      return createClientComponentClient();
+    }
+    return null;
+  }, []);
 
   // Fetch profile function
   const fetchProfile = async () => {
@@ -49,6 +56,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   useEffect(() => {
+    if (!supabase) return;
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -83,6 +92,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router, supabase]);
 
   const signIn = async (email: string, password: string) => {
+    if (!supabase) throw new Error("Supabase client not initialized");
+
     const { error, data } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -95,6 +106,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signUp = async (email: string, password: string) => {
+    if (!supabase) throw new Error("Supabase client not initialized");
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -103,6 +116,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    if (!supabase) throw new Error("Supabase client not initialized");
+
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
     setProfile(null);
@@ -118,4 +133,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export const useAuth = () => useContext(AuthContext); 
+export const useAuth = () => useContext(AuthContext);
