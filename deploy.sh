@@ -140,6 +140,30 @@ else
     fi
 fi
 
+# Load environment variables early - before any Docker operations
+echo "📋 Loading environment variables..."
+if [ ! -f .env ]; then
+    echo "❌ .env file not found!"
+    echo "Please create a .env file with your Supabase configuration."
+    exit 1
+fi
+
+set -a  # automatically export all variables
+source .env
+set +a  # stop automatically exporting
+
+# Verify key environment variables are loaded
+echo "🔍 Verifying environment variables..."
+if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ]; then
+    echo "❌ NEXT_PUBLIC_SUPABASE_URL is not set"
+    exit 1
+fi
+if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+    echo "❌ SUPABASE_SERVICE_ROLE_KEY is not set"
+    exit 1
+fi
+echo "✅ Environment variables loaded successfully"
+
 # Generate SSL certificate for development
 echo "🔐 Checking SSL certificate..."
 if [ ! -f "ssl/cert.pem" ] || [ ! -f "ssl/key.pem" ]; then
@@ -184,21 +208,6 @@ else
     DOCKER_COMPOSE_CMD="docker-compose"
 fi
 
-# Load environment variables
-echo "🔍 Checking environment variables..."
-if [ -f .env ]; then
-    echo "✅ .env file found"
-    # Check if required variables are set
-    if grep -q "NEXT_PUBLIC_SUPABASE_URL=" .env && grep -q "DATABASE_URL=" .env; then
-        echo "✅ Environment variables appear to be configured"
-    else
-        echo "⚠️  Some environment variables may be missing. Please check your .env file."
-    fi
-else
-    echo "❌ .env file not found!"
-    exit 1
-fi
-
 # Build and start the application
 echo "🔨 Building and starting the application..."
 if [ "$($DOCKER_COMPOSE_CMD -f docker-compose.prod.yml ps -q 2>/dev/null | wc -l)" -gt 0 ]; then
@@ -207,24 +216,6 @@ if [ "$($DOCKER_COMPOSE_CMD -f docker-compose.prod.yml ps -q 2>/dev/null | wc -l
 fi
 
 echo "Building Docker images..."
-# Load and export environment variables from .env file
-echo "📋 Loading environment variables..."
-set -a  # automatically export all variables
-source .env
-set +a  # stop automatically exporting
-
-# Verify key environment variables are loaded
-echo "🔍 Verifying environment variables..."
-if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ]; then
-    echo "❌ NEXT_PUBLIC_SUPABASE_URL is not set"
-    exit 1
-fi
-if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
-    echo "❌ SUPABASE_SERVICE_ROLE_KEY is not set"
-    exit 1
-fi
-echo "✅ Environment variables loaded successfully"
-
 # Build with environment variables
 echo "🔨 Building Docker image..."
 $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml build
