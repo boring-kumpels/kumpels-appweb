@@ -207,11 +207,29 @@ if [ "$($DOCKER_COMPOSE_CMD -f docker-compose.prod.yml ps -q 2>/dev/null | wc -l
 fi
 
 echo "Building Docker images..."
-# Use docker-compose with env_file directive to load environment variables
-$DOCKER_COMPOSE_CMD -f docker-compose.prod.yml --env-file .env build
+# Load and export environment variables from .env file
+echo "📋 Loading environment variables..."
+set -a  # automatically export all variables
+source .env
+set +a  # stop automatically exporting
+
+# Verify key environment variables are loaded
+echo "🔍 Verifying environment variables..."
+if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ]; then
+    echo "❌ NEXT_PUBLIC_SUPABASE_URL is not set"
+    exit 1
+fi
+if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+    echo "❌ SUPABASE_SERVICE_ROLE_KEY is not set"
+    exit 1
+fi
+echo "✅ Environment variables loaded successfully"
+
+# Build with environment variables
+$DOCKER_COMPOSE_CMD -f docker-compose.prod.yml build
 
 echo "Starting containers..."
-$DOCKER_COMPOSE_CMD -f docker-compose.prod.yml --env-file .env up -d
+$DOCKER_COMPOSE_CMD -f docker-compose.prod.yml up -d
 
 # Wait for services to be ready
 echo "⏳ Waiting for services to be ready..."

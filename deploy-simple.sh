@@ -16,7 +16,9 @@ fi
 
 # Load environment variables
 echo "📋 Loading environment variables..."
-export $(cat .env | grep -v '^#' | xargs)
+set -a  # automatically export all variables
+source .env
+set +a  # stop automatically exporting
 
 # Check if required variables are set
 if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ]; then
@@ -37,11 +39,11 @@ docker-compose -f docker-compose.prod.yml down 2>/dev/null || true
 
 # Build with environment variables
 echo "🔨 Building application..."
-docker-compose -f docker-compose.prod.yml --env-file .env build
+docker-compose -f docker-compose.prod.yml build
 
 # Start containers
 echo "🚀 Starting containers..."
-docker-compose -f docker-compose.prod.yml --env-file .env up -d
+docker-compose -f docker-compose.prod.yml up -d
 
 # Wait for services to be ready
 echo "⏳ Waiting for services to be ready..."
