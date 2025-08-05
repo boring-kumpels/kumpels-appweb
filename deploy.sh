@@ -225,11 +225,22 @@ if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
 fi
 echo "✅ Environment variables loaded successfully"
 
-# Build with environment variables
-$DOCKER_COMPOSE_CMD -f docker-compose.prod.yml build
+# Build with environment variables - preserve environment for sudo
+echo "🔨 Building Docker image..."
+if [ "$DOCKER_COMPOSE_CMD" = "sudo docker-compose" ]; then
+    # Use sudo with environment preservation
+    sudo -E docker-compose -f docker-compose.prod.yml build
+else
+    $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml build
+fi
 
 echo "Starting containers..."
-$DOCKER_COMPOSE_CMD -f docker-compose.prod.yml up -d
+if [ "$DOCKER_COMPOSE_CMD" = "sudo docker-compose" ]; then
+    # Use sudo with environment preservation
+    sudo -E docker-compose -f docker-compose.prod.yml up -d
+else
+    $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml up -d
+fi
 
 # Wait for services to be ready
 echo "⏳ Waiting for services to be ready..."
