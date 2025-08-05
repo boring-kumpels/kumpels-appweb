@@ -4,9 +4,7 @@ import { cookies } from "next/headers";
 import prisma from "@/lib/prisma";
 import {
   createUserFormSchema,
-  type UsersListResponse,
   type UserCreationResponse,
-  type UserWithProfile,
 } from "@/types/user-management";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
@@ -61,7 +59,6 @@ export async function GET(request: NextRequest) {
       parseInt(url.searchParams.get("pageSize") || "10"),
       50
     );
-    const search = url.searchParams.get("search") || "";
 
     // Get users from Supabase Auth
     const { data: authUsers, error: authError } =
@@ -101,7 +98,10 @@ export async function GET(request: NextRequest) {
       return {
         id: authUser.id,
         email: authUser.email,
-        fullName: profile?.fullName || "N/A",
+        fullName: profile
+          ? `${profile.firstName || ""} ${profile.lastName || ""}`.trim() ||
+            "N/A"
+          : "N/A",
         role: profile?.role || "USER",
         createdAt: authUser.created_at,
         updatedAt: profile?.updatedAt || authUser.updated_at,
