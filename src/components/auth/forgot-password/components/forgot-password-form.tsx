@@ -55,6 +55,10 @@ export function ForgotPasswordForm({
     try {
       setIsLoading(true);
 
+      if (!supabase) {
+        throw new Error("Supabase client not initialized");
+      }
+
       // Get the site URL from the environment or current location
       const siteUrl =
         process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;

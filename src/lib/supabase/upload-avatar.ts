@@ -45,7 +45,7 @@ export async function uploadAvatar(
     const filePath = `avatars/${fileName}`;
 
     // Upload file to Supabase Storage
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from("avatars")
       .upload(filePath, file, {
         cacheControl: "3600",

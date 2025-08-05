@@ -39,8 +39,13 @@ export function AvatarUpload({
 
     try {
       setIsUploading(true);
-      const avatarUrl = await uploadAvatar(file, userId);
-      onUploadComplete(avatarUrl);
+      const result = await uploadAvatar(file, userId);
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      onUploadComplete(result.url);
       toast({
         title: "Avatar actualizado",
         description: "Tu foto de perfil ha sido actualizada correctamente.",
