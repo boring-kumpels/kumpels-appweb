@@ -233,14 +233,19 @@ export default function PacientesOnTimeManagement() {
   const { data: allQRScanRecords = [] } = useQuery<QRScanRecord[]>({
     queryKey: ["all-qr-scan-records", currentDailyProcess?.id],
     queryFn: async (): Promise<QRScanRecord[]> => {
-      if (!currentDailyProcess?.id) return [];
+      // Build query params - include dailyProcessId if available, otherwise get all records
+      const params = new URLSearchParams();
+      if (currentDailyProcess?.id) {
+        params.append("dailyProcessId", currentDailyProcess.id);
+      }
+      
       const response = await fetch(
-        `/api/qr-scan-records?dailyProcessId=${currentDailyProcess.id}`
+        `/api/qr-scan-records?${params.toString()}`
       );
       if (!response.ok) return [];
       return response.json();
     },
-    enabled: !!currentDailyProcess?.id,
+    enabled: true, // Always enabled - we need to see independent devolution records too
   });
 
   // Fetch lines and services

@@ -25,10 +25,10 @@ export async function POST(request: NextRequest) {
       where: { userId: user.id },
     });
 
-    if (!profile || (profile.role !== "PHARMACY_REGENT" && profile.role !== "SUPERADMIN")) {
+    if (!profile || (profile.role !== "PHARMACY_REGENT" && profile.role !== "SUPERADMIN" && profile.role !== "NURSE")) {
       return NextResponse.json(
         {
-          error: "Solo los regentes de farmacia y superadministradores pueden completar la recepción",
+          error: "Solo enfermeras, regentes de farmacia y superadministradores pueden completar la recepción",
         },
         { status: 403 }
       );
@@ -81,11 +81,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (devolutionProcess.status !== ProcessStatus.DELIVERED_TO_SERVICE) {
+    // Allow completion from multiple statuses since reception and 3rd QR scan are parallel
+    const allowedStatuses = ["IN_PROGRESS", "DISPATCHED_FROM_PHARMACY", "DELIVERED_TO_SERVICE"];
+    
+    if (!allowedStatuses.includes(devolutionProcess.status as string)) {
       return NextResponse.json(
         {
-          error:
-            "El proceso debe estar en estado DELIVERED_TO_SERVICE para completar la recepción",
+          error: `El proceso debe estar en uno de los siguientes estados para completar la recepción: ${allowedStatuses.join(', ')}. Estado actual: ${devolutionProcess.status}`,
         },
         { status: 400 }
       );

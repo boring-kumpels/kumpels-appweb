@@ -17,17 +17,42 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const dailyProcessId = searchParams.get("dailyProcessId");
 
-    if (!dailyProcessId) {
-      return NextResponse.json(
-        { error: "dailyProcessId is required" },
-        { status: 400 }
-      );
+    // Build where clause - if no dailyProcessId provided, get all records
+    // If dailyProcessId provided, include both that daily process AND independent devolutions
+    const whereClause: {
+      OR?: Array<{
+        dailyProcessId?: string | null;
+        AND?: Array<{
+          transactionType?: string;
+          OR?: Array<{
+            dailyProcessId?: string | null | { not: string };
+          }>;
+        }>;
+      }>;
+    } = {};
+
+    if (dailyProcessId) {
+      // Include records from the specified daily process AND independent devolution records
+      whereClause.OR = [
+        { dailyProcessId },
+        { 
+          // Independent devolution records - match by transaction type and scan pattern
+          AND: [
+            { transactionType: "DEVOLUCION" },
+            {
+              OR: [
+                { dailyProcessId: null },
+                { dailyProcessId: { not: dailyProcessId } } // Include other daily processes for devolutions
+              ]
+            }
+          ]
+        }
+      ];
     }
+    // If no dailyProcessId provided, whereClause remains empty and gets all records
 
     const qrScanRecords = await prisma.qRScanRecord.findMany({
-      where: {
-        dailyProcessId: dailyProcessId,
-      },
+      where: whereClause,
       include: {
         qrCode: {
           include: {

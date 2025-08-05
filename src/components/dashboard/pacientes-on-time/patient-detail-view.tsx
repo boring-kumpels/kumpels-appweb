@@ -487,12 +487,15 @@ function QRStepButton({
     }
 
     if (step.qrType === "PHARMACY_DISPATCH_DEVOLUTION") {
-      // First devolution pharmacy dispatch can be scanned after nursing request
-      const devolucionStarted = allMedicationProcesses.some(
+      // 3rd QR code (Llegada a Farmacia) can be scanned when devolution is active in any of these states
+      const devolucionActive = allMedicationProcesses.some(
         (mp) =>
           mp.patientId === patientId &&
           mp.step === "DEVOLUCION" &&
-          mp.status === "IN_PROGRESS"
+          (mp.status === "IN_PROGRESS" ||
+           mp.status === "DISPATCHED_FROM_PHARMACY" ||
+           mp.status === "DELIVERED_TO_SERVICE" ||
+           mp.status === "COMPLETED") // Allow even after reception is confirmed
       );
       const alreadyScanned = qrScanRecords.some(
         (record) =>
@@ -501,7 +504,7 @@ function QRStepButton({
       );
       return (
         (isRegent || userRole === "SUPERADMIN") &&
-        devolucionStarted &&
+        devolucionActive &&
         !alreadyScanned
       );
     }
@@ -1003,14 +1006,19 @@ export default function PatientDetailView({
   const { data: qrScanRecords = [] } = useQuery<QRScanRecord[]>({
     queryKey: ["qr-scan-records", patientId, currentDailyProcess?.id],
     queryFn: async (): Promise<QRScanRecord[]> => {
-      if (!currentDailyProcess?.id) return [];
+      // Build query params based on whether we have a current daily process
+      const params = new URLSearchParams();
+      if (currentDailyProcess?.id) {
+        params.append("dailyProcessId", currentDailyProcess.id);
+      }
+      
       const response = await fetch(
-        `/api/patients/${patientId}/qr-scan-records?dailyProcessId=${currentDailyProcess.id}`
+        `/api/patients/${patientId}/qr-scan-records?${params.toString()}`
       );
       if (!response.ok) return [];
       return response.json();
     },
-    enabled: !!patientId && !!currentDailyProcess?.id,
+    enabled: !!patientId, // Always enabled - we need to see independent devolution records too
   });
 
   // Fetch all logs for this patient (including resolved status change logs)
@@ -1260,7 +1268,7 @@ export default function PatientDetailView({
         )
           ? ProcessStatus.COMPLETED
           : (() => {
-              // Check if all three QR codes have been scanned for devolution
+              // Check if the first two QR codes have been scanned for devolution
               const hasPharmacyDispatchQR = qrScanRecords.some(
                 (record) =>
                   record.qrCode.type === "PHARMACY_DISPATCH" &&
@@ -1271,18 +1279,9 @@ export default function PatientDetailView({
                   record.qrCode.type === "SERVICE_ARRIVAL" &&
                   record.transactionType === "DEVOLUCION"
               );
-              const hasPharmacyArrivalQR = qrScanRecords.some(
-                (record) =>
-                  record.qrCode.type === "PHARMACY_DISPATCH_DEVOLUTION" &&
-                  record.transactionType === "DEVOLUCION"
-              );
 
-              // Only show as IN_PROGRESS when all three QRs are scanned
-              if (
-                hasPharmacyDispatchQR &&
-                hasServiceArrivalQR &&
-                hasPharmacyArrivalQR
-              ) {
+              // Show as IN_PROGRESS when the first two QRs are scanned (ready for reception confirmation)
+              if (hasPharmacyDispatchQR && hasServiceArrivalQR) {
                 return ProcessStatus.IN_PROGRESS;
               }
 
@@ -1292,7 +1291,7 @@ export default function PatientDetailView({
         isQRStep: false,
         qrType: "PHARMACY_RECEPTION",
         description:
-          "Paso final: Regente de farmacia confirma recepción completa de devolución",
+          "Tercer paso: Regente de farmacia confirma recepción de devolución",
       },
       {
         id: "llegada-farmacia",
@@ -1304,17 +1303,29 @@ export default function PatientDetailView({
             record.transactionType === "DEVOLUCION"
         )
           ? ProcessStatus.COMPLETED
-          : qrScanRecords.some(
-                (record) =>
-                  record.qrCode.type === "SERVICE_ARRIVAL" &&
-                  record.transactionType === "DEVOLUCION"
-              )
-            ? ProcessStatus.PENDING
-            : ProcessStatus.PENDING,
+          : (() => {
+              // Check if devolution process is in progress or completed (both states allow 3rd QR scan)
+              const devolutionProcess = allMedicationProcesses.find(
+                (mp) =>
+                  mp.patientId === patientId &&
+                  mp.step === "DEVOLUCION"
+              );
+              
+              if (devolutionProcess && (
+                devolutionProcess.status === "IN_PROGRESS" ||
+                devolutionProcess.status === "DISPATCHED_FROM_PHARMACY" ||
+                devolutionProcess.status === "DELIVERED_TO_SERVICE" ||
+                devolutionProcess.status === "COMPLETED"
+              )) {
+                return ProcessStatus.PENDING; // Always allow 3rd QR scan if devolution is active
+              }
+              
+              return ProcessStatus.PENDING;
+            })(),
         step: MedicationProcessStep.DEVOLUCION,
         isQRStep: true,
         qrType: "PHARMACY_DISPATCH_DEVOLUTION",
-        description: "Tercer QR: Escanear código de llegada a farmacia",
+        description: "Paso final: Escanear código de llegada a farmacia",
       },
     ],
     devoluciones_manuales: [],

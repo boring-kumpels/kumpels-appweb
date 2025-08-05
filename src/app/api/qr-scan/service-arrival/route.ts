@@ -113,23 +113,55 @@ export async function POST(request: NextRequest) {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const dailyProcess = await prisma.dailyProcess.findFirst({
+    // First, try to find any daily process for today (regardless of status)
+    let dailyProcess = await prisma.dailyProcess.findFirst({
       where: {
         date: {
           gte: today,
           lt: tomorrow,
         },
-        status: "ACTIVE",
       },
+      orderBy: { createdAt: "desc" },
     });
 
+    // If no daily process exists for today, create one
     if (!dailyProcess) {
-      return NextResponse.json(
-        {
-          error: "No hay proceso diario activo para hoy",
-        },
-        { status: 400 }
-      );
+      console.log("No daily process found for today, creating one for service arrival QR scan");
+      try {
+        dailyProcess = await prisma.dailyProcess.create({
+          data: {
+            date: new Date(),
+            status: "ACTIVE",
+            startedBy: user.id,
+          },
+        });
+        console.log("Created daily process:", dailyProcess.id);
+      } catch (error) {
+        // If creation fails due to unique constraint, try to find it again
+        console.log("Daily process creation failed, trying to find existing one:", error);
+        dailyProcess = await prisma.dailyProcess.findFirst({
+          where: {
+            date: {
+              gte: today,
+              lt: tomorrow,
+            },
+          },
+          orderBy: { createdAt: "desc" },
+        });
+        
+        if (!dailyProcess) {
+          throw new Error("Could not create or find daily process for today");
+        }
+      }
+    }
+
+    // If we found a daily process but it's not active, update it to active
+    if (dailyProcess.status !== "ACTIVE") {
+      console.log("Updating daily process status to ACTIVE");
+      dailyProcess = await prisma.dailyProcess.update({
+        where: { id: dailyProcess.id },
+        data: { status: "ACTIVE" },
+      });
     }
 
     // Find patients ready for service arrival based on transaction type

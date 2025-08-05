@@ -123,8 +123,8 @@ export function canPerformAction(
       canComplete: ["NURSE"],
     },
     [MedicationProcessStep.DEVOLUCION]: {
-      canStart: ["NURSE"],
-      canComplete: ["NURSE"],
+      canStart: ["NURSE", "SUPERADMIN"],
+      canComplete: ["NURSE", "SUPERADMIN"],
     },
   };
 

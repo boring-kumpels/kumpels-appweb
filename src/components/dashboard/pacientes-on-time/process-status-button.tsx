@@ -179,23 +179,37 @@ export function ProcessStatusButton({
         expectedFinalStatus = ProcessStatus.COMPLETED; // Entrega auto-completes
       } else if (
         step === MedicationProcessStep.DEVOLUCION &&
-        (actualUserRole === "NURSE" || actualUserRole === "SUPERADMIN")
+        actualUserRole === "NURSE"
       ) {
         if (!process) {
           expectedFinalStatus = ProcessStatus.IN_PROGRESS; // First click starts devolution
         } else if (process.status === ProcessStatus.PENDING) {
           expectedFinalStatus = ProcessStatus.IN_PROGRESS; // Start it
+        } else if (
+          process.status === ProcessStatus.IN_PROGRESS ||
+          process.status === ProcessStatus.DISPATCHED_FROM_PHARMACY ||
+          process.status === ProcessStatus.DELIVERED_TO_SERVICE
+        ) {
+          expectedFinalStatus = ProcessStatus.COMPLETED; // Nurse can confirm reception at any stage
         } else {
-          return; // No further action needed for nurses or superadmin on devolution
+          return; // Already completed or other state
         }
       } else if (
         step === MedicationProcessStep.DEVOLUCION &&
-        actualUserRole === "PHARMACY_REGENT"
+        (actualUserRole === "PHARMACY_REGENT" || actualUserRole === "SUPERADMIN")
       ) {
-        if (process?.status === ProcessStatus.DELIVERED_TO_SERVICE) {
+        if (!process) {
+          expectedFinalStatus = ProcessStatus.IN_PROGRESS; // First click starts devolution
+        } else if (process.status === ProcessStatus.PENDING) {
+          expectedFinalStatus = ProcessStatus.IN_PROGRESS; // Start it
+        } else if (
+          process.status === ProcessStatus.IN_PROGRESS ||
+          process.status === ProcessStatus.DISPATCHED_FROM_PHARMACY ||
+          process.status === ProcessStatus.DELIVERED_TO_SERVICE
+        ) {
           expectedFinalStatus = ProcessStatus.COMPLETED; // Complete devolution with reception
         } else {
-          return; // Not ready for reception yet
+          return; // Already completed or other state
         }
       } else {
         // Default behavior
@@ -306,11 +320,13 @@ export function ProcessStatusButton({
           // Perform actual server operations and update with real data
           let finalProcess = process;
 
-          // Special case for devolution reception by pharmacy regent
+          // Special case for devolution reception by nurse, pharmacy regent, or superadmin
           if (
             step === MedicationProcessStep.DEVOLUCION &&
-            actualUserRole === "PHARMACY_REGENT" &&
-            process.status === ProcessStatus.DELIVERED_TO_SERVICE &&
+            (actualUserRole === "NURSE" || actualUserRole === "PHARMACY_REGENT" || actualUserRole === "SUPERADMIN") &&
+            (process.status === ProcessStatus.IN_PROGRESS ||
+             process.status === ProcessStatus.DISPATCHED_FROM_PHARMACY ||
+             process.status === ProcessStatus.DELIVERED_TO_SERVICE) &&
             expectedFinalStatus === ProcessStatus.COMPLETED
           ) {
             const receptionResult =
@@ -488,7 +504,7 @@ export function ProcessStatusButton({
       }
     }
 
-    // Special case for devolution: different rules for nurses vs pharmacy regents
+    // Special case for devolution: different rules for nurses vs pharmacy regents/superadmin
     if (step === MedicationProcessStep.DEVOLUCION) {
       if (actualUserRole === "NURSE") {
         // Devolutions are now independent and don't require ENTREGA completion
@@ -499,18 +515,38 @@ export function ProcessStatusButton({
           return true; // Allow starting devolution
         }
 
-        // If process is IN_PROGRESS or COMPLETED, nurse cannot interact anymore
-        return false;
-      } else if (actualUserRole === "PHARMACY_REGENT") {
-        // Pharmacy regents can complete devolution after QR scans are done
-        if (buttonStatus === ProcessStatus.DELIVERED_TO_SERVICE) {
-          return true; // Allow final reception step
+        // Nurses can also click "Confirmar Recepción" when process reaches certain states
+        // This is independent of the 3rd QR code scan
+        if (
+          buttonStatus === ProcessStatus.IN_PROGRESS ||
+          buttonStatus === ProcessStatus.DISPATCHED_FROM_PHARMACY ||
+          buttonStatus === ProcessStatus.DELIVERED_TO_SERVICE
+        ) {
+          return true; // Allow confirming reception at any point after devolution starts
         }
-        // For null or PENDING status, regent cannot click - waiting for nurse to start
+
+        // If process is COMPLETED, nurse cannot interact anymore
+        return buttonStatus !== ProcessStatus.COMPLETED;
+      } else if (actualUserRole === "PHARMACY_REGENT" || actualUserRole === "SUPERADMIN") {
+        // Pharmacy regents and superadmins can both start devolutions AND complete reception
+        // 1. No process exists yet (buttonStatus === null) - allow starting
+        // 2. Process exists but is PENDING - allow starting
         if (buttonStatus === null || buttonStatus === ProcessStatus.PENDING) {
-          return false; // Waiting for nurse to initiate
+          return true; // Allow starting devolution
         }
-        return false; // Not ready for reception yet
+        
+        // They can also complete devolution reception when process reaches certain states
+        // This is independent of the 3rd QR code scan - they can happen in parallel
+        if (
+          buttonStatus === ProcessStatus.IN_PROGRESS ||
+          buttonStatus === ProcessStatus.DISPATCHED_FROM_PHARMACY ||
+          buttonStatus === ProcessStatus.DELIVERED_TO_SERVICE
+        ) {
+          return true; // Allow final reception step once devolution is in progress
+        }
+        
+        // If process is COMPLETED, they cannot interact anymore
+        return buttonStatus !== ProcessStatus.COMPLETED;
       }
     }
 
@@ -561,23 +597,29 @@ export function ProcessStatusButton({
         } else if (buttonStatus === ProcessStatus.PENDING) {
           return "Iniciar Devolución";
         } else if (buttonStatus === ProcessStatus.IN_PROGRESS) {
-          return "En Proceso";
+          return "Confirmar Recep."; // Nurse can confirm reception
+        } else if (buttonStatus === ProcessStatus.DISPATCHED_FROM_PHARMACY) {
+          return "Confirmar Recep."; // Nurse can confirm reception
+        } else if (buttonStatus === ProcessStatus.DELIVERED_TO_SERVICE) {
+          return "Confirmar Recep."; // Nurse can confirm reception
         } else if (buttonStatus === ProcessStatus.COMPLETED) {
           return "Completada";
         }
-      } else if (actualUserRole === "PHARMACY_REGENT") {
-        if (buttonStatus === ProcessStatus.DELIVERED_TO_SERVICE) {
-          return "Recepción";
+      } else if (actualUserRole === "PHARMACY_REGENT" || actualUserRole === "SUPERADMIN") {
+        if (buttonStatus === null) {
+          return "No Iniciado"; // Can start devolution
+        } else if (buttonStatus === ProcessStatus.PENDING) {
+          return "Iniciar Devolución"; // Can start devolution
+        } else if (buttonStatus === ProcessStatus.IN_PROGRESS) {
+          return "Confirmar Recep."; // Can confirm reception
+        } else if (buttonStatus === ProcessStatus.DISPATCHED_FROM_PHARMACY) {
+          return "Confirmar Recep."; // Can confirm reception
+        } else if (buttonStatus === ProcessStatus.DELIVERED_TO_SERVICE) {
+          return "Confirmar Recep."; // Can confirm reception
         } else if (buttonStatus === ProcessStatus.COMPLETED) {
           return "Completada";
-        } else if (buttonStatus === null) {
-          return "No Iniciado";
-        } else if (buttonStatus === ProcessStatus.PENDING) {
-          return "Esperando Inicio";
-        } else if (buttonStatus === ProcessStatus.IN_PROGRESS) {
-          return "En Proceso";
         } else {
-          return "En Proceso";
+          return "Esperando";
         }
       }
     }

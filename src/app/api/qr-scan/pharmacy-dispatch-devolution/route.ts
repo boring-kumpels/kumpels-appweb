@@ -82,31 +82,75 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get the current active daily process
-    const currentDailyProcess = await prisma.dailyProcess.findFirst({
+    // Get or create the current daily process for today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    let currentDailyProcess = await prisma.dailyProcess.findFirst({
       where: {
         date: {
-          gte: new Date(new Date().setHours(0, 0, 0, 0)),
-          lt: new Date(new Date().setHours(23, 59, 59, 999)),
+          gte: today,
+          lt: tomorrow,
         },
       },
       orderBy: { createdAt: "desc" },
     });
 
+    // If no daily process exists for today, create one
     if (!currentDailyProcess) {
-      return NextResponse.json(
-        { error: "No active daily process found" },
-        { status: 400 }
-      );
+      console.log("No daily process found for today, creating one for devolution QR scan");
+      try {
+        currentDailyProcess = await prisma.dailyProcess.create({
+          data: {
+            date: new Date(),
+            status: "IN_PROGRESS",
+            startedBy: user.id,
+          },
+        });
+        console.log("Created daily process:", currentDailyProcess.id);
+      } catch (error) {
+        // If creation fails due to unique constraint, try to find it again
+        console.log("Daily process creation failed, trying to find existing one:", error);
+        currentDailyProcess = await prisma.dailyProcess.findFirst({
+          where: {
+            date: {
+              gte: today,
+              lt: tomorrow,
+            },
+          },
+          orderBy: { createdAt: "desc" },
+        });
+        
+        if (!currentDailyProcess) {
+          throw new Error("Could not create or find daily process for today");
+        }
+      }
     }
 
-    // Find all patients with DEVOLUCION process in DELIVERED_TO_SERVICE status for the selected line
-    // These are patients that have completed the first two QR scans in the devolution workflow
+    // Find all patients with DEVOLUCION process in active states for the selected line
+    // Since this is a parallel step, it can be scanned in multiple states
+    // Include both daily process-linked and independent devolutions
     const devolutionProcesses = await prisma.medicationProcess.findMany({
       where: {
-        dailyProcessId: currentDailyProcess.id,
+        OR: [
+          {
+            dailyProcessId: currentDailyProcess.id,
+          },
+          {
+            dailyProcessId: null, // Include independent devolutions
+          },
+        ],
         step: "DEVOLUCION",
-        status: ProcessStatus.DELIVERED_TO_SERVICE, // After service arrival QR scan
+        status: {
+          in: [
+            ProcessStatus.IN_PROGRESS,
+            ProcessStatus.DISPATCHED_FROM_PHARMACY,
+            ProcessStatus.DELIVERED_TO_SERVICE,
+            ProcessStatus.COMPLETED, // Allow even after reception is confirmed
+          ],
+        },
         patient: {
           service: {
             lineId: destinationLineId, // Filter by selected line
@@ -130,17 +174,45 @@ export async function POST(request: NextRequest) {
     if (devolutionProcesses.length === 0) {
       return NextResponse.json(
         {
-          error: `No hay pacientes listos para llegada a farmacia en la línea ${selectedLine.displayName}`,
+          error: `No hay pacientes con devoluciones activas en la línea ${selectedLine.displayName}`,
           message:
-            "Asegúrate de que los pacientes hayan completado los pasos anteriores: salida de farmacia (entregas) y llegada a servicio",
+            "Asegúrate de que haya pacientes con procesos de devolución iniciados",
         },
         { status: 400 }
       );
     }
 
-    // Don't update the process status - it should remain DELIVERED_TO_SERVICE
+    // Filter out processes that have already been scanned for this QR type
+    const unscannedProcesses = [];
+    for (const process of devolutionProcesses) {
+      const existingScan = await prisma.qRScanRecord.findFirst({
+        where: {
+          patientId: process.patientId,
+          qrCode: {
+            type: "PHARMACY_DISPATCH_DEVOLUTION",
+          },
+          transactionType: "DEVOLUCION",
+        },
+      });
+      
+      if (!existingScan) {
+        unscannedProcesses.push(process);
+      }
+    }
+
+    if (unscannedProcesses.length === 0) {
+      return NextResponse.json(
+        {
+          error: `Todos los pacientes con devoluciones en la línea ${selectedLine.displayName} ya han sido escaneados`,
+          message: "No hay pacientes pendientes para el escaneo de llegada a farmacia",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Don't update the process status - it should remain as is
     // so that regents can confirm the final reception
-    const updatedProcesses = devolutionProcesses.map((process) => ({
+    const updatedProcesses = unscannedProcesses.map((process) => ({
       ...process,
       updatedAt: new Date(),
     }));
@@ -153,7 +225,7 @@ export async function POST(request: NextRequest) {
             patientId: process.patientId,
             qrCodeId: qrCode.id,
             scannedBy: user.id,
-            dailyProcessId: currentDailyProcess.id,
+            dailyProcessId: process.dailyProcessId || currentDailyProcess.id, // Use process's daily process ID or current one
             temperature: temperature,
             destinationLineId: destinationLineId,
             transactionType: transactionType,
