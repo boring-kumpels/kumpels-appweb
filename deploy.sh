@@ -7,6 +7,30 @@ set -e
 
 echo "🚀 Starting Kumpels App deployment..."
 
+# Load environment variables early - before any Docker operations
+echo "📋 Loading environment variables..."
+if [ ! -f .env ]; then
+    echo "❌ .env file not found!"
+    echo "Please create a .env file with your Supabase configuration."
+    exit 1
+fi
+
+set -a  # automatically export all variables
+source .env
+set +a  # stop automatically exporting
+
+# Verify key environment variables are loaded
+echo "🔍 Verifying environment variables..."
+if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ]; then
+    echo "❌ NEXT_PUBLIC_SUPABASE_URL is not set"
+    exit 1
+fi
+if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+    echo "❌ SUPABASE_SERVICE_ROLE_KEY is not set"
+    exit 1
+fi
+echo "✅ Environment variables loaded successfully"
+
 # Update system packages
 echo "📦 Updating system packages..."
 sudo apt-get update
@@ -140,30 +164,6 @@ else
     fi
 fi
 
-# Load environment variables early - before any Docker operations
-echo "📋 Loading environment variables..."
-if [ ! -f .env ]; then
-    echo "❌ .env file not found!"
-    echo "Please create a .env file with your Supabase configuration."
-    exit 1
-fi
-
-set -a  # automatically export all variables
-source .env
-set +a  # stop automatically exporting
-
-# Verify key environment variables are loaded
-echo "🔍 Verifying environment variables..."
-if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ]; then
-    echo "❌ NEXT_PUBLIC_SUPABASE_URL is not set"
-    exit 1
-fi
-if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
-    echo "❌ SUPABASE_SERVICE_ROLE_KEY is not set"
-    exit 1
-fi
-echo "✅ Environment variables loaded successfully"
-
 # Generate SSL certificate for development
 echo "🔐 Checking SSL certificate..."
 if [ ! -f "ssl/cert.pem" ] || [ ! -f "ssl/key.pem" ]; then
@@ -173,34 +173,11 @@ else
     echo "SSL certificate already exists"
 fi
 
-# Create environment file
-echo "⚙️  Setting up environment configuration..."
-if [ ! -f .env ]; then
-    echo "Please create a .env file with your Supabase configuration."
-    echo "You can copy from env.example as a starting point."
-    cp env.example .env
-    echo ""
-    echo "⚠️  IMPORTANT: Edit .env file with your actual Supabase configuration:"
-    echo "   - Get your Supabase credentials from: https://supabase.com/dashboard"
-    echo "   - Update DATABASE_URL and DIRECT_URL with your Supabase database URL"
-    echo "   - Update SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY"
-    echo "   - Generate a strong NEXTAUTH_SECRET (at least 32 characters)"
-    echo "   - Add your RESEND_API_KEY for email functionality"
-    echo ""
-    echo "After updating .env, run this script again."
-    exit 1
-fi
-
-# Check Docker permissions
+# Check Docker permissions and set up commands with environment preservation
 echo "🔍 Checking Docker permissions..."
 if ! docker ps > /dev/null 2>&1; then
-    echo "⚠️  Docker permission issue detected. Fixing..."
-    sudo usermod -aG docker $USER
-    echo "✅ Added user to docker group. You may need to log out and log back in."
-    echo "   Alternatively, run: newgrp docker"
-    echo ""
-    echo "🔄 Attempting to continue with sudo for Docker commands..."
-    DOCKER_CMD="sudo docker"
+    echo "⚠️  Docker permission issue detected. Using sudo with environment preservation..."
+    DOCKER_CMD="sudo -E docker"
     DOCKER_COMPOSE_CMD="sudo -E docker-compose"
 else
     echo "✅ Docker permissions OK"
