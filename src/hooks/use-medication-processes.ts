@@ -1,4 +1,4 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   MedicationProcess,
   MedicationProcessStep,
@@ -324,6 +324,8 @@ export const useRetryMedicationProcess = () => {
 
 // Complete devolution reception (pharmacy regent final step)
 export const useCompleteDevolutionReception = () => {
+  const queryClient = useQueryClient();
+  
   return useMutation({
     mutationFn: async ({
       patientId,
@@ -351,6 +353,27 @@ export const useCompleteDevolutionReception = () => {
       }
 
       return response.json();
+    },
+    onSuccess: () => {
+      // Invalidate all patient detail related queries
+      queryClient.invalidateQueries({
+        queryKey: ["all-medication-processes"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["patients"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["qr-scan-records"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["current-daily-process"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["process-error-logs"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["manual-returns"],
+      });
     },
   });
 };

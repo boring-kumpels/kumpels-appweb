@@ -25,7 +25,6 @@ import {
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCurrentDailyProcess } from "@/hooks/use-daily-processes";
 
 interface QRCheckInModalProps {
   open: boolean;
@@ -67,7 +66,6 @@ export function QRCheckInModal({
   const isServiceArrival = qrData?.type === "SERVICE_ARRIVAL" || qrData?.type === "DEVOLUTION_PICKUP";
 
   const queryClient = useQueryClient();
-  const { data: currentDailyProcess } = useCurrentDailyProcess();
 
   // Get current date and time
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
@@ -209,15 +207,28 @@ export function QRCheckInModal({
           description: result.message,
         });
 
-        // Invalidate queries to trigger immediate UI updates
-        if (currentDailyProcess?.id) {
-          queryClient.invalidateQueries({
-            queryKey: ["all-medication-processes", currentDailyProcess.id],
-          });
-          queryClient.invalidateQueries({
-            queryKey: ["patients"],
-          });
-        }
+        // Invalidate queries to trigger immediate UI updates for patient detail view
+        queryClient.invalidateQueries({
+          queryKey: ["all-medication-processes"],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["patients"],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["qr-scan-records"],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["current-daily-process"],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["daily-processes"],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["process-error-logs"],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["manual-returns"],
+        });
 
         onSuccess();
         onOpenChange(false);

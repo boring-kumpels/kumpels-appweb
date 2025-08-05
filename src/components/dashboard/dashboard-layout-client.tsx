@@ -42,14 +42,15 @@ export function DashboardLayoutClient({ children }: DashboardLayoutProps) {
           <Header>
             <div className="ml-auto flex items-center space-x-4">
               <Search />
-              {profile?.role === "PHARMACY_REGENT" && (
+              {(profile?.role === "PHARMACY_REGENT" || profile?.role === "SUPERADMIN") && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setQrScannerOpen(true)}
-                  className="h-8 w-8 p-0"
+                  className="h-8 px-3 py-1 flex items-center gap-2"
                   title="Escáner QR"
                 >
+                  <span className="text-sm">Escanear</span>
                   <QrCode className="h-4 w-4" />
                 </Button>
               )}

@@ -7,6 +7,31 @@ import {
   ManualReturnStatus,
 } from "@/types/patient";
 
+// Helper function to invalidate all patient detail related queries
+const invalidatePatientDetailQueries = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries({
+    queryKey: ["all-medication-processes"],
+  });
+  queryClient.invalidateQueries({
+    queryKey: ["patients"],
+  });
+  queryClient.invalidateQueries({
+    queryKey: ["qr-scan-records"],
+  });
+  queryClient.invalidateQueries({
+    queryKey: ["current-daily-process"],
+  });
+  queryClient.invalidateQueries({
+    queryKey: ["daily-processes"],
+  });
+  queryClient.invalidateQueries({
+    queryKey: ["process-error-logs"],
+  });
+  queryClient.invalidateQueries({
+    queryKey: ["manual-returns"],
+  });
+};
+
 interface UseManualReturnsOptions {
   filters?: ManualReturnFilters;
   enabled?: boolean;
@@ -62,7 +87,7 @@ export const useCreateManualReturn = () => {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["manual-returns"] });
+      invalidatePatientDetailQueries(queryClient);
     },
   });
 };
@@ -95,7 +120,7 @@ export const useUpdateManualReturn = () => {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["manual-returns"] });
+      invalidatePatientDetailQueries(queryClient);
     },
   });
 };
@@ -116,7 +141,7 @@ export const useDeleteManualReturn = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["manual-returns"] });
+      invalidatePatientDetailQueries(queryClient);
     },
   });
 };

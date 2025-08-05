@@ -229,7 +229,6 @@ export function ProcessStatusButton({
         };
 
         // Update the cache optimistically
-        // For devolutions, we need to handle the case where there's no daily process
         // Use consistent cache key since API handles daily process auto-creation
         const cacheKey = [
           "all-medication-processes",
