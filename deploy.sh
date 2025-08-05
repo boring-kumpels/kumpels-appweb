@@ -177,7 +177,7 @@ if ! docker ps > /dev/null 2>&1; then
     echo ""
     echo "🔄 Attempting to continue with sudo for Docker commands..."
     DOCKER_CMD="sudo docker"
-    DOCKER_COMPOSE_CMD="sudo docker-compose"
+    DOCKER_COMPOSE_CMD="sudo -E docker-compose"
 else
     echo "✅ Docker permissions OK"
     DOCKER_CMD="docker"
@@ -225,22 +225,12 @@ if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
 fi
 echo "✅ Environment variables loaded successfully"
 
-# Build with environment variables - preserve environment for sudo
+# Build with environment variables
 echo "🔨 Building Docker image..."
-if [ "$DOCKER_COMPOSE_CMD" = "sudo docker-compose" ]; then
-    # Use sudo with environment preservation
-    sudo -E docker-compose -f docker-compose.prod.yml build
-else
-    $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml build
-fi
+$DOCKER_COMPOSE_CMD -f docker-compose.prod.yml build
 
 echo "Starting containers..."
-if [ "$DOCKER_COMPOSE_CMD" = "sudo docker-compose" ]; then
-    # Use sudo with environment preservation
-    sudo -E docker-compose -f docker-compose.prod.yml up -d
-else
-    $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml up -d
-fi
+$DOCKER_COMPOSE_CMD -f docker-compose.prod.yml up -d
 
 # Wait for services to be ready
 echo "⏳ Waiting for services to be ready..."
@@ -248,11 +238,11 @@ sleep 30
 
 # Check service health
 echo "🏥 Checking service health..."
-if curl -f http://localhost/health > /dev/null 2>&1; then
+if curl -f http://localhost/api/health > /dev/null 2>&1; then
     echo "✅ Application is healthy!"
 else
     echo "❌ Application health check failed. Check logs with:"
-    echo "   docker-compose -f docker-compose.prod.yml logs"
+    echo "   $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml logs"
     exit 1
 fi
 
@@ -301,6 +291,7 @@ After=docker.service
 Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory=/opt/kumpels-app
+EnvironmentFile=/opt/kumpels-app/.env
 ExecStart=/usr/local/bin/docker-compose -f docker-compose.prod.yml up -d
 ExecStop=/usr/local/bin/docker-compose -f docker-compose.prod.yml down
 TimeoutStartSec=0
@@ -329,13 +320,13 @@ echo "🎉 Deployment completed successfully!"
 echo ""
 echo "📊 Application Status:"
 echo "   - Web Interface: http://$(curl -s ifconfig.me)"
-echo "   - Health Check: http://$(curl -s ifconfig.me)/health"
+echo "   - Health Check: http://$(curl -s ifconfig.me)/api/health"
 echo ""
 echo "📝 Useful Commands:"
-echo "   - View logs: docker-compose -f docker-compose.prod.yml logs -f"
+echo "   - View logs: $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml logs -f"
 echo "   - Restart app: sudo systemctl restart kumpels-app"
 echo "   - Stop app: sudo systemctl stop kumpels-app"
-echo "   - Update app: cd /opt/kumpels-app && git pull && docker-compose -f docker-compose.prod.yml up -d --build"
+echo "   - Update app: cd /opt/kumpels-app && git pull && $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml up -d --build"
 echo "   - Check status: sudo systemctl status kumpels-app"
 echo ""
 echo "🔐 SSL Certificate:"
