@@ -41,7 +41,7 @@ export async function GET(
 
     // Get auth user
     const { data: authUser, error: authError } =
-      await supabaseAdmin.auth.admin.getUserById(userId);
+      await supabaseAdmin().auth.admin.getUserById(userId);
 
     if (authError || !authUser.user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -126,7 +126,7 @@ export async function PUT(
 
     // Check if user exists
     const { data: authUser, error: authError } =
-      await supabaseAdmin.auth.admin.getUserById(userId);
+      await supabaseAdmin().auth.admin.getUserById(userId);
     if (authError || !authUser.user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
@@ -209,7 +209,7 @@ export async function DELETE(
 
     // Check if user exists
     const { data: authUser, error: authError } =
-      await supabaseAdmin.auth.admin.getUserById(userId);
+      await supabaseAdmin().auth.admin.getUserById(userId);
     if (authError || !authUser.user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
@@ -221,7 +221,7 @@ export async function DELETE(
 
     // Delete auth user
     const { error: deleteAuthError } =
-      await supabaseAdmin.auth.admin.deleteUser(userId);
+      await supabaseAdmin().auth.admin.deleteUser(userId);
     if (deleteAuthError) {
       console.error("Error deleting auth user:", deleteAuthError);
       // Profile is already deleted, so this is a partial failure

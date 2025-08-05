@@ -50,14 +50,14 @@ export async function PUT(
 
     // Get user to verify they exist and get their email
     const { data: authUser, error: authError } =
-      await supabaseAdmin.auth.admin.getUserById(userId);
+      await supabaseAdmin().auth.admin.getUserById(userId);
     if (authError || !authUser.user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     // Update password in Supabase Auth with plain password - let Supabase handle hashing
     const { error: updateError } =
-      await supabaseAdmin.auth.admin.updateUserById(userId, {
+      await supabaseAdmin().auth.admin.updateUserById(userId, {
         password: password, // Send plain password to Supabase
       });
 

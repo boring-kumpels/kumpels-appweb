@@ -63,112 +63,67 @@ export async function GET(request: NextRequest) {
     );
     const search = url.searchParams.get("search") || "";
 
-    // Get auth users from Supabase
-    console.log("🔍 Calling Supabase admin.listUsers with:", {
-      page,
-      pageSize,
-    });
+    // Get users from Supabase Auth
     const { data: authUsers, error: authError } =
-      await supabaseAdmin.auth.admin.listUsers({
+      await supabaseAdmin().auth.admin.listUsers({
         page: page,
         perPage: pageSize,
       });
 
     if (authError) {
-      console.error("❌ Error fetching auth users:", authError);
+      console.error("Error fetching users from Supabase:", authError);
       return NextResponse.json(
-        { error: `Failed to fetch users: ${authError.message}` },
+        { error: "Failed to fetch users" },
         { status: 500 }
       );
     }
 
-    console.log(
-      "✅ Successfully fetched",
-      authUsers.users?.length || 0,
-      "users from Supabase"
-    );
+    // Get total count
+    const { data: totalUsersData } =
+      await supabaseAdmin().auth.admin.listUsers();
+    const totalUsers = totalUsersData?.users?.length || 0;
 
     // Get profiles from database
-    const userIds = authUsers.users.map((user) => user.id);
     const profiles = await prisma.profile.findMany({
       where: {
-        userId: { in: userIds },
-        ...(search && {
-          OR: [
-            { firstName: { contains: search, mode: "insensitive" } },
-            { lastName: { contains: search, mode: "insensitive" } },
-          ],
-        }),
+        userId: {
+          in: authUsers.users.map((user) => user.id),
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
       },
     });
 
     // Combine auth users with profiles
-    const usersWithProfiles = authUsers.users
-      .map((authUser) => {
-        const profile = profiles.find((p) => p.userId === authUser.id);
-        if (!profile) return null;
+    const users = authUsers.users.map((authUser) => {
+      const profile = profiles.find((p) => p.userId === authUser.id);
+      return {
+        id: authUser.id,
+        email: authUser.email,
+        fullName: profile?.fullName || "N/A",
+        role: profile?.role || "USER",
+        createdAt: authUser.created_at,
+        updatedAt: profile?.updatedAt || authUser.updated_at,
+        lastSignIn: authUser.last_sign_in_at,
+        emailConfirmed: authUser.email_confirmed_at !== null,
+      };
+    });
 
-        return {
-          id: authUser.id,
-          email: authUser.email || "",
-          profile: {
-            id: profile.id,
-            firstName: profile.firstName ?? undefined,
-            lastName: profile.lastName ?? undefined,
-            role: profile.role,
-            active: profile.active,
-            createdAt: profile.createdAt,
-            updatedAt: profile.updatedAt,
-          },
-        };
-      })
-      .filter(Boolean);
-
-    // Apply search filter to combined data if needed
-    const filteredUsers = search
-      ? usersWithProfiles.filter(
-          (user) =>
-            user?.email.toLowerCase().includes(search.toLowerCase()) ||
-            user?.profile.firstName
-              ?.toLowerCase()
-              .includes(search.toLowerCase()) ||
-            user?.profile.lastName?.toLowerCase().includes(search.toLowerCase())
-        )
-      : usersWithProfiles;
-
-    // Get total count for pagination
-    const { data: totalUsersData } = await supabaseAdmin.auth.admin.listUsers();
-    const totalCount = totalUsersData?.users?.length || 0;
-
-    const response: UsersListResponse = {
-      users: filteredUsers as UserWithProfile[],
-      totalCount: totalCount || 0,
-      page,
-      pageSize,
-    };
-
-    return NextResponse.json(response);
-  } catch (error) {
-    console.error("❌ Error in users GET:", error);
-
-    // Ensure we always return JSON, never HTML
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error occurred";
-    return NextResponse.json(
-      {
-        error: "Internal server error",
-        details: errorMessage,
-        stack:
-          process.env.NODE_ENV === "development"
-            ? (error as Error)?.stack
-            : undefined,
+    return NextResponse.json({
+      users,
+      pagination: {
+        page,
+        limit: pageSize,
+        total: totalUsers,
+        totalPages: Math.ceil(totalUsers / pageSize),
       },
-      {
-        status: 500,
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
+    });
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
     );
   }
 }
@@ -213,7 +168,7 @@ export async function POST(request: NextRequest) {
 
     // Create auth user with plain password - let Supabase handle hashing
     const { data: authUser, error: authError } =
-      await supabaseAdmin.auth.admin.createUser({
+      await supabaseAdmin().auth.admin.createUser({
         email,
         password: password, // Send plain password to Supabase
         email_confirm: true, // Auto-confirm email as requested

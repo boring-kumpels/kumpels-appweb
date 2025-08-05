@@ -207,10 +207,11 @@ if [ "$($DOCKER_COMPOSE_CMD -f docker-compose.prod.yml ps -q 2>/dev/null | wc -l
 fi
 
 echo "Building Docker images..."
-$DOCKER_COMPOSE_CMD -f docker-compose.prod.yml build
+# Use docker-compose with env_file directive to load environment variables
+$DOCKER_COMPOSE_CMD -f docker-compose.prod.yml --env-file .env build
 
 echo "Starting containers..."
-$DOCKER_COMPOSE_CMD -f docker-compose.prod.yml up -d
+$DOCKER_COMPOSE_CMD -f docker-compose.prod.yml --env-file .env up -d
 
 # Wait for services to be ready
 echo "⏳ Waiting for services to be ready..."
