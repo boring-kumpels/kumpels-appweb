@@ -69,8 +69,9 @@ check_certificate_expiry() {
 renew_letsencrypt() {
     print_status "Renewing Let's Encrypt certificate for domain: $DOMAIN"
     
-    if ! command_exists certbot; then
-        print_error "certbot is not installed. Please install it first."
+    # Check if certbot is available (either installed or via Docker)
+    if ! command_exists certbot && ! command_exists docker; then
+        print_error "Neither certbot nor docker is installed. Please install one of them."
         exit 1
     fi
     
@@ -78,16 +79,68 @@ renew_letsencrypt() {
     print_status "Stopping nginx container for certificate renewal..."
     docker-compose stop nginx
     
+    # Wait a moment for port to be freed
+    sleep 2
+    
     # Renew certificate
     print_status "Running certbot to renew certificate..."
-    certbot renew \
-        --standalone \
-        --cert-path "$SSL_DIR/cert.pem" \
-        --key-path "$SSL_DIR/key.pem" \
-        --config-dir "$LETSENCRYPT_DIR" \
-        --work-dir "$LETSENCRYPT_DIR" \
-        --logs-dir "$LETSENCRYPT_DIR" \
-        --force-renewal
+    
+    if command_exists certbot; then
+        # Use local certbot installation
+        print_status "Using local certbot installation..."
+        
+        # Check if running as root or with sudo
+        if [[ $EUID -eq 0 ]]; then
+            # Running as root, proceed normally
+            certbot renew \
+                --standalone \
+                --cert-path "$SSL_DIR/cert.pem" \
+                --key-path "$SSL_DIR/key.pem" \
+                --config-dir "$LETSENCRYPT_DIR" \
+                --work-dir "$LETSENCRYPT_DIR" \
+                --logs-dir "$LETSENCRYPT_DIR" \
+                --force-renewal
+        else
+            # Not running as root, try with sudo
+            print_status "Attempting to run certbot with sudo..."
+            sudo certbot renew \
+                --standalone \
+                --cert-path "$(pwd)/$SSL_DIR/cert.pem" \
+                --key-path "$(pwd)/$SSL_DIR/key.pem" \
+                --config-dir "$(pwd)/$LETSENCRYPT_DIR" \
+                --work-dir "$(pwd)/$LETSENCRYPT_DIR" \
+                --logs-dir "$(pwd)/$LETSENCRYPT_DIR" \
+                --force-renewal
+        fi
+    elif command_exists docker; then
+        # Use Docker certbot
+        print_status "Using Docker certbot..."
+        
+        # Run certbot in Docker for renewal
+        docker run --rm \
+            -v "$(pwd)/$SSL_DIR:/etc/letsencrypt/live/$DOMAIN" \
+            -v "$(pwd)/$LETSENCRYPT_DIR:/etc/letsencrypt" \
+            -v "$(pwd)/$ACME_CHALLENGE_DIR:/var/www/html" \
+            -p 80:80 \
+            -p 443:443 \
+            certbot/certbot renew \
+            --standalone \
+            --force-renewal
+        
+        # Copy renewed certificates to the expected locations
+        if [[ -f "$LETSENCRYPT_DIR/live/$DOMAIN/fullchain.pem" ]]; then
+            cp "$LETSENCRYPT_DIR/live/$DOMAIN/fullchain.pem" "$SSL_DIR/cert.pem"
+            cp "$LETSENCRYPT_DIR/live/$DOMAIN/privkey.pem" "$SSL_DIR/key.pem"
+            chmod 644 "$SSL_DIR/cert.pem"
+            chmod 600 "$SSL_DIR/key.pem"
+        else
+            print_error "Renewed certificate files not found after Docker certbot run"
+            exit 1
+        fi
+    else
+        print_error "No certbot installation found and Docker is not available"
+        exit 1
+    fi
     
     # Restart nginx container
     print_status "Restarting nginx container..."

@@ -64,6 +64,9 @@ export default function UsersTable({
   };
 
   const getUserDisplayName = (user: UserWithProfile) => {
+    if (!user.profile) {
+      return "Sin perfil";
+    }
     const { firstName, lastName } = user.profile;
     if (firstName && lastName) {
       return `${firstName} ${lastName}`;
@@ -169,22 +172,24 @@ export default function UsersTable({
                   <TableCell>
                     <Badge
                       variant="secondary"
-                      className={roleColors[user.profile.role]}
+                      className={roleColors[user.profile?.role || "NURSE"]}
                     >
-                      {roleDisplayNames[user.profile.role]}
+                      {roleDisplayNames[user.profile?.role || "NURSE"]}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     <Badge
-                      variant={user.profile.active ? "default" : "secondary"}
+                      variant={user.profile?.active ? "default" : "secondary"}
                     >
-                      {user.profile.active ? "Activo" : "Inactivo"}
+                      {user.profile?.active ? "Activo" : "Inactivo"}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-1 text-sm text-muted-foreground">
                       <Calendar className="h-3 w-3" />
-                      <span>{formatDate(user.profile.createdAt)}</span>
+                      <span>
+                        {formatDate(user.profile?.createdAt || new Date())}
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell>

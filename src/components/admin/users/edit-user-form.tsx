@@ -45,10 +45,10 @@ export default function EditUserForm({
   const form = useForm<UpdateUserFormData>({
     resolver: zodResolver(updateUserFormSchema),
     defaultValues: {
-      firstName: user.profile.firstName || "",
-      lastName: user.profile.lastName || "",
-      role: user.profile.role,
-      active: user.profile.active,
+      firstName: user.profile?.firstName || "",
+      lastName: user.profile?.lastName || "",
+      role: user.profile?.role || "NURSE",
+      active: user.profile?.active ?? true,
     },
   });
 

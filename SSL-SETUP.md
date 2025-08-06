@@ -61,6 +61,15 @@ For local development or testing:
 ./generate-ssl.sh localhost self-signed admin@localhost 365
 ```
 
+### 2. Fix Permission Issues (If Needed)
+
+If you encounter permission issues with Let's Encrypt:
+
+```bash
+# Run the permission fix script to diagnose and resolve issues
+./fix-ssl-permissions.sh yourdomain.com
+```
+
 ### 2. Generate Let's Encrypt Certificate (Production)
 
 For production environments with a real domain:
@@ -136,6 +145,36 @@ Checks and renews Let's Encrypt certificates.
 # Check and renew certificate for specific domain
 ./renew-ssl.sh example.com
 ```
+
+### fix-ssl-permissions.sh
+
+Diagnoses and helps resolve SSL certificate permission issues.
+
+```bash
+./fix-ssl-permissions.sh [DOMAIN]
+```
+
+#### Parameters
+
+- `DOMAIN` - Domain name to check (default: localhost)
+
+#### Examples
+
+```bash
+# Check permissions for localhost
+./fix-ssl-permissions.sh
+
+# Check permissions for specific domain
+./fix-ssl-permissions.sh example.com
+```
+
+#### What it does:
+
+1. Checks current user permissions
+2. Verifies port 80 availability
+3. Stops conflicting services
+4. Tests Docker certbot availability
+5. Provides alternative solutions
 
 ## Certificate Types
 
@@ -307,6 +346,19 @@ rm -rf ssl/
 ```
 
 **Solution**: Stop other web servers or use a different port for certbot.
+
+#### 6. Permission Denied for Port 80 Binding
+
+```
+Could not bind TCP port 80 because you don't have the appropriate permissions
+```
+
+**Solutions**:
+
+- **Use Docker method** (Recommended): The script will automatically use Docker certbot if available
+- **Run with sudo**: `sudo ./generate-ssl.sh example.com letsencrypt admin@example.com`
+- **Use self-signed certificate**: `./generate-ssl.sh example.com self-signed`
+- **Run the permission fix script**: `./fix-ssl-permissions.sh example.com`
 
 ### Debugging Commands
 

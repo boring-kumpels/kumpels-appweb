@@ -117,11 +117,12 @@ EOF
 generate_letsencrypt() {
     print_status "Generating Let's Encrypt certificate for domain: $DOMAIN"
     
-    if ! command_exists certbot; then
-        print_error "certbot is not installed. Please install it first:"
+    # Check if certbot is available (either installed or via Docker)
+    if ! command_exists certbot && ! command_exists docker; then
+        print_error "Neither certbot nor docker is installed. Please install one of them:"
         print_status "Ubuntu/Debian: sudo apt-get install certbot"
         print_status "macOS: brew install certbot"
-        print_status "Or use Docker: docker run --rm -it certbot/certbot certonly --standalone"
+        print_status "Or install Docker and use the Docker method"
         exit 1
     fi
     
@@ -131,19 +132,92 @@ generate_letsencrypt() {
         print_warning "Domain $DOMAIN might not be accessible. Make sure DNS is configured correctly."
     fi
     
+    # Check if port 80 is available
+    print_status "Checking if port 80 is available..."
+    if lsof -i :80 >/dev/null 2>&1; then
+        print_warning "Port 80 is already in use. Stopping nginx container to free the port..."
+        docker-compose stop nginx 2>/dev/null || true
+        sleep 2
+    fi
+    
     # Generate certificate using certbot
     print_status "Running certbot to obtain certificate..."
-    certbot certonly \
-        --standalone \
-        --email "$EMAIL" \
-        --agree-tos \
-        --no-eff-email \
-        --domains "$DOMAIN" \
-        --cert-path "$SSL_DIR/cert.pem" \
-        --key-path "$SSL_DIR/key.pem" \
-        --config-dir "$LETSENCRYPT_DIR" \
-        --work-dir "$LETSENCRYPT_DIR" \
-        --logs-dir "$LETSENCRYPT_DIR"
+    
+    if command_exists certbot; then
+        # Use local certbot installation
+        print_status "Using local certbot installation..."
+        
+        # Check if running as root or with sudo
+        if [[ $EUID -eq 0 ]]; then
+            # Running as root, proceed normally
+            certbot certonly \
+                --standalone \
+                --email "$EMAIL" \
+                --agree-tos \
+                --no-eff-email \
+                --domains "$DOMAIN" \
+                --cert-path "$SSL_DIR/cert.pem" \
+                --key-path "$SSL_DIR/key.pem" \
+                --config-dir "$LETSENCRYPT_DIR" \
+                --work-dir "$LETSENCRYPT_DIR" \
+                --logs-dir "$LETSENCRYPT_DIR"
+        else
+            # Not running as root, try with sudo
+            print_status "Attempting to run certbot with sudo..."
+            sudo certbot certonly \
+                --standalone \
+                --email "$EMAIL" \
+                --agree-tos \
+                --no-eff-email \
+                --domains "$DOMAIN" \
+                --cert-path "$(pwd)/$SSL_DIR/cert.pem" \
+                --key-path "$(pwd)/$SSL_DIR/key.pem" \
+                --config-dir "$(pwd)/$LETSENCRYPT_DIR" \
+                --work-dir "$(pwd)/$LETSENCRYPT_DIR" \
+                --logs-dir "$(pwd)/$LETSENCRYPT_DIR"
+        fi
+    elif command_exists docker; then
+        # Use Docker certbot
+        print_status "Using Docker certbot..."
+        
+        # Create necessary directories with proper permissions
+        mkdir -p "$SSL_DIR" "$LETSENCRYPT_DIR" "$ACME_CHALLENGE_DIR"
+        chmod 755 "$SSL_DIR" "$LETSENCRYPT_DIR" "$ACME_CHALLENGE_DIR"
+        
+        # Run certbot in Docker
+        docker run --rm \
+            -v "$(pwd)/$SSL_DIR:/etc/letsencrypt/live/$DOMAIN" \
+            -v "$(pwd)/$LETSENCRYPT_DIR:/etc/letsencrypt" \
+            -v "$(pwd)/$ACME_CHALLENGE_DIR:/var/www/html" \
+            -p 80:80 \
+            -p 443:443 \
+            certbot/certbot certonly \
+            --standalone \
+            --email "$EMAIL" \
+            --agree-tos \
+            --no-eff-email \
+            --domains "$DOMAIN"
+        
+        # Copy certificates to the expected locations
+        if [[ -f "$LETSENCRYPT_DIR/live/$DOMAIN/fullchain.pem" ]]; then
+            cp "$LETSENCRYPT_DIR/live/$DOMAIN/fullchain.pem" "$SSL_DIR/cert.pem"
+            cp "$LETSENCRYPT_DIR/live/$DOMAIN/privkey.pem" "$SSL_DIR/key.pem"
+            chmod 644 "$SSL_DIR/cert.pem"
+            chmod 600 "$SSL_DIR/key.pem"
+        else
+            print_error "Certificate files not found after Docker certbot run"
+            exit 1
+        fi
+    else
+        print_error "No certbot installation found and Docker is not available"
+        exit 1
+    fi
+    
+    # Restart nginx if it was stopped
+    if docker-compose ps nginx 2>/dev/null | grep -q "Up"; then
+        print_status "Restarting nginx container..."
+        docker-compose up -d nginx
+    fi
     
     print_success "Let's Encrypt certificate generated successfully"
 }

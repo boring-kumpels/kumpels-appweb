@@ -98,26 +98,33 @@ export async function GET(request: NextRequest) {
       return {
         id: authUser.id,
         email: authUser.email,
-        fullName: profile
-          ? `${profile.firstName || ""} ${profile.lastName || ""}`.trim() ||
-            "N/A"
-          : "N/A",
-        role: profile?.role || "USER",
-        createdAt: authUser.created_at,
-        updatedAt: profile?.updatedAt || authUser.updated_at,
-        lastSignIn: authUser.last_sign_in_at,
-        emailConfirmed: authUser.email_confirmed_at !== null,
+        profile: profile
+          ? {
+              id: profile.id,
+              firstName: profile.firstName ?? undefined,
+              lastName: profile.lastName ?? undefined,
+              role: profile.role,
+              active: profile.active,
+              createdAt: profile.createdAt,
+              updatedAt: profile.updatedAt,
+            }
+          : {
+              id: "",
+              firstName: undefined,
+              lastName: undefined,
+              role: "NURSE" as const, // Default role
+              active: false,
+              createdAt: new Date(authUser.created_at),
+              updatedAt: new Date(authUser.updated_at || authUser.created_at),
+            },
       };
     });
 
     return NextResponse.json({
       users,
-      pagination: {
-        page,
-        limit: pageSize,
-        total: totalUsers,
-        totalPages: Math.ceil(totalUsers / pageSize),
-      },
+      totalCount: totalUsers,
+      page,
+      pageSize,
     });
   } catch (error) {
     console.error("Error fetching users:", error);
