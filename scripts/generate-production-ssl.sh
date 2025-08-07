@@ -46,7 +46,6 @@ extendedKeyUsage = serverAuth, clientAuth
 subjectAltName = @alt_names
 basicConstraints = CA:FALSE
 subjectKeyIdentifier = hash
-authorityKeyIdentifier = keyid,issuer
 
 [alt_names]
 DNS.1 = $DOMAIN
