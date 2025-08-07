@@ -176,13 +176,24 @@ else
     fi
 fi
 
-# Generate SSL certificate for development
-echo "🔐 Checking SSL certificate..."
+# Handle SSL certificate generation
+echo "🔐 Setting up SSL certificate..."
+SSL_MODE=${SSL_MODE:-"self-signed"}
+DOMAIN=${DOMAIN:-$(curl -s ifconfig.me 2>/dev/null || echo "localhost")}
+SSL_EMAIL=${SSL_EMAIL:-""}
+
 if [ ! -f "ssl/cert.pem" ] || [ ! -f "ssl/key.pem" ]; then
-    echo "Generating SSL certificate..."
-    ./scripts/generate-ssl.sh
+    echo "No SSL certificate found. Generating new certificate..."
+    if [[ "$SSL_MODE" == "letsencrypt" && -n "$SSL_EMAIL" && "$DOMAIN" != "localhost" ]]; then
+        echo "Generating Let's Encrypt certificate for production..."
+        ./scripts/generate-ssl.sh letsencrypt "$DOMAIN" "$SSL_EMAIL"
+    else
+        echo "Generating self-signed certificate for development..."
+        ./scripts/generate-ssl.sh self-signed "$DOMAIN"
+    fi
 else
     echo "SSL certificate already exists"
+    echo "To regenerate: rm -rf ssl/ && ./scripts/generate-ssl.sh"
 fi
 
 # Check Docker permissions and set up commands with environment preservation
@@ -492,8 +503,16 @@ EOF
 echo "🎉 Deployment completed successfully!"
 echo ""
 echo "📊 Application Status:"
-echo "   - Web Interface: http://$(curl -s ifconfig.me)"
-echo "   - Health Check: http://$(curl -s ifconfig.me)/api/health"
+if [[ "$SSL_MODE" == "letsencrypt" && -n "$SSL_EMAIL" ]]; then
+    echo "   - Web Interface: https://$DOMAIN"
+    echo "   - Health Check: https://$DOMAIN/api/health"
+    echo "   - HTTP redirect: http://$DOMAIN → https://$DOMAIN"
+else
+    echo "   - Web Interface: https://$(curl -s ifconfig.me)"
+    echo "   - Health Check: https://$(curl -s ifconfig.me)/api/health"
+    echo "   - HTTP redirect: http://$(curl -s ifconfig.me) → https://$(curl -s ifconfig.me)"
+    echo "   ⚠️  Using self-signed certificate - browsers will show security warning"
+fi
 echo ""
 echo "🔧 Auto-Restart Features:"
 echo "   - Docker containers: restart=unless-stopped (in docker-compose)"
@@ -512,7 +531,18 @@ echo "   - Check monitoring status: sudo systemctl status kumpels-monitor.timer"
 echo "   - Manual monitoring run: /opt/kumpels-app/monitor.sh"
 echo ""
 echo "🔐 SSL Certificate:"
-echo "   - For production, replace the self-signed certificate in /opt/kumpels-app/ssl/"
-echo "   - Use Let's Encrypt or a proper Certificate Authority"
+if [[ "$SSL_MODE" == "letsencrypt" && -n "$SSL_EMAIL" ]]; then
+    echo "   - Let's Encrypt certificate configured with automatic renewal"
+    echo "   - Certificate renewal logs: /var/log/ssl-renewal.log"
+    echo "   - Manual renewal: sudo certbot renew"
+else
+    echo "   - Self-signed certificate (development only)"
+    echo "   - For production with custom domain, use: SSL_MODE=letsencrypt SSL_EMAIL=your@email.com DOMAIN=yourdomain.com ./deploy.sh"
+    echo "   - For production with Let's Encrypt: export SSL_MODE=letsencrypt SSL_EMAIL=admin@yourdomain.com DOMAIN=yourdomain.com && ./deploy.sh"
+fi
+echo ""
+echo "🚀 Deployment Options:"
+echo "   Development: ./deploy.sh"
+echo "   Production:  SSL_MODE=letsencrypt SSL_EMAIL=admin@example.com DOMAIN=example.com ./deploy.sh"
 echo ""
 echo "🔄 Re-run this script anytime to update or repair the installation!" 

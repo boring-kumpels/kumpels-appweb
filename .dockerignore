@@ -107,4 +107,13 @@ prisma/migrations/
 ssl/
 
 # Nginx configs (will be mounted)
-nginx/ 
+nginx/
+
+# Deployment and monitoring scripts
+scripts/
+*.sh
+deploy.sh
+monitor.sh
+
+# Service files
+*.service 

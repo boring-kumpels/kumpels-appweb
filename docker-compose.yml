@@ -76,7 +76,6 @@ services:
       retries: 3
 
 volumes:
-  redis-data:
   nginx-logs:
 
 networks:
