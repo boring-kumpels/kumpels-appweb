@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import PacientesOnTimeManagement from "@/components/dashboard/pacientes-on-time/pacientes-on-time-management";
 
 export const metadata: Metadata = {
-  title: "Pacientes On Time - Pharmacy Regent",
+  title: "Pacientes - Pharmacy Regent",
   description:
     "Gestión de pacientes en tiempo para medicación - Vista de regente farmacéutico",
 };
@@ -24,12 +24,7 @@ export default async function RegentPacientesOnTimePage() {
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">
-            Pacientes On Time
-          </h2>
-          <p className="text-muted-foreground">
-            Lista de pacientes y gestión de medicación en tiempo real.
-          </p>
+          <h2 className="text-3xl font-bold tracking-tight">Pacientes</h2>
         </div>
       </div>
       <PacientesOnTimeManagement />

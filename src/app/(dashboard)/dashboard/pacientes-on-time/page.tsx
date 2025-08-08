@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import PacientesOnTimeManagement from "@/components/dashboard/pacientes-on-time/pacientes-on-time-management";
 
 export const metadata: Metadata = {
-  title: "Pacientes On Time",
+  title: "Pacientes",
   description: "Gestión de pacientes en tiempo para medicación",
 };
 
@@ -24,11 +24,8 @@ export default async function PacientesOnTimePage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
         <div>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
-            Pacientes On Time
+            Pacientes
           </h2>
-          <p className="text-muted-foreground text-sm sm:text-base">
-            Lista de pacientes y gestión de medicación en tiempo real.
-          </p>
         </div>
       </div>
       <PacientesOnTimeManagement />
