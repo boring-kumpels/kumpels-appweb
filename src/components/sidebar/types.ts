@@ -21,6 +21,7 @@ interface BaseNavItem {
 export interface NavLink extends BaseNavItem {
   url: string;
   items?: never;
+  isQRScanner?: boolean;
 }
 
 export interface NavCollapsible extends BaseNavItem {

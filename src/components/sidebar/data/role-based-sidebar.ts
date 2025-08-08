@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   QrCode,
   Building2,
+  Camera,
 } from "lucide-react";
 import type { SidebarData } from "../types";
 
@@ -69,6 +70,12 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
               title: "Códigos QR",
               url: "/dashboard/qr-management",
               icon: QrCode,
+            },
+            {
+              title: "Escanear QR",
+              url: "#qr-scanner",
+              icon: Camera,
+              isQRScanner: true,
             },
           ],
         },
@@ -144,6 +151,17 @@ export const getRoleBasedSidebar = (role: UserRole): SidebarData => {
               title: "Estadísticas",
               url: "/regent/estadisticas",
               icon: TrendingUp,
+            },
+          ],
+        },
+        {
+          title: "Gestión QR",
+          items: [
+            {
+              title: "Escanear QR",
+              url: "#qr-scanner",
+              icon: Camera,
+              isQRScanner: true,
             },
           ],
         },
